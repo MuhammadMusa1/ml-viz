@@ -10,12 +10,12 @@
     /* Цвета групп слов: не цвета видов и не смысловые цвета курса (train, validation, минус) */
     :root { --g-people: #60A5FA; --g-animals: #A3E635; --g-food: #FDA4AF; --g-transport: #D4D4D8; }
     .vec { display: grid; grid-template-columns: minmax(80px, auto) minmax(0, 1fr) minmax(0, 1fr); gap: 6px 10px; align-items: center; font-size: 15px; }
-    .vec .head { font-size: 13px; color: var(--muted); font-weight: 700; }
+    .vec .head { font-size: 14px; color: var(--muted); font-weight: 700; }
     .vec .track { position: relative; height: 16px; background: rgba(23, 19, 46, .7); border-radius: 6px; overflow: hidden; }
     .vec .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
     .vec .fill.a { background: var(--text); }
     .vec .fill.b { background: var(--muted); opacity: .7; }
-    .vec .num { position: absolute; right: 6px; top: -1px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .vec .num { position: absolute; right: 6px; top: -1px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
     .nb { list-style: none; padding: 0; margin: 6px 0 0; }
     .nb li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
     .nb li span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -31,12 +31,12 @@
     .atab { border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
     .atab th, .atab td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
     .atab th:first-child, .atab td:first-child { text-align: left; color: var(--muted); }
-    .atab th { font-size: 13px; color: var(--muted); }
+    .atab th { font-size: 14px; color: var(--muted); }
     .atab td.res { font-weight: 700; }
     .atab td.neg { color: var(--c-neg); }
     .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
     .choices button { display: flex; flex-direction: column; align-items: center; font-size: 17px; font-weight: 700; }
-    .choices button small { font-size: 13px; font-weight: 400; color: var(--muted); }
+    .choices button small { font-size: 14px; font-weight: 400; color: var(--muted); }
   </style>
 </head>
 <body>

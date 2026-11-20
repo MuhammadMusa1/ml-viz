@@ -27,7 +27,7 @@
       ru: {
         eyebrow: 'Курс Machine Learning',
         title: 'Машинное обучение, которое можно потрогать',
-        lead: 'Интерактивные визуализации к 24 урокам курса. Двигай точки, крути ползунки и смотри, как модель принимает решения. Без установки и без интернета.',
+        lead: 'Интерактивные визуализации к курсу из 24 уроков. Двигай точки, крути ползунки и смотри, как модель принимает решения. Без установки и без интернета.',
         lesson: 'Урок {n}',
         ready: 'Готово',
         planned: 'Скоро',
@@ -47,7 +47,8 @@
         var href = ready ? ' href="viz/' + it.id + '/index.html' + (L !== 'ru' ? '?lang=' + L : '') + '"' : '';
         return '<' + tag + ' class="card ' + it.status + '"' + href + '>' +
           '<div class="meta"><span>' + MLViz.t(STR, 'lesson', { n: it.lesson }) + '</span>' +
-          '<span class="badge ' + it.status + '">' + MLViz.t(STR, ready ? 'ready' : 'planned') + '</span></div>' +
+          // Бейдж только у будущих страниц: когда готово почти всё, «Готово» на каждой карточке — шум
+          (ready ? '' : '<span class="badge planned">' + MLViz.t(STR, 'planned') + '</span>') + '</div>' +
           '<h3>' + tx(it.title) + '</h3>' +
           '<div class="analogy">' + tx(it.analogy) + '</div>' +
         '</' + tag + '>';

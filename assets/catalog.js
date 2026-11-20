@@ -5,6 +5,7 @@ window.CATALOG = [
   {
     phase: { ru: 'Фаза 1 · Данные' }, weeks: { ru: 'Недели 1–2' },
     items: [
+      { id: 'what-is-ml',  lesson: 1,  status: 'ready',   title: { ru: 'Что такое машинное обучение' },    analogy: { ru: 'Правило не пишут — его находят по примерам' } },
       { id: 'dataset',     lesson: 2,  status: 'ready',   title: { ru: 'Из чего состоит датасет' },        analogy: { ru: 'Таблица = анкеты пингвинов: признаки и ответ' } },
       { id: 'correlation', lesson: 3,  status: 'ready',   title: { ru: 'Корреляция' },                     analogy: { ru: 'Двигаешь точки — смотришь, как меняется r' } },
       { id: 'outliers',    lesson: 4,  status: 'ready',   title: { ru: 'Выбросы и пропуски' },              analogy: { ru: 'Один «великан» портит среднее' } }

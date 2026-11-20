@@ -36,6 +36,13 @@
           <input type="range" id="k" min="1" max="25" step="1" value="5" aria-label="K">
         </div>
 
+        <!-- Точность сразу под K: главный итог виден на проекторе без прокрутки -->
+        <div>
+          <h3 data-i18n="accTitle"></h3>
+          <div class="big-number" id="acc"></div>
+          <small style="color:var(--muted)" id="accNote"></small>
+        </div>
+
         <div>
           <label class="toggle"><input type="checkbox" id="map"> <span data-i18n="showMap"></span></label>
           <p class="note" data-i18n="mapNote"></p>
@@ -69,11 +76,6 @@
           </div>
         </div>
 
-        <div style="border-top:1px solid var(--line); padding-top:12px">
-          <h3 data-i18n="accTitle"></h3>
-          <div class="big-number" id="acc"></div>
-          <small style="color:var(--muted)" id="accNote"></small>
-        </div>
       </aside>
     </div>
 
