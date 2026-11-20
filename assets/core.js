@@ -47,7 +47,8 @@
 
   // Соседние готовые уроки по каталогу (если catalog.js подключён) — учителю удобно листать на проекторе
   function lessonNav(root) {
-    var m = location.pathname.match(/viz\/([^\/]+)\//);
+    // Ищем именно папку /viz/<id>/: на GitHub Pages сайт лежит в /ml-viz/, и «viz/» встречается раньше
+    var m = location.pathname.match(/\/viz\/([^\/]+)\//);
     if (!m || !window.CATALOG) return '';
     var ready = [];
     window.CATALOG.forEach(function (ph) { ph.items.forEach(function (it) { if (it.status === 'ready') ready.push(it); }); });
