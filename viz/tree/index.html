@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Дерево решений · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Стили только этой страницы: дерево вопросов и таблица разреза */
+    .qtree { max-height: 460px; overflow: auto; padding: 6px 4px 4px; font-size: 15px; }
+    .qtree ul { list-style: none; margin: 0; padding: 0 0 0 20px; border-left: 1px dashed var(--line); }
+    .qtree > ul { padding-left: 0; border-left: 0; }
+    .qtree li { margin: 4px 0; }
+    .tnode {
+      display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 5px 10px; border-radius: 10px; border: 1px solid var(--line-soft);
+      background: rgba(23, 19, 46, .55); cursor: default; transition: border-color .15s, background .15s;
+    }
+    .tnode:hover, .tnode.hl { border-color: var(--cyan); background: rgba(34, 211, 238, .08); }
+    .tnode small { color: var(--muted); font-size: 12px; }
+    .tnode .sp { padding: 1px 9px; border-radius: 99px; color: #17132E; font-weight: 700; font-size: 14px; }
+    .edge { font-size: 12px; font-weight: 700; margin-right: 6px; letter-spacing: .03em; }
+    .edge.yes { color: var(--green); }
+    .edge.no { color: var(--red); }
+    .split-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .split-table th, .split-table td { padding: 4px 3px; text-align: center; }
+    .split-table th { color: var(--muted); font-weight: 700; font-size: 12px; }
+    .split-table td:first-child, .split-table th:first-child { text-align: left; }
+    .split-table tr + tr td { border-top: 1px solid var(--line-soft); }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv" class="drag"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--adelie)"></i>Adelie</span>
+            <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+            <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+            <span id="legTest"><i class="ring"></i><span data-i18n="legTest"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+          <p class="note" style="padding:0 4px" data-i18n="mapNote"></p>
+        </div>
+
+        <div class="stage viz-extra">
+          <h3 style="margin:4px 4px 6px" data-i18n="treeTitle"></h3>
+          <div class="qtree" id="qtree"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeBuild" data-i18n="modeBuild"></button>
+          <button type="button" id="modeModel" data-i18n="modeModel"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Ученик строит дерево сам -->
+        <div id="buildPanel">
+          <h3 data-i18n="cutLabel"></h3>
+          <div class="seg" id="orientBtns" style="margin-top:6px">
+            <button type="button" data-f="0" data-i18n="cutV"></button>
+            <button type="button" data-f="1" data-i18n="cutH"></button>
+          </div>
+          <div class="row" id="undoRow" style="margin-top:10px">
+            <button type="button" id="undoBtn" data-i18n="undo"></button>
+            <button type="button" id="resetBtn" data-i18n="reset"></button>
+          </div>
+        </div>
+
+        <!-- Модель строит дерево (CART) -->
+        <div id="modelPanel" hidden>
+          <h3><span data-i18n="depthLabel"></span> = <span id="depthVal"></span></h3>
+          <input type="range" id="depth" min="1" max="6" step="1" value="1">
+          <small class="muted" id="leavesNote"></small>
+        </div>
+
+        <div>
+          <h3 id="statsTitle"></h3>
+          <div id="splitStats" style="margin-top:6px"></div>
+        </div>
+
+        <label class="toggle"><input type="checkbox" id="showTest"> <span data-i18n="showTest"></span></label>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <div class="row" style="justify-content:space-between; align-items:flex-start">
+            <div>
+              <h3 data-i18n="accTrain"></h3>
+              <div class="big-number" id="accTrain" style="color:var(--c-train); margin-top:6px"></div>
+              <small class="muted" id="accTrainNote"></small>
+            </div>
+            <div>
+              <h3 data-i18n="accTest"></h3>
+              <div class="big-number" id="accTest" style="margin-top:6px"></div>
+              <small class="muted" id="accTestNote"></small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Соревнование: 3 вопроса против модели -->
+        <div id="gamePanel" hidden style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n-html="gameAsk"></p>
+          <p style="margin:8px 0 0"><b id="cutsLeft"></b></p>
+          <button type="button" id="compareBtn" class="primary" style="margin-top:10px" data-i18n="compare"></button>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 7 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 7 · Классические алгоритмы',
+        title: 'Дерево решений',
+        analogy: '<b>Игра «20 вопросов».</b> Чтобы угадать вид пингвина, задаём простые вопросы с ответом «да» или «нет»: «Клюв длиннее 42 мм?», «Клюв мельче 16 мм?». Каждый ответ отсекает часть вариантов, пока не останется один вид.',
+        cvLabel: 'Пингвины: длина и глубина клюва, области листьев дерева',
+        modeBuild: 'Строю сам',
+        modeModel: 'Пусть построит модель',
+        modeGame: 'Игра: 3 вопроса',
+        mapNote: 'Каждая область покрашена в ответ дерева: вид, которого среди train-пингвинов в ней больше.',
+        cutLabel: 'Какой разрез ставить',
+        cutV: '| по длине клюва',
+        cutH: '— по глубине клюва',
+        undo: '↶ Отменить',
+        reset: 'Сбросить',
+        depthLabel: 'Глубина дерева (max_depth)',
+        leaves: 'Листьев (ответов) в дереве: {n}',
+        statsLast: 'Последний разрез',
+        statsPreview: 'Если разрезать здесь',
+        statsRoot: 'Первый вопрос модели',
+        statsNone: 'Пока нет ни одного разреза.',
+        sideL: 'да (≤)',
+        sideR: 'нет (>)',
+        parent: 'было',
+        splitGini: 'Gini — смешанность группы: 0 = все одного вида. Средний Gini после разреза: {g} (чем меньше, тем лучше вопрос).',
+        showTest: 'Показать test-пингвинов',
+        legTest: 'test (экзамен)',
+        treeTitle: 'Дерево вопросов',
+        treeEmpty: 'Дерево пока из одного листа: всем пингвинам ответ «{sp}». Кликни по графику, чтобы задать первый вопрос.',
+        question: '{f} ≤ {t} мм?',
+        fLen: 'Длина клюва',
+        fDep: 'Глубина клюва',
+        yes: 'ДА',
+        no: 'НЕТ',
+        nodeInfo: 'Gini {g} · {n} пинг.',
+        hintBuild: 'Наведи на график и кликни (или проведи пальцем и отпусти): появится разрез. Он делит только ту область, в которую ты попал.',
+        hintModel: 'Модель сама перепробовала все возможные линии разреза и выбрала вопросы, после которых группы меньше всего перемешаны (Gini меньше).',
+        hintGame: 'У тебя 3 вопроса. Построй дерево, а потом сравни его с деревом модели на test-пингвинах.',
+        hintMax: 'Разрезов уже {n} — это максимум. Отмени лишний или сбрось.',
+        accTrain: 'Точность (accuracy) на train',
+        accTest: 'Точность (accuracy) на test',
+        accNote: '{c} из {n}',
+        hidden: '?',
+        hiddenNote: 'узнаешь после сравнения',
+        gameAsk: 'Построй дерево <b>из 3 разрезов</b>. Модели дадим столько же вопросов: дерево глубины 2 (у него не больше 3 вопросов). Чьё дерево лучше угадает test-пингвинов?',
+        cutsLeft: 'Разрезов: {n} из 3',
+        compare: 'Сравнить с моделью',
+        again: 'Сыграть ещё ↺',
+        gameStepBuild: 'Построй дерево на train → сравни на test',
+        gameStepDone: 'Сравнение готово',
+        gameLine: 'Твоё дерево: <b>{c} из {n}</b> на test ({p}%).<br>Дерево модели (глубина 2): <b>{mc} из {n}</b> ({mp}%).<br>{verdict}',
+        win: '<b style="color:var(--green)">Ты обыграл модель!</b>',
+        tie: '<b style="color:var(--cyan)">Ничья — ты думаешь как алгоритм модели!</b>',
+        close: '<b style="color:var(--cyan)">Почти одинаково.</b> Разница в 1 пингвина из 69 — это случайность, а не победа.',
+        lose: 'Модель точнее на {d}. Посмотри на её вопросы в режиме «Пусть построит модель».',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Вопрос — это разрез.</b> «Длина клюва ≤ 42 мм?» делит пингвинов на две группы: «да» и «нет». На графике это одна прямая линия.</li>' +
+          '<li><b>Хороший вопрос даёт чистые группы.</b> Насколько группа перемешана, меряем числом <b>Gini</b>: 0 — в группе пингвины одного вида, около 0.67 — все три вида поровну. Чем меньше Gini, тем лучше.</li>' +
+          '<li><b>Модель перебирает всё.</b> Каждый признак и каждый порог между соседними значениями. Выбирает вопрос, после которого средний Gini двух групп самый маленький.</li>' +
+          '<li><b>Повторяет для каждой группы.</b> Пока группа не станет чистой или пока не кончится разрешённая глубина <code>max_depth</code>.</li>' +
+          '<li><b>Ответ.</b> Новый пингвин идёт по вопросам сверху вниз и попадает в лист. Ответ — вид, которого в этом листе больше всего.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь первый разрез сам. Где Gini получается меньше: при вертикальном или горизонтальном разрезе? Найди место, где он минимальный.</li>' +
+          '<li>Нажми «Пусть построит модель» с глубиной 1. Совпал ли её первый вопрос с твоим лучшим?</li>' +
+          '<li>Подвигай глубину от 1 до 6. Как меняются области на графике и точность на train и test?</li>' +
+          '<li>При какой глубине точность на test перестаёт расти? Вспомни урок 6: что происходит, когда дерево подстраивается под каждого пингвина?</li>' +
+          '<li>Сыграй «Соревнование». Удалось ли обыграть модель тремя вопросами?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Gini группы, где доля вида <i>k</i> равна <i>p<sub>k</sub></i>:</p>' +
+          '<p><code>Gini = 1 − (p<sub>Adelie</sub>² + p<sub>Chinstrap</sub>² + p<sub>Gentoo</sub>²)</code></p>' +
+          '<p>Качество разреза — средний Gini двух групп с учётом их размера:</p>' +
+          '<p><code>Gini<sub>разреза</sub> = (n<sub>да</sub> · Gini<sub>да</sub> + n<sub>нет</sub> · Gini<sub>нет</sub>) / n</code></p>' +
+          '<p>Порог модель ставит посередине между двумя соседними значениями признака, поэтому получаются числа вроде 42.35. Этот алгоритм называется <b>CART</b>.</p>' +
+          '<p>В Python это:</p>' +
+          '<p><code>from sklearn.tree import DecisionTreeClassifier, export_text<br>' +
+          'from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'bill_length_mm\', \'bill_depth_mm\']]<br>' +
+          'y = df[\'species\']<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br><br>' +
+          'model = DecisionTreeClassifier(criterion=\'gini\', max_depth=2, random_state=42)<br>' +
+          'model.fit(X_train, y_train)<br>' +
+          'print(export_text(model, feature_names=[\'bill_length_mm\', \'bill_depth_mm\']))</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина (без столбца sex, без пропусков), признаки — длина и глубина клюва. Разбиение как в Colab: <code>train_test_split(test_size=0.2, random_state=42)</code>, 273 train и 69 test. Дерево модели совпадает с <code>DecisionTreeClassifier(criterion=\'gini\', random_state=42)</code> для глубины 1–6: те же вопросы, пороги и точность (<code>tools/check_tree.py</code>).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «20 вопросов» вживую — учитель загадывает вид пингвина, класс задаёт вопросы «да/нет». Затем режим «Строю сам» на проекторе: ученики по очереди ставят разрезы и следят за Gini. Потом «Соревнование» в парах.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему разрезы всегда прямые и параллельны осям? Зачем ограничивать глубину дерева? Чем дерево похоже на KNN и чем отличается? Честно ли подбирать глубину по test (вспомни урок 6)?</p>' +
+          '<p><b>Про игру.</b> В test всего 69 пингвинов, один пингвин — 1.5%. Победа или поражение на 1 пингвина — случайность; игра это так и называет.</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.',
+        axisX: 'Длина клюва, мм',
+        axisY: 'Глубина клюва, мм'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];          // порядок по алфавиту — важен для ничьих
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    var FNAME = [T('fLen'), T('fDep')];
+    var MAX_CUTS = 10, GAME_CUTS = 3, GAME_DEPTH = 2;
+
+    // sklearn хранит признаки дерева во float32. Округляем так же (Math.fround),
+    // чтобы пороги и ответы совпадали с ноутбуком до последнего знака.
+    var all = PENGUINS.rows.map(function (r) {
+      return { si: SPECIES.indexOf(r[0]), v: [Math.fround(r[2]), Math.fround(r[3])], test: r[6] === 1, pos: r[7] };
+    });
+    var byPos = function (a, b) { return a.pos - b.pos; };
+    var train = all.filter(function (p) { return !p.test; }).sort(byPos);
+    var test = all.filter(function (p) { return p.test; }).sort(byPos);
+
+    // ======================= Дерево: общие функции =======================
+    // Узел: {rect, f, thr, l, r} — у листа f === null. rect — область узла на графике (в мм).
+    var DOM = { x0: 31, x1: 61, y0: 12.8, y1: 22 };
+    function leaf(rect) { return { rect: rect, f: null }; }
+
+    function countsOf(pts) {
+      var c = [0, 0, 0];
+      pts.forEach(function (p) { c[p.si]++; });
+      return c;
+    }
+    function giniOf(c, n) {
+      if (!n) return 0;
+      return 1 - (c[0] * c[0] + c[1] * c[1] + c[2] * c[2]) / (n * n);
+    }
+    // Самый частый вид; при ничьей — раньше по алфавиту (как np.argmax в sklearn)
+    function majority(c) {
+      var b = 0;
+      if (c[1] > c[b]) b = 1;
+      if (c[2] > c[b]) b = 2;
+      return b;
+    }
+    function splitPts(pts, f, thr) {
+      var l = [], r = [];
+      pts.forEach(function (p) { (p.v[f] <= thr ? l : r).push(p); });
+      return { l: l, r: r };
+    }
+    function childRects(rect, f, thr) {
+      var a = Object.assign({}, rect), b = Object.assign({}, rect);
+      if (f === 0) { a.x1 = thr; b.x0 = thr; } else { a.y1 = thr; b.y0 = thr; }
+      return { l: a, r: b };
+    }
+    // Раскладывает train-пингвинов по узлам: счётчики, Gini и ответ листа.
+    // Пустой лист (бывает у ученика) отвечает как родитель.
+    function annotate(node, pts, parentPred) {
+      node.counts = countsOf(pts);
+      node.n = pts.length;
+      node.gini = giniOf(node.counts, node.n);
+      node.pred = node.n ? majority(node.counts) : parentPred;
+      if (node.f !== null) {
+        var s = splitPts(pts, node.f, node.thr);
+        annotate(node.l, s.l, node.pred);
+        annotate(node.r, s.r, node.pred);
+      }
+    }
+    function findLeaf(node, v) {
+      while (node.f !== null) node = v[node.f] <= node.thr ? node.l : node.r;
+      return node;
+    }
+    function correct(tree, set) {
+      return set.reduce(function (s, p) { return s + (findLeaf(tree, p.v).pred === p.si ? 1 : 0); }, 0);
+    }
+    function leaves(node) { return node.f === null ? 1 : leaves(node.l) + leaves(node.r); }
+
+    // ======================= CART (настоящий алгоритм, как в sklearn) =======================
+    // Для каждого признака сортируем пингвинов и пробуем все пороги посередине между соседними значениями.
+    // Выбираем разрез с наименьшим взвешенным Gini (sklearn максимизирует эквивалентную величину
+    // Σ count²/n слева + справа). При равенстве остаётся первый найденный — меньший порог, признак 0 раньше 1.
+    function bestSplit(pts) {
+      var n = pts.length, best = null;
+      for (var f = 0; f < 2; f++) {
+        var s = pts.slice().sort(function (a, b) { return a.v[f] - b.v[f]; });
+        var L = [0, 0, 0], R = countsOf(s);
+        for (var i = 1; i < n; i++) {
+          L[s[i - 1].si]++; R[s[i - 1].si]--;
+          var a = s[i - 1].v[f], b = s[i].v[f];
+          if (b <= a + 1e-7) continue;                         // одинаковые значения не разделить
+          var proxy = (L[0] * L[0] + L[1] * L[1] + L[2] * L[2]) / i +
+                      (R[0] * R[0] + R[1] * R[1] + R[2] * R[2]) / (n - i);
+          if (!best || proxy > best.proxy) {
+            var thr = a / 2 + b / 2;                           // ровно как в sklearn
+            if (thr === b) thr = a;
+            best = { f: f, thr: thr, proxy: proxy };
+          }
+        }
+      }
+      return best;
+    }
+    function cart(pts, rect, depth, maxDepth) {
+      var node = leaf(rect);
+      var c = countsOf(pts);
+      if (depth >= maxDepth || pts.length < 2 || giniOf(c, pts.length) <= 1e-7) return node;
+      var b = bestSplit(pts);
+      if (!b) return node;
+      var s = splitPts(pts, b.f, b.thr), cr = childRects(rect, b.f, b.thr);
+      node.f = b.f; node.thr = b.thr;
+      node.l = cart(s.l, cr.l, depth + 1, maxDepth);
+      node.r = cart(s.r, cr.r, depth + 1, maxDepth);
+      return node;
+    }
+    // Деревья модели для глубины 1..6 строим один раз: дальше ползунок только переключает готовые
+    var MODEL = [];
+    for (var d = 1; d <= 6; d++) {
+      MODEL[d] = cart(train, Object.assign({}, DOM), 0, d);
+      annotate(MODEL[d], train, 0);
+    }
+
+    // ======================= Состояние =======================
+    var state = {
+      mode: 'build', f: 0, depth: 1, showTest: false,
+      user: leaf(Object.assign({}, DOM)),   // дерево ученика
+      cuts: [],                             // узлы, которые разрезал ученик (для «Отменить»)
+      preview: null,                        // {node, f, thr, l, r} — разрез под курсором
+      hl: null,                             // узел дерева под мышью в списке вопросов
+      game: null                            // {done}
+    };
+    annotate(state.user, train, 0);
+
+    function curTree() { return state.mode === 'model' ? MODEL[state.depth] : state.user; }
+    function cutLimit() { return state.mode === 'game' ? GAME_CUTS : MAX_CUTS; }
+    function testHidden() { return state.mode === 'game' && !state.game.done; }
+
+    // ======================= Рисование =======================
+    var cv = document.getElementById('cv');
+    var PAD = { l: 52, r: 14, t: 14, b: 44 };
+    var g, sx, sy;
+
+    function resize() {
+      g = MLViz.fitCanvas(cv, 0.62);
+      PAD = MLViz.plotPad(g.w, 2);
+      sx = MLViz.scale(DOM.x0, DOM.x1, PAD.l, g.w - PAD.r);
+      sy = MLViz.scale(DOM.y0, DOM.y1, g.h - PAD.b, PAD.t);
+      draw();
+    }
+
+    function rectPx(r) {
+      var x0 = sx(Math.max(r.x0, DOM.x0)), x1 = sx(Math.min(r.x1, DOM.x1));
+      var y0 = sy(Math.min(r.y1, DOM.y1)), y1 = sy(Math.max(r.y0, DOM.y0));
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    }
+
+    function drawRegions(ctx, node) {
+      if (node.f === null) {
+        var p = rectPx(node.rect);
+        ctx.globalAlpha = 0.2; ctx.fillStyle = COLORS[node.pred];
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.globalAlpha = 1;
+        return;
+      }
+      drawRegions(ctx, node.l); drawRegions(ctx, node.r);
+    }
+    // Линии разрезов: каждая — только внутри своей области, как настоящий вопрос дерева
+    function drawCuts(ctx, node, depth) {
+      if (node.f === null) return;
+      var r = node.rect;
+      ctx.strokeStyle = 'rgba(255,255,255,' + Math.max(0.35, 0.9 - depth * 0.12) + ')';
+      ctx.lineWidth = Math.max(1.2, 3 - depth * 0.4);
+      ctx.beginPath();
+      if (node.f === 0) {
+        ctx.moveTo(sx(node.thr), sy(Math.max(r.y0, DOM.y0))); ctx.lineTo(sx(node.thr), sy(Math.min(r.y1, DOM.y1)));
+      } else {
+        ctx.moveTo(sx(Math.max(r.x0, DOM.x0)), sy(node.thr)); ctx.lineTo(sx(Math.min(r.x1, DOM.x1)), sy(node.thr));
+      }
+      ctx.stroke();
+      drawCuts(ctx, node.l, depth + 1); drawCuts(ctx, node.r, depth + 1);
+    }
+
+    function drawAxes(ctx) {
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy,
+        xTicks: MLViz.range(35, 60, 5), yTicks: MLViz.range(14, 21, 1),
+        xLabel: T('axisX'), yLabel: T('axisY')
+      });
+    }
+
+    function draw() {
+      var ctx = g.ctx, tree = curTree();
+      ctx.clearRect(0, 0, g.w, g.h);
+      drawRegions(ctx, tree);
+      drawAxes(ctx);
+
+      // Подсветка области узла, на который навели в дереве вопросов
+      if (state.hl) {
+        var h = rectPx(state.hl.rect);
+        ctx.fillStyle = 'rgba(34,211,238,.12)'; ctx.fillRect(h.x, h.y, h.w, h.h);
+        ctx.strokeStyle = '#22D3EE'; ctx.lineWidth = 2; ctx.strokeRect(h.x, h.y, h.w, h.h);
+      }
+
+      ctx.globalAlpha = state.showTest ? 0.55 : 0.9;
+      train.forEach(function (p) {
+        ctx.beginPath(); ctx.arc(sx(p.v[0]), sy(p.v[1]), 4, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS[p.si]; ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      if (state.showTest) {
+        test.forEach(function (p) {
+          ctx.beginPath(); ctx.arc(sx(p.v[0]), sy(p.v[1]), 6, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(23,19,46,.75)'; ctx.fill();
+          ctx.strokeStyle = COLORS[p.si]; ctx.lineWidth = 2.5; ctx.stroke();
+        });
+      }
+
+      drawCuts(ctx, tree, 0);
+
+      // Пунктир будущего разреза
+      var pv = state.preview;
+      if (pv) {
+        var r = pv.node.rect;
+        ctx.strokeStyle = '#22D3EE'; ctx.lineWidth = 2.5; ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        if (pv.f === 0) { ctx.moveTo(sx(pv.thr), sy(Math.max(r.y0, DOM.y0))); ctx.lineTo(sx(pv.thr), sy(Math.min(r.y1, DOM.y1))); }
+        else { ctx.moveTo(sx(Math.max(r.x0, DOM.x0)), sy(pv.thr)); ctx.lineTo(sx(Math.min(r.x1, DOM.x1)), sy(pv.thr)); }
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+
+    // ======================= Дерево вопросов (список справа/снизу) =======================
+    var NODES = [];   // узлы по номеру — чтобы по наведению найти область
+    function fmt(x) { return String(Math.round(x * 100) / 100); }
+    function g2(x) { return x.toFixed(2); }
+
+    // Счётчики видов с цветными метками: «● 8 ● 0 ● 0», чтобы было понятно, какой вид какой
+    function countsHtml(c) {
+      return c.map(function (x, i) {
+        return '<span title="' + SPECIES[i] + '" style="color:' + COLORS[i] + '">●</span> ' + x;
+      }).join(' &nbsp;');
+    }
+
+    function nodeHtml(node) {
+      var id = NODES.push(node) - 1;
+      var info = '<small>' + T('nodeInfo', { g: g2(node.gini), n: node.n }) + '</small>';
+      if (node.f === null) {
+        return '<span class="tnode" data-id="' + id + '"><span class="sp" style="background:' + COLORS[node.pred] + '">' +
+          SPECIES[node.pred] + '</span><small>' + countsHtml(node.counts) + '</small>' + info + '</span>';
+      }
+      return '<span class="tnode" data-id="' + id + '"><b>' + T('question', { f: FNAME[node.f], t: fmt(node.thr) }) + '</b>' + info + '</span>' +
+        '<ul><li><span class="edge yes">' + T('yes') + '</span>' + nodeHtml(node.l) + '</li>' +
+        '<li><span class="edge no">' + T('no') + '</span>' + nodeHtml(node.r) + '</li></ul>';
+    }
+
+    function renderTree() {
+      var tree = curTree(), box = document.getElementById('qtree');
+      NODES = []; state.hl = null;          // подсветка старого дерева больше не нужна
+      if (tree.f === null && state.mode !== 'model') {
+        box.innerHTML = '<p class="muted" style="margin:4px">' + T('treeEmpty', { sp: SPECIES[tree.pred] }) + '</p>';
+        return;
+      }
+      box.innerHTML = '<ul><li>' + nodeHtml(tree) + '</li></ul>';
+    }
+    document.getElementById('qtree').addEventListener('mouseover', function (e) {
+      var el = e.target.closest('.tnode');
+      var n = el ? NODES[+el.dataset.id] : null;
+      if (n !== state.hl) { state.hl = n; draw(); }
+    });
+    document.getElementById('qtree').addEventListener('mouseleave', function () { state.hl = null; draw(); });
+
+    // ======================= Панель =======================
+    function pct(c, n) { return Math.round(100 * c / n) + '%'; }
+
+    // Таблица разреза: сколько пингвинов каждого вида слева/справа и Gini
+    function statsTable(parent, l, r) {
+      var head = '<tr><th></th>' + SPECIES.map(function (s, i) {
+        return '<th style="color:' + COLORS[i] + '">' + s.slice(0, 4) + '.</th>';
+      }).join('') + '<th>Gini</th></tr>';
+      function row(label, c, n) {
+        return '<tr><td>' + label + '</td>' + c.map(function (x) { return '<td>' + x + '</td>'; }).join('') +
+          '<td><b>' + g2(giniOf(c, n)) + '</b></td></tr>';
+      }
+      var n = l.n + r.n;
+      var w = n ? (l.n * giniOf(l.c, l.n) + r.n * giniOf(r.c, r.n)) / n : 0;
+      return '<table class="split-table">' + head +
+        row(T('parent'), parent.c, parent.n) + row(T('sideL'), l.c, l.n) + row(T('sideR'), r.c, r.n) +
+        '</table><small class="muted">' + T('splitGini', { g: g2(w) }) + '</small>';
+    }
+    function nodeStats(node) {
+      return statsTable({ c: node.counts, n: node.n }, { c: node.l.counts, n: node.l.n }, { c: node.r.counts, n: node.r.n });
+    }
+
+    function updatePanel() {
+      var tree = curTree();
+      var title = document.getElementById('statsTitle'), box = document.getElementById('splitStats');
+
+      if (state.mode === 'model') {
+        title.textContent = T('statsRoot');
+        box.innerHTML = nodeStats(tree);
+        document.getElementById('depthVal').textContent = state.depth;
+        document.getElementById('leavesNote').textContent = T('leaves', { n: leaves(tree) });
+      } else if (state.preview) {
+        var pv = state.preview;
+        title.textContent = T('statsPreview');
+        box.innerHTML = statsTable({ c: pv.node.counts, n: pv.node.n }, { c: countsOf(pv.l), n: pv.l.length }, { c: countsOf(pv.r), n: pv.r.length });
+      } else if (state.cuts.length) {
+        title.textContent = T('statsLast');
+        box.innerHTML = nodeStats(state.cuts[state.cuts.length - 1]);
+      } else {
+        title.textContent = T('statsLast');
+        box.innerHTML = '<span class="muted">' + T('statsNone') + '</span>';
+      }
+
+      var ctr = correct(tree, train), cte = correct(tree, test);
+      document.getElementById('accTrain').textContent = pct(ctr, train.length);
+      document.getElementById('accTrainNote').textContent = T('accNote', { c: ctr, n: train.length });
+      if (testHidden()) {
+        document.getElementById('accTest').textContent = T('hidden');
+        document.getElementById('accTestNote').textContent = T('hiddenNote');
+      } else {
+        document.getElementById('accTest').textContent = pct(cte, test.length);
+        document.getElementById('accTestNote').textContent = T('accNote', { c: cte, n: test.length });
+      }
+
+      MLViz.setPressed(document.getElementById('orientBtns'), function (b) { return +b.dataset.f === state.f; });
+      // «Отменить» и «Сбросить» видны, только когда есть что отменять
+      document.getElementById('undoRow').style.display = !state.cuts.length || (state.game && state.game.done) ? 'none' : '';
+
+      // test-пингвины в соревновании спрятаны до сравнения
+      var st = document.getElementById('showTest');
+      st.disabled = testHidden();
+      document.getElementById('legTest').style.display = state.showTest && !testHidden() ? '' : 'none';
+
+      if (state.mode === 'game') {
+        document.getElementById('cutsLeft').textContent = T('cutsLeft', { n: state.cuts.length });
+        document.getElementById('compareBtn').disabled = !state.cuts.length;
+      }
+    }
+
+    function refresh() {
+      if (testHidden()) state.showTest = false;
+      document.getElementById('showTest').checked = state.showTest;
+      updatePanel(); renderTree(); draw();
+    }
+
+    // ======================= Разрезы ученика =======================
+    function canCut() { return state.mode !== 'model' && !(state.game && state.game.done) && state.cuts.length < cutLimit(); }
+
+    // Порог ученика: значение под курсором, округлённое до 0.1 мм
+    function previewAt(ev) {
+      var p = MLViz.pointer(cv, ev);
+      var x = sx.invert(p.x), y = sy.invert(p.y);
+      if (x < DOM.x0 || x > DOM.x1 || y < DOM.y0 || y > DOM.y1) return null;
+      var node = findLeaf(state.user, [x, y]);
+      var thr = Math.round((state.f === 0 ? x : y) * 10) / 10;
+      var r = node.rect;
+      var lo = state.f === 0 ? r.x0 : r.y0, hi = state.f === 0 ? r.x1 : r.y1;
+      if (thr <= lo || thr >= hi) return null;                // разрез должен попасть внутрь области
+      var pts = train.filter(function (q) { return findLeaf(state.user, q.v) === node; });
+      var s = splitPts(pts, state.f, thr);
+      return { node: node, f: state.f, thr: thr, l: s.l, r: s.r };
+    }
+    function setPreview(pv) {
+      state.preview = pv;
+      updatePanel(); draw();
+    }
+    function commitCut() {
+      var pv = state.preview;
+      if (!pv || !canCut()) return;
+      var cr = childRects(pv.node.rect, pv.f, pv.thr);
+      pv.node.f = pv.f; pv.node.thr = pv.thr;
+      pv.node.l = leaf(cr.l); pv.node.r = leaf(cr.r);
+      state.cuts.push(pv.node);
+      state.preview = null;
+      annotate(state.user, train, 0);
+      if (state.cuts.length >= cutLimit() && state.mode === 'build') {
+        document.getElementById('hint').textContent = T('hintMax', { n: state.cuts.length });
+      }
+      refresh();
+    }
+    function undoCut() {
+      var node = state.cuts.pop();
+      if (!node) return;
+      node.f = null; delete node.thr; delete node.l; delete node.r;
+      annotate(state.user, train, 0);
+      document.getElementById('hint').textContent = T(state.mode === 'game' ? 'hintGame' : 'hintBuild');
+      refresh();
+    }
+    function resetCuts() {
+      state.user = leaf(Object.assign({}, DOM)); state.cuts = []; state.preview = null;
+      annotate(state.user, train, 0);
+      document.getElementById('hint').textContent = T(state.mode === 'game' ? 'hintGame' : 'hintBuild');
+      refresh();
+    }
+
+    // Мышь: наведение показывает разрез, клик ставит. Палец: ведёшь — видишь, отпускаешь — ставишь.
+    var pressed = false;
+    cv.addEventListener('pointermove', function (e) {
+      if (!canCut()) return;
+      setPreview(previewAt(e));
+    });
+    cv.addEventListener('pointerdown', function (e) {
+      if (!canCut()) return;
+      pressed = true; cv.setPointerCapture(e.pointerId);
+      setPreview(previewAt(e));
+    });
+    cv.addEventListener('pointerup', function () {
+      if (pressed) { pressed = false; commitCut(); }
+    });
+    cv.addEventListener('pointercancel', function () { pressed = false; setPreview(null); });
+    cv.addEventListener('pointerleave', function () { if (!pressed && state.preview) setPreview(null); });
+
+    // ======================= Соревнование (общий компонент MLViz.quiz) =======================
+    // Один раунд: строишь дерево из 3 вопросов на train и один раз сравниваешь с моделью на test
+    var quiz = MLViz.quiz({
+      box: document.getElementById('gamePanel'), rounds: 1,
+      text: { step: function () { return T('gameStepBuild'); }, finishTitle: T('gameStepDone'), again: T('again') },
+      round: function () {
+        state.game = { done: false };
+        document.getElementById('compareBtn').hidden = false;
+        resetCuts();
+      }
+    });
+    function compare() {
+      state.game.done = true; state.preview = null;
+      var n = test.length, c = correct(state.user, test), mc = correct(MODEL[GAME_DEPTH], test);
+      document.getElementById('compareBtn').hidden = true;
+      state.showTest = true;
+      quiz.answer(c > mc ? 1 : 0, T('gameLine', {
+        c: c, n: n, p: Math.round(100 * c / n), mc: mc, mp: Math.round(100 * mc / n),
+        // Разница в 1 пингвина — случайность, не называем её победой или поражением
+        verdict: c === mc ? T('tie') : Math.abs(c - mc) === 1 ? T('close') : c > mc ? T('win') : T('lose', { d: mc - c })
+      }));
+      refresh();
+    }
+
+    function setMode(m) {
+      state.mode = m; state.preview = null; state.hl = null;
+      MLViz.setPressed(document.getElementById('modes'), function (b) {
+        return b.id === { build: 'modeBuild', model: 'modeModel', game: 'modeGame' }[m];
+      });
+      document.getElementById('buildPanel').hidden = m === 'model';
+      document.getElementById('modelPanel').hidden = m !== 'model';
+      document.getElementById('gamePanel').hidden = m !== 'game';
+      document.getElementById('hint').textContent = T(m === 'build' ? 'hintBuild' : m === 'model' ? 'hintModel' : 'hintGame');
+      cv.style.cursor = m === 'model' ? 'default' : 'crosshair';
+      if (m === 'game') quiz.start();
+      else { state.game = null; refresh(); }
+    }
+
+    // ======================= События =======================
+    document.querySelectorAll('#orientBtns button').forEach(function (b) {
+      b.addEventListener('click', function () { state.f = +b.dataset.f; updatePanel(); });
+    });
+    document.getElementById('undoBtn').addEventListener('click', undoCut);
+    document.getElementById('resetBtn').addEventListener('click', resetCuts);
+    document.getElementById('depth').addEventListener('input', function (e) { state.depth = +e.target.value; refresh(); });
+    document.getElementById('showTest').addEventListener('change', function (e) { state.showTest = e.target.checked; refresh(); });
+    document.getElementById('modeBuild').addEventListener('click', function () { setMode('build'); });
+    document.getElementById('modeModel').addEventListener('click', function () { setMode('model'); });
+    document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
+    document.getElementById('compareBtn').addEventListener('click', compare);
+
+    var colab = document.getElementById('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('build');
+  })();
+  </script>
+</body>
+</html>

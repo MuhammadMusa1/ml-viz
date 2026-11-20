@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Температура и галлюцинации · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Только для этой страницы: строка текста и история бросков */
+    .gen { font-size: 24px; line-height: 1.6; min-height: 44px; margin: 0 0 10px; }
+    .gen span { padding: 1px 4px; border-radius: 6px; }
+    .gen span.last { background: rgba(74, 222, 128, .18); box-shadow: 0 0 0 1px var(--c-val); }
+    .gen span.odd { border-bottom: 2px dashed var(--c-odd); }
+    .gen .cursor { color: var(--muted); }
+    .verdict { font-size: 15px; margin: 0 0 8px; min-height: 22px; }
+    .hist { list-style: none; padding: 0; margin: 8px 0 0; }
+    .hist li { padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 17px; }
+    .hist li small { color: var(--muted); display: block; font-size: 13px; }
+    .choices { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 10px; }
+    .game-text { font-size: 20px; margin: 10px 0 0; padding: 10px 12px; background: rgba(23, 19, 46, .7); border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage" style="padding:14px">
+          <p class="gen" id="gen" aria-live="polite"></p>
+          <p class="verdict" id="verdict"></p>
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--text); border-radius:2px"></i><span data-i18n="legBar"></span></span>
+            <span><i style="background:var(--c-val); border-radius:2px"></i><span data-i18n="legPick"></span></span>
+            <span><i style="background:transparent; border-bottom:2px dashed var(--c-odd); border-radius:0"></i><span data-i18n="legOdd"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra" style="padding:14px" id="histBox">
+          <h3 class="sub" data-i18n="histTitle"></h3>
+          <p class="note" data-i18n="histNote"></p>
+          <ul class="hist" id="hist"></ul>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Игра «Угадай температуру» -->
+        <div id="gamePanel" hidden style="border-bottom:1px solid var(--line); padding-bottom:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <p class="game-text" id="gameText"></p>
+          <div class="choices" id="choices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+
+        <div id="exploreBox">
+          <div>
+            <h3 data-i18n="startLabel"></h3>
+            <div class="seg" id="startBtns" style="margin-top:6px"></div>
+          </div>
+
+          <div style="margin-top:14px">
+            <h3><span data-i18n="tLabel"></span>: <span id="tVal"></span></h3>
+            <input type="range" id="temp" min="0" max="3" step="0.1" value="1">
+            <p class="note" id="tNote"></p>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <button type="button" id="stepBtn" class="primary" data-i18n="stepBtn"></button>
+            <button type="button" id="allBtn" data-i18n="allBtn"></button>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <button type="button" id="againBtn" data-i18n="againBtn"></button>
+          </div>
+          <p class="note" id="seedNote"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="corpusTitle"></summary>
+      <div><p id="corpusText"></p></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 18 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/lm_corpus.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 18 · Как работают LLM',
+        title: 'Температура и галлюцинации',
+        analogy: '<b>Языковая модель — очень умный автодополнитель.</b> Как подсказки в телефоне, она смотрит на уже написанное и угадывает следующий кусочек текста (токен; у нас для простоты — целое слово). Но не всегда берёт самое вероятное: она бросает кубик. <b>Температура</b> решает, насколько смело бросать. А иногда модель — даже без кубика — выдаёт гладкое, уверенное предложение, которое просто неправда, — это <b>галлюцинация</b>.',
+        cvLabel: 'Вероятности следующего слова и «рулетка», на которой выпадает слово',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: угадай температуру',
+        legBar: 'вероятность слова',
+        legPick: 'выпавшее слово',
+        legOdd: 'такой пары слов не было в учебном тексте',
+        hintExplore: 'Жми «Следующее слово ▶»: модель смотрит на последнее слово, считает вероятности и бросает кубик. Стрелка внизу показывает, куда он упал.',
+        hintGame: 'Слева видно, как модель думает. Справа — готовый текст: какая была температура?',
+        startLabel: 'Первое слово',
+        tLabel: 'Температура',
+        tCold: 'Холодно: модель всегда берёт самое вероятное слово. Текст скучный и всегда одинаковый.',
+        tNormal: 'Обычно: модель чаще берёт вероятные слова, но иногда и другие. Текст живой и разный.',
+        tHot: 'Горячо: редкие и даже случайные слова получают большие шансы. Текст становится бредом.',
+        stepBtn: 'Следующее слово ▶',
+        allBtn: 'Дописать до точки',
+        againBtn: 'Начать заново ↺ (новый бросок)',
+        seedNote: 'Бросок кубика № {s}. Один и тот же номер даёт тот же текст — в Python такой номер называют seed («зерно» случайности).',
+        nextFor: 'После «{w}» модель ждёт:',
+        others: 'остальные {n}',
+        rouletteLabel: 'Рулетка: ширина куска = вероятность. Кубик бросает точку от 0 до 1.',
+        vSeen: '<b style="color:var(--green)">Это предложение есть в учебном тексте.</b> Модель его просто вспомнила.',
+        vFluent: '<b style="color:var(--c-odd)">Модель сочинила новое предложение:</b> каждая пара слов ей знакома, звучит гладко, но в учебном тексте такого нет. Это может оказаться правдой («плавает в воде») или выдумкой — галлюцинацией («плавает в доме»). Сама модель этого не проверяет — проверь ты.',
+        vOdd: '<b style="color:var(--c-odd)">Бред:</b> пунктиром отмечены слова, которые ни разу не шли после предыдущего. Их подбросила высокая температура.',
+        histTitle: 'Что получалось раньше',
+        histNote: 'Последние законченные тексты: первое слово, температура и номер броска.',
+        histMeta: 'температура {t} · бросок № {s}',
+        gameAsk: 'Какая температура была у модели, когда она написала этот текст?',
+        gameStep: 'Раунд {i} из {n} · счёт {s}',
+        gT0: 'Холодная (0)',
+        gT1: 'Обычная (1)',
+        gT3: 'Горячая (3)',
+        why0: 'При температуре 0 модель всегда берёт самое частое слово: коротко и предсказуемо.',
+        why1: 'При температуре 1 текст почти нормальный, но может сочинять неправду.',
+        why3: 'При температуре 3 выпадают случайные слова — получается бред.',
+        gameRight: '<b style="color:var(--green)">✓ Верно!</b> {why}',
+        gameWrong: '<b style="color:var(--red)">✕ Это была температура {t}.</b> {why}',
+        next: 'Следующий раунд',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        final: '<b>Итог: {s} из {n}.</b> У многих моделей температуру ставят разработчики (через API): для точных ответов пониже, для стихов и идей — повыше. От выдумок она не защищает.',
+        corpusTitle: 'Учебный текст мини-модели',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Модель учится на тексте.</b> Наша мини-модель прочитала учебный текст и запомнила, какое слово шло после какого и сколько раз. Она помнит только одно последнее слово, а настоящая LLM смотрит на весь текст сразу (attention) и угадывает токены. После «пингвин» дважды шло «любит» и по разу — «ест», «живёт», «не», «отлично», «умеет».</li>' +
+          '<li><b>Вероятности.</b> Из этих чисел получаются шансы следующего слова: «любит» — самое вероятное. Каждому другому слову модель оставляет крошечный шанс — вдруг пригодится.</li>' +
+          '<li><b>Кубик.</b> Модель не всегда берёт самое вероятное слово, а бросает кубик: чем больше шанс, тем шире кусок «рулетки». Поэтому на один вопрос получаются разные ответы.</li>' +
+          '<li><b>Температура.</b> Холодно (0) — без кубика, всегда самое вероятное. Тепло (1) — шансы как выучены. Горячо (3) — шансы выравниваются, и в текст попадают редкие и случайные слова. На странице Attention ползунок «резкость» делает то же самое, только наоборот: резкость = 1 / температура.</li>' +
+          '<li><b>Галлюцинации.</b> Модель выбирает слова, которые <i>звучат</i> правильно, а не которые правдивы. «Пингвин отлично плавает в доме» собрано из знакомых кусочков, но это выдумка. Большие модели тоже так ошибаются — поэтому их ответы нужно проверять. И температура 0 не спасает: модель может уверенно сказать неправду, просто каждый раз одну и ту же.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь температуру 0 и несколько раз нажми «Начать заново ↺». Меняется ли текст? Почему?</li>' +
+          '<li>Поставь 1 и сгенерируй 5 текстов. Найди новое предложение, которого нет в учебном тексте. Это правда или выдумка? Выдуманную неправду и называют галлюцинацией.</li>' +
+          '<li>Поставь 3. Что стало со столбиками вероятностей? Почему текст превратился в бред?</li>' +
+          '<li>Посмотри на «рулетку» после слова «в». Почему пингвин может оказаться «в доме» или «в школе»?</li>' +
+          '<li>Сыграй «Игра: угадай температуру». По каким признакам ты узнаёшь холодный и горячий текст?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Сколько раз слово <i>w</i> шло после слова <i>a</i>: <code>c(a, w)</code>. Чтобы ни одно слово не было невозможным, прибавляем маленькое <code>α = 0.001</code>.</p>' +
+          '<p>С температурой <i>T</i>: <code>p(w) = (c + α)^(1/T) / Σ (c + α)^(1/T)</code>. При <i>T</i> = 1 это просто частоты, при <i>T</i> → 0 побеждает самое частое слово, при большом <i>T</i> все шансы выравниваются.</p>' +
+          '<p>В настоящих LLM то же самое пишут через логиты: <code>p = softmax(z / T)</code>. Это одна и та же формула: если <code>z = log(c + α)</code>, получаются ровно наши вероятности.</p>' +
+          '<p>Посмотреть разные температуры у настоящей модели в Colab:</p>' +
+          '<p><code>!pip install transformers torch<br>' +
+          'from transformers import pipeline&nbsp;&nbsp;# HF pipeline — не то же, что sklearn Pipeline<br><br>' +
+          'gen = pipeline(\'text-generation\', model=\'gpt2\')<br>' +
+          'for t in [0.2, 1.0, 2.0]:<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;out = gen(\'The penguin\', do_sample=True, temperature=t, max_new_tokens=15)<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;print(t, out[0][\'generated_text\'])</code></p>' +
+          '<p>Код нашей мини-модели, который даёт ровно те же тексты при тех же номерах бросков, — в <code>tools/check_temperature.py</code>.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Учебный текст — 35 простых предложений о пингвинах, животных, моделях и учениках (<code>data/lm_corpus.js</code>, его можно заменить своим). Модель — биграммы с добавкой α = 0.001, обучается прямо в браузере. Вероятности и сгенерированные тексты для одних и тех же номеров бросков совпадают с <code>tools/check_temperature.py</code>. Слово, которое ни разу не шло после предыдущего, подчёркнуто пунктиром; предложение из знакомых пар, которого нет в тексте, помечено как «сочинённое»: оно может оказаться и правдой, и галлюцинацией.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «продолжи фразу» — класс по очереди дописывает «Пингвин…» самым частым словом (температура 0), потом любым подходящим (1), потом случайным словом из словаря (3). Затем показываем страницу и ищем галлюцинации при температуре 1. В конце игра «Угадай температуру».</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему модель не может отличить правду от выдумки? Какую температуру ставить, когда нужен один и тот же точный ответ, а какую — для сказки? Спасает ли низкая температура от выдумок? Почему модель с температурой 0 зацикливается или отвечает скучно? Как проверить ответ ChatGPT?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+    document.getElementById('temp').setAttribute('aria-label', T('tLabel'));
+
+    // ======================= Мини-модель: биграммы =======================
+    var ALPHA = 0.001, MAX_WORDS = 14;
+    var TOKENS = LM_CORPUS.text.toLowerCase().match(/[а-яё]+|\./g);
+    var VOCAB = Array.from(new Set(TOKENS)).sort(function (a, b) { return a < b ? -1 : a > b ? 1 : 0; });
+    var COUNTS = {};
+    for (var i = 0; i + 1 < TOKENS.length; i++) {
+      var a = TOKENS[i], b = TOKENS[i + 1];
+      COUNTS[a] = COUNTS[a] || {};
+      COUNTS[a][b] = (COUNTS[a][b] || 0) + 1;
+    }
+    // Предложения учебного текста — чтобы узнать, выдумала модель или вспомнила
+    var SENTENCES = LM_CORPUS.text.toLowerCase().split('.').map(function (s) { return (s.match(/[а-яё]+/g) || []).join(' '); }).filter(Boolean);
+
+    // Вероятности следующего слова (в порядке словаря)
+    function dist(prev, t) {
+      var c = COUNTS[prev] || {};
+      if (t === 0) {   // самое частое слово, при равенстве — раньше по алфавиту
+        var maxc = Math.max.apply(null, VOCAB.map(function (w) { return c[w] || 0; }));
+        var best = VOCAB.filter(function (w) { return (c[w] || 0) === maxc; })[0];
+        return VOCAB.map(function (w) { return w === best ? 1 : 0; });
+      }
+      var wts = VOCAB.map(function (w) { return Math.pow((c[w] || 0) + ALPHA, 1 / t); });
+      var s = 0; wts.forEach(function (x) { s += x; });
+      return wts.map(function (x) { return x / s; });
+    }
+    // Бросок кубика: идём по словарю и копим вероятности, пока не перешагнём точку u
+    function pick(p, u) {
+      var acc = 0;
+      for (var k = 0; k < VOCAB.length; k++) { acc += p[k]; if (u < acc) return k; }
+      return VOCAB.length - 1;
+    }
+    function generate(start, t, seed) {
+      var rnd = MLViz.rng(seed), out = [start];
+      for (var k = 0; k < MAX_WORDS; k++) {
+        var w = VOCAB[pick(dist(out[out.length - 1], t), rnd())];
+        out.push(w);
+        if (w === '.') break;
+      }
+      return out;
+    }
+    function seen(a, b) { return !!(COUNTS[a] && COUNTS[a][b]); }
+
+    // ======================= Состояние =======================
+    var state = { start: LM_CORPUS.starts[0], t: 1, seed: 1, words: null, rnd: null, lastU: null, lastK: null, hist: [], mode: 'explore', game: null };
+    function restart() {
+      state.words = [state.start]; state.rnd = MLViz.rng(state.seed); state.lastU = null; state.lastK = null;
+    }
+    function done() { return state.words[state.words.length - 1] === '.' || state.words.length > MAX_WORDS; }
+    function step() {
+      if (done()) return;
+      var p = dist(state.words[state.words.length - 1], state.t), u = state.rnd(), k = pick(p, u);
+      state.lastU = u; state.lastK = k;
+      state.words.push(VOCAB[k]);
+      if (done()) state.hist.unshift({ text: state.words.join(' ').replace(' .', '.'), t: state.t, s: state.seed });
+      state.hist = state.hist.slice(0, 6);
+    }
+
+    // ======================= Текст и вывод про галлюцинации =======================
+    function el(id) { return document.getElementById(id); }
+    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+    function renderText() {
+      var w = state.words, html = w.map(function (x, k) {
+        var cls = (k === w.length - 1 && k > 0 ? 'last ' : '') + (k > 0 && !seen(w[k - 1], x) ? 'odd' : '');
+        return '<span class="' + cls + '">' + esc(x) + '</span>';
+      }).join(' ');
+      el('gen').innerHTML = html + (done() ? '' : ' <span class="cursor">…</span>');
+      var v = '';
+      if (done()) {
+        var body = w.filter(function (x) { return x !== '.'; }).join(' ');
+        var odd = w.some(function (x, k) { return k > 0 && !seen(w[k - 1], x); });
+        v = odd ? T('vOdd') : SENTENCES.indexOf(body) >= 0 ? T('vSeen') : T('vFluent');
+      }
+      el('verdict').innerHTML = v;
+    }
+
+    // ======================= Рисунок: столбики и рулетка =======================
+    var cv = document.getElementById('cv'), g, L;
+    var C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted'), C_VAL = MLViz.cssVar('--c-val');
+    var C_ODD = getComputedStyle(document.documentElement).getPropertyValue('--c-odd').trim();
+    var TOP = 8;
+
+    function layout(w) {
+      var fs = MLViz.fontPx(w), rowH = Math.round(fs * 1.9);
+      return { fs: fs, rowH: rowH, head: Math.round(fs * 1.8), bars: (TOP + 1) * rowH, strip: Math.round(fs * 5.2) };
+    }
+    function resize() {
+      var w0 = cv.parentElement.clientWidth - 28;
+      L = layout(w0);
+      g = MLViz.fitCanvas(cv, (L.head + L.bars + L.strip) / w0);
+      L = layout(g.w);
+      draw();
+    }
+
+    function draw() {
+      var ctx = g.ctx, font = MLViz.cssVar('--font'), fs = L.fs;
+      ctx.clearRect(0, 0, g.w, g.h);
+      // Вероятности для последнего слова до броска: если уже бросили — для предпоследнего (видно, откуда выпало)
+      var w = state.words, ctxWord = state.lastK !== null ? w[w.length - 2] : w[w.length - 1];
+      if (done() && state.lastK === null) ctxWord = w[w.length - 1];
+      var p = dist(ctxWord, state.t);
+      var order = VOCAB.map(function (x, k) { return k; }).sort(function (a, b) { return p[b] - p[a] || a - b; });
+      var top = order.slice(0, TOP), rest = order.slice(TOP);
+      var restP = rest.reduce(function (s, k) { return s + p[k]; }, 0);
+
+      ctx.font = 'bold ' + fs + 'px ' + font; ctx.fillStyle = C_TEXT; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(T('nextFor', { w: ctxWord }), 0, L.head / 2);
+
+      ctx.font = fs + 'px ' + font;
+      var labW = Math.min(g.w * 0.3, Math.max.apply(null, top.map(function (k) { return ctx.measureText(VOCAB[k]).width; }).concat([ctx.measureText(T('others', { n: rest.length })).width])) + 12);
+      var barX = labW, barMax = g.w - labW - 64;
+      var rows = top.map(function (k) { return { label: VOCAB[k], p: p[k], k: k }; });
+      rows.push({ label: T('others', { n: rest.length }), p: restP, k: -1 });
+      rows.forEach(function (r, i) {
+        var y = L.head + i * L.rowH + L.rowH / 2, isPick = r.k === state.lastK || (r.k === -1 && state.lastK !== null && rest.indexOf(state.lastK) >= 0);
+        var odd = r.k >= 0 && !seen(ctxWord, VOCAB[r.k]);
+        ctx.fillStyle = r.k === -1 ? C_MUTED : C_TEXT; ctx.textAlign = 'right';
+        ctx.fillText(r.label, labW - 10, y);
+        ctx.fillStyle = 'rgba(23,19,46,.7)'; ctx.fillRect(barX, y - L.rowH * 0.32, barMax, L.rowH * 0.64);
+        ctx.fillStyle = isPick ? C_VAL : r.k === -1 ? C_MUTED : odd ? C_ODD : C_TEXT;
+        ctx.fillRect(barX, y - L.rowH * 0.32, Math.max(1, barMax * r.p), L.rowH * 0.64);
+        ctx.fillStyle = C_TEXT; ctx.textAlign = 'left';
+        // Крошечный шанс — не ноль: модель оставляет его каждому слову
+        var lab = r.p > 0 && r.p < 0.001 ? '<0.1%' : (100 * r.p).toFixed(r.p < 0.1 && r.p > 0 ? 1 : 0) + '%';
+        ctx.fillText(lab, barX + barMax + 8, y);
+      });
+
+      // Рулетка: все слова словаря по порядку, ширина куска = вероятность
+      var sy = L.head + L.bars + fs * 1.6, sh = fs * 1.6, x = 0;
+      ctx.fillStyle = C_MUTED; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.font = (fs - 2) + 'px ' + font;
+      ctx.fillText(T('rouletteLabel'), 0, sy - 6);
+      VOCAB.forEach(function (word, k) {
+        var wd = g.w * p[k];
+        if (wd <= 0) return;
+        ctx.fillStyle = k === state.lastK ? C_VAL : (k % 2 ? 'rgba(238,234,251,.55)' : 'rgba(238,234,251,.3)');
+        ctx.fillRect(x, sy, wd, sh);
+        if (wd > ctx.measureText(word).width + 8) {
+          ctx.fillStyle = '#17132E'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+          ctx.fillText(word, x + wd / 2, sy + sh / 2);
+        }
+        x += wd;
+      });
+      if (state.lastU !== null) {   // куда упал кубик
+        var ux = g.w * state.lastU;
+        ctx.fillStyle = C_TEXT; ctx.beginPath();
+        ctx.moveTo(ux, sy + sh + 2); ctx.lineTo(ux - 8, sy + sh + 14); ctx.lineTo(ux + 8, sy + sh + 14); ctx.closePath(); ctx.fill();
+      }
+    }
+
+    // ======================= Панель =======================
+    function updatePanel() {
+      MLViz.setPressed(el('startBtns'), function (b) { return b.dataset.w === state.start; });
+      el('temp').value = state.t;
+      el('tVal').textContent = state.t.toFixed(1);
+      el('tNote').textContent = T(state.t === 0 ? 'tCold' : state.t <= 1.5 ? 'tNormal' : 'tHot');
+      el('seedNote').textContent = T('seedNote', { s: state.seed });
+      el('stepBtn').disabled = done();
+      el('allBtn').disabled = done();
+      el('hist').innerHTML = state.hist.map(function (h) {
+        return '<li>' + esc(h.text) + '<small>' + T('histMeta', { t: h.t.toFixed(1), s: h.s }) + '</small></li>';
+      }).join('');
+      el('exploreBox').hidden = !!state.game;
+      el('histBox').hidden = !!state.game;
+    }
+    function refresh() { updatePanel(); renderText(); draw(); }
+
+    LM_CORPUS.starts.forEach(function (w) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.w = w; b.textContent = w;
+      b.addEventListener('click', function () { state.start = w; restart(); refresh(); });
+      el('startBtns').appendChild(b);
+    });
+
+    // ======================= Игра «Угадай температуру» (общий компонент MLViz.quiz) =======================
+    var GAME_T = [0, 1, 3], rand = MLViz.rng(Date.now() % 100000);
+    function hideHints(on) {   // пока ученик не ответил, подсказки слева прячем
+      var v = on ? 'hidden' : '';
+      el('gen').style.visibility = v; el('verdict').style.visibility = v; cv.style.visibility = v;
+    }
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 6,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n, s: q.score }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('final', { s: q.score, n: q.n }); }
+      },
+      start: function (q) { q.data.ts = MLViz.shuffle([0, 1, 3, 0, 1, 3], rand); },
+      round: function (q) {
+        var t = q.data.ts[q.i], start = LM_CORPUS.starts[Math.floor(rand() * LM_CORPUS.starts.length)];
+        var seed = 1 + Math.floor(rand() * 9999);
+        var words = generate(start, t, seed);
+        // Слева та же генерация: то же первое слово, температура и бросок
+        state.start = start; state.t = t; state.seed = seed; restart();
+        while (!done()) step();
+        state.hist = [];
+        el('gameText').textContent = words.join(' ').replace(' .', '.');
+        q.choices(el('choices'), GAME_T.map(function (tt) { return T('gT' + tt); }), function (k) { return GAME_T[k] === t; }, function (k, ok) {
+          q.answer(ok ? 1 : 0, T(ok ? 'gameRight' : 'gameWrong', { t: t, why: T('why' + t) }));
+          hideHints(false);
+        });
+        refresh();
+        hideHints(true);
+      },
+      onEnd: function () { el('gameText').textContent = ''; el('choices').innerHTML = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      hideHints(false);
+      if (m === 'game') {
+        // Запомнить настройки ученика, чтобы вернуть их после игры
+        if (!state.game) state.saved = { t: state.t, seed: state.seed, start: state.start, hist: state.hist.slice() };
+        state.game = true;
+        quiz.start();
+      } else {
+        var sv = state.saved || { t: 1, seed: 1, start: LM_CORPUS.starts[0], hist: [] };
+        state.game = null; state.t = sv.t; state.seed = sv.seed; state.start = sv.start; state.hist = sv.hist;
+        restart(); refresh();
+      }
+    }
+
+    // ======================= События =======================
+    el('temp').addEventListener('input', function (e) { state.t = Math.round(+e.target.value * 10) / 10; restart(); refresh(); });
+    el('stepBtn').addEventListener('click', function () { step(); refresh(); });
+    el('allBtn').addEventListener('click', function () { while (!done()) step(); refresh(); });
+    el('againBtn').addEventListener('click', function () { state.seed++; restart(); refresh(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    el('corpusText').textContent = LM_CORPUS.text;
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    restart();   // текст нужен до первого рисунка
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

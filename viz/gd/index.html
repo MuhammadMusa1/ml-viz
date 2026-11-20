@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Как учится сеть: градиентный спуск · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--text)"></i><span data-i18n="legBall"></span></span>
+            <span><i class="dash" style="border-color:var(--text)"></i><span data-i18n="legPath"></span></span>
+            <span><b style="color:var(--text)">★</b> <span data-i18n="legBottom"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra">
+          <canvas id="data"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--adelie)"></i>Adelie</span>
+            <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+            <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+            <span><i class="ring"></i><span data-i18n="legTest"></span></span>
+          </div>
+          <div class="hint" data-i18n="dataHint"></div>
+        </div>
+
+        <div class="stage viz-extra">
+          <canvas id="curve"></canvas>
+          <div class="hint" data-i18n="curveHint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Игра «Спустись быстрее» -->
+        <div id="gamePanel" hidden style="border-bottom:1px solid var(--line); padding-bottom:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameAsk"></p>
+          <p id="gameLog" style="margin:8px 0 0"></p>
+          <p id="gameResult" role="status" style="margin:8px 0 0"></p>
+        </div>
+
+        <div>
+          <h3><span data-i18n="lrLabel"></span>: <span id="lrVal"></span></h3>
+          <input type="range" id="lr" min="0" max="6" step="1" value="3">
+          <p class="note" data-i18n="lrNote"></p>
+        </div>
+
+        <div class="row">
+          <button type="button" id="stepBtn" data-i18n="stepBtn"></button>
+          <button type="button" id="runBtn" class="primary"></button>
+          <button type="button" id="resetBtn" data-i18n="resetBtn"></button>
+        </div>
+        <div id="placeBox">
+          <h3 data-i18n="placeLabel"></h3>
+          <div class="row" id="placeBtns" style="margin-top:6px"></div>
+          <p class="note" data-i18n="placeNote"></p>
+        </div>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <div class="row" style="justify-content:space-between; align-items:flex-start">
+            <div>
+              <small style="font-weight:700" data-i18n="lossTitle"></small>
+              <div class="big-number" id="loss"></div>
+              <small id="lossNote" style="color:var(--muted)"></small>
+            </div>
+            <div>
+              <small style="font-weight:700" data-i18n="stepsTitle"></small>
+              <div class="big-number" id="steps"></div>
+            </div>
+          </div>
+          <p class="note" id="params" style="margin-top:8px"></p>
+        </div>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 data-i18n="accTitle"></h3>
+          <div class="row" style="justify-content:space-between; align-items:flex-start; margin-top:8px">
+            <div>
+              <small data-i18n="colTrain" style="color:var(--c-train); font-weight:700"></small>
+              <div class="big-number" id="accTrain" style="color:var(--c-train)"></div>
+              <small id="accTrainNote" style="color:var(--muted)"></small>
+            </div>
+            <div>
+              <small data-i18n="colTest" style="font-weight:700"></small>
+              <div class="big-number" id="accTest"></div>
+              <small id="accTestNote" style="color:var(--muted)"></small>
+            </div>
+          </div>
+          <p class="note" id="baseline"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 13 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 13 · Нейросети',
+        title: 'Как учится сеть: спуск с горы',
+        analogy: '<b>Спуск с горы в тумане маленькими шагами.</b> Ты стоишь на склоне и не видишь, где низ. Но ногами чувствуешь, куда земля идёт вниз круче всего, — и делаешь шаг туда. Потом снова. Так нейрон и учится: «гора» — это его ошибка, а шаги меняют веса так, чтобы ошибка становилась меньше.',
+        cvLabel: 'Гора ошибки: по горизонтали вес w, по вертикали смещение b. Чем светлее, тем больше ошибка. Мяч — текущие веса нейрона',
+        dataLabel: 'Пингвины по массе тела и кривая уверенности нейрона «это Gentoo»',
+        curveLabel: 'График ошибки по шагам',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: спустись быстрее',
+        legBall: 'мяч — веса нейрона сейчас',
+        legPath: 'путь шагов',
+        legBottom: 'дно — самая маленькая ошибка',
+        legTest: 'test (экзамен)',
+        hintExplore: 'Гора — это ошибка нейрона при разных весах: чем светлее, тем хуже. Жми «Шаг» или «Пуск». Кликни по горе, чтобы поставить мяч в другое место.',
+        hintGame: 'Мяч стоит на склоне. Выбери размер шага и жми «Пуск»: мяч спускается, пока не дойдёт до дна или не кончатся 100 шагов.',
+        dataHint: 'Нейрон учится узнавать Gentoo по массе: тяжёлый — скорее Gentoo. Белая кривая — его уверенность «это Gentoo», вертикальная линия — граница, где уверенность 50%.',
+        curveHint: 'Ошибка после каждого шага. Пунктир — дно.',
+        lrLabel: 'Размер шага (learning rate)',
+        lrNote: 'Маленький шаг — идёшь долго. Слишком большой — перепрыгиваешь долину.',
+        stepBtn: 'Шаг',
+        runBtn: 'Пуск ▶',
+        pauseBtn: 'Пауза ❚❚',
+        resetBtn: 'Сначала',
+        placeLabel: 'Поставить мяч',
+        placeNote: 'Или кликни по горе в любое место.',
+        place_start: 'На старт',
+        place_far: 'Далеко на склоне',
+        place_near: 'Рядом с дном',
+        place_wrong: 'Вес наоборот',
+        lossTitle: 'Ошибка (log-loss)',
+        lossNote: 'дно: {m}',
+        stepsTitle: 'Шагов',
+        params: 'Вес w = {w}, смещение b = {b}. Мяч сейчас в точке (w, b) на горе.',
+        paramsFar: 'Вес w = {w}, смещение b = {b} — мяч улетел за край картинки!',
+        accTitle: 'Точность (accuracy) — доля верных ответов',
+        colTrain: 'Train',
+        colTest: 'Test',
+        accNote: '{c} из {n}',
+        baseline: 'Для сравнения: «ленивая» модель, которая всегда говорит «не Gentoo», верна в {ctr} из {ntr} на train и в {cte} из {nte} на test.',
+        axisW: 'Вес w',
+        axisB: 'Смещение b',
+        axisMass: 'Масса тела, г',
+        axisP: 'Уверенность «Gentoo»',
+        axisStep: 'Шаг',
+        axisLoss: 'Ошибка',
+        gameStep: 'Попытка {i} из {n}',
+        gameDone: 'Итог',
+        nextAttempt: 'Следующая попытка',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        gameAsk: 'Спусти мяч на дно (ошибка не больше {target}) <b>за как можно меньше шагов</b>. Старт всегда один и тот же. Выбери размер шага и жми «Пуск». Попыток три.',
+        attemptOk: 'Попытка {i}: шаг {lr} — дошёл до дна за <b>{n}</b> {sw}.',
+        attemptNo: 'Попытка {i}: шаг {lr} — за 100 шагов до дна не дошёл (ошибка {l}).',
+        final: '<b>Твой лучший результат: {best}.</b><br>Лучший размер шага здесь — {blr}: до дна за {bn} {sw}.<br>Слишком маленький шаг ползёт сотни шагов, слишком большой перепрыгивает долину и потом долго возвращается. Подобрать размер шага — одна из главных забот, когда учат нейросети.',
+        finalNone: 'ни разу не дошёл до дна',
+        finalBest: 'шаг {lr}, {n} {sw}',
+        stepForms: 'шаг|шага|шагов',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Ошибка — это число.</b> Нейрон с весом w и смещением b отвечает каждому из 273 обучающих пингвинов «насколько я уверен, что это Gentoo». За уверенный верный ответ штраф почти 0, за уверенный неверный — большой. Средний штраф и есть ошибка (<i>log-loss</i>).</li>' +
+          '<li><b>Гора ошибки.</b> Для каждой пары (w, b) ошибка своя. Если нарисовать все пары сразу, получится гора: где светло — нейрон плохой, где темно — хороший. Обучение — это поиск самого низкого места.</li>' +
+          '<li><b>Градиент — уклон под ногами.</b> Всю гору нейрон не видит: это было бы слишком долго для настоящих сетей с миллионами весов. Зато он может посчитать, куда ошибка растёт быстрее всего. Это направление называется <b>градиент</b>.</li>' +
+          '<li><b>Шаг вниз.</b> Веса сдвигаются против градиента, то есть под уклон: <code>w = w − шаг · градиент</code>. Потом считаем уклон заново и шагаем снова. Это <b>градиентный спуск</b>.</li>' +
+          '<li><b>Размер шага (learning rate).</b> Слишком маленький — учиться очень долго. Слишком большой — мяч перелетает через долину. Большие нейросети учатся по той же идее — посчитать уклон и шагнуть вниз, — только по кусочкам данных и с хитрыми вариантами шага, а «гора» у них не в двух измерениях, а в миллионах.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь размер шага 0.1 и нажми «Пуск». Сколько шагов нужно, чтобы ошибка стала меньше 1?</li>' +
+          '<li>Поставь размер шага 30. Куда прыгает мяч после первого шага? Что происходит дальше?</li>' +
+          '<li>Посмотри на кривую уверенности внизу, пока мяч спускается. Как она меняется? Что происходит с границей?</li>' +
+          '<li>Кликни по горе в тёмной долине рядом с дном, а потом на светлом склоне. Откуда спуск быстрее?</li>' +
+          '<li>Сыграй «Игра: спустись быстрее». Какой размер шага оказался лучшим и почему не самый большой?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Уверенность нейрона: <code>p = 1 / (1 + e^(−(w·x + b)))</code>, где <i>x</i> — масса в одном масштабе (StandardScaler). Ответ <i>y</i> = 1 для Gentoo и 0 для остальных.</p>' +
+          '<p>Ошибка (log-loss): <code>L = −среднее( y·log(p) + (1 − y)·log(1 − p) )</code>.</p>' +
+          '<p>Градиент: <code>∂L/∂w = среднее((p − y)·x)</code>, <code>∂L/∂b = среднее(p − y)</code>.<br>' +
+          'Шаг спуска: <code>w = w − lr · ∂L/∂w</code>, <code>b = b − lr · ∂L/∂b</code>, где <i>lr</i> — размер шага.</p>' +
+          '<p>В Python (это ровно то, что делает страница):</p>' +
+          '<p><code>import numpy as np<br>' +
+          'from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split<br>' +
+          'from sklearn.preprocessing import StandardScaler<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'body_mass_g\']]<br>' +
+          'y = (df[\'species\'] == \'Gentoo\').to_numpy(dtype=float)<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br>' +
+          'x = StandardScaler().fit_transform(X_train)[:, 0]&nbsp;&nbsp;# масштаб по train<br><br>' +
+          'w, b, lr = -1.0, 3.0, 3&nbsp;&nbsp;# старт и размер шага<br>' +
+          'for step in range(20):<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;p = 1 / (1 + np.exp(-(w * x + b)))<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;w, b = w - lr * np.mean((p - y_train) * x), b - lr * np.mean(p - y_train)<br>' +
+          'print(w, b)</code></p>' +
+          '<p>Готовый <code>LogisticRegression(C=np.inf)</code> находит то же дно (w ≈ 5.2, b ≈ −1.5), только более хитрым способом. Нейросети в PyTorch учатся тем же спуском, градиенты для них считаются автоматически.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина (без столбца sex, без пропусков). Задача «Gentoo или нет» по массе тела, масса приведена к одному масштабу <code>StandardScaler</code> по train. Разбиение как в Colab: <code>train_test_split(test_size=0.2, random_state=42)</code> → 273 train и 69 test. У нейрона всего два параметра (w и b), поэтому гору ошибки можно нарисовать целиком — для настоящих сетей это невозможно. Положения мяча после 1, 5 и 20 шагов, число шагов до дна и само дно совпадают с <code>tools/check_gd.py</code> (numpy и sklearn).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «горячо-холодно» — ученик с закрытыми глазами ищет самое низкое место в классе только по подсказкам «круче вниз туда». Потом показываем гору и мяч. Ставим шаг 0.1 (ползёт), 3 (уверенно спускается), 10 (почти сразу на дне — лучший в игре), 30 (перелетает). В конце игра «Спустись быстрее».</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему нельзя просто посмотреть на всю гору? Почему большой шаг — не всегда быстрее? Что будет, если на горе две долины? (Тогда мяч может застрять в ближней — у нашей горы долина одна.) Где в этой картинке «обучение»?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+    document.getElementById('data').setAttribute('aria-label', T('dataLabel'));
+    document.getElementById('curve').setAttribute('aria-label', T('curveLabel'));
+    document.getElementById('lr').setAttribute('aria-label', T('lrLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    var C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted');
+
+    var all = PENGUINS.rows.map(function (r) {
+      return { si: SPECIES.indexOf(r[0]), y: r[0] === 'Gentoo' ? 1 : 0, mass: r[5], test: r[6] === 1, pos: r[7] };
+    });
+    var byPos = function (a, b) { return a.pos - b.pos; };
+    var train = all.filter(function (p) { return !p.test; }).sort(byPos);
+    var test = all.filter(function (p) { return p.test; }).sort(byPos);
+
+    // Масштаб (StandardScaler) — только по train
+    var M = train.reduce(function (s, p) { return s + p.mass; }, 0) / train.length;
+    var S = Math.sqrt(train.reduce(function (s, p) { return s + (p.mass - M) * (p.mass - M); }, 0) / train.length);
+    all.forEach(function (p) { p.x = (p.mass - M) / S; });
+    var XS = new Float64Array(train.map(function (p) { return p.x; }));
+    var YS = new Float64Array(train.map(function (p) { return p.y; }));
+
+    // ======================= Ошибка и градиент =======================
+    // log(1 + e^t) без переполнения
+    function softplus(t) { return t > 0 ? t + Math.log1p(Math.exp(-t)) : Math.log1p(Math.exp(t)); }
+    function loss(w, b) {
+      var s = 0;
+      for (var i = 0; i < XS.length; i++) { var t = w * XS[i] + b; s += softplus(t) - YS[i] * t; }
+      return s / XS.length;
+    }
+    function grad(w, b) {
+      var gw = 0, gb = 0;
+      for (var i = 0; i < XS.length; i++) {
+        var p = 1 / (1 + Math.exp(-(w * XS[i] + b))), r = p - YS[i];
+        gw += r * XS[i]; gb += r;
+      }
+      return [gw / XS.length, gb / XS.length];
+    }
+    // Дно горы — методом Ньютона (то же, что LogisticRegression(C=np.inf))
+    var BOTTOM = (function () {
+      var w = 0, b = 0;
+      for (var it = 0; it < 50; it++) {
+        var gw = 0, gb = 0, hww = 0, hwb = 0, hbb = 0;
+        for (var i = 0; i < XS.length; i++) {
+          var p = 1 / (1 + Math.exp(-(w * XS[i] + b))), r = p - YS[i], q = p * (1 - p);
+          gw += r * XS[i]; gb += r; hww += q * XS[i] * XS[i]; hwb += q * XS[i]; hbb += q;
+        }
+        var det = hww * hbb - hwb * hwb;
+        w -= (hbb * gw - hwb * gb) / det; b -= (hww * gb - hwb * gw) / det;
+      }
+      return { w: w, b: b, l: loss(w, b) };
+    })();
+    var TARGET = BOTTOM.l + 0.01;          // «дошёл до дна»
+    var LRS = [0.1, 0.3, 1, 3, 10, 30, 60];
+    var START = { w: -1, b: 3 };
+    var MAX_GAME_STEPS = 100;
+
+    function correct(w, b, set) {
+      return set.reduce(function (c, p) { return c + ((w * p.x + b > 0) === (p.y === 1) ? 1 : 0); }, 0);
+    }
+    // Сколько шагов до дна с данным размером шага (для итога игры)
+    function stepsToBottom(lr) {
+      var w = START.w, b = START.b;
+      for (var k = 1; k <= MAX_GAME_STEPS; k++) {
+        var g = grad(w, b); w -= lr * g[0]; b -= lr * g[1];
+        if (loss(w, b) <= TARGET) return k;
+      }
+      return null;
+    }
+    var BEST_LR = (function () {
+      var best = null;
+      LRS.forEach(function (lr) { var n = stepsToBottom(lr); if (n && (!best || n < best.n)) best = { lr: lr, n: n }; });
+      return best;
+    })();
+
+    // ======================= Состояние =======================
+    var state = { lrIdx: 3, path: [], running: false, mode: 'explore', game: null };
+    function cur() { return state.path[state.path.length - 1]; }
+    function resetPath(w, b) { state.path = [{ w: w, b: b, l: loss(w, b) }]; }
+    resetPath(START.w, START.b);
+
+    // ======================= Гора ошибки =======================
+    var cv = document.getElementById('cv'), g, PAD, sw, sb;
+    var DOM = { w0: -3, w1: 12, b0: -7, b1: 5 };
+    var hill = null;
+
+    function resize() {
+      g = MLViz.fitCanvas(cv, 0.62);
+      PAD = MLViz.plotPad(g.w, 2);
+      sw = MLViz.scale(DOM.w0, DOM.w1, PAD.l, g.w - PAD.r);
+      sb = MLViz.scale(DOM.b0, DOM.b1, g.h - PAD.b, PAD.t);
+      hill = null;
+      resizeData(); resizeCurve();
+      draw(); drawData(); drawCurve();
+    }
+
+    // Картинку горы считаем один раз на размер холста: светлее = больше ошибка (полосы как горизонтали на карте)
+    function buildHill() {
+      var off = document.createElement('canvas');
+      off.width = g.w; off.height = g.h;
+      var oc = off.getContext('2d'), STEP = 2;
+      var lmin = Math.log(BOTTOM.l), lmax = Math.log(5), BANDS = 18;
+      for (var px = PAD.l; px < g.w - PAD.r; px += STEP) {
+        var w = sw.invert(px + STEP / 2);
+        for (var py = PAD.t; py < g.h - PAD.b; py += STEP) {
+          var v = (Math.log(loss(w, sb.invert(py + STEP / 2))) - lmin) / (lmax - lmin);
+          v = Math.max(0, Math.min(1, v));
+          var band = Math.floor(v * BANDS);
+          oc.fillStyle = 'rgba(238,234,251,' + (0.03 + 0.45 * band / BANDS + (band % 2 ? 0.035 : 0)) + ')';
+          oc.fillRect(px, py, STEP, STEP);
+        }
+      }
+      return off;
+    }
+
+    function inDom(p) { return p.w >= DOM.w0 && p.w <= DOM.w1 && p.b >= DOM.b0 && p.b <= DOM.b1; }
+
+    function draw() {
+      var ctx = g.ctx;
+      ctx.clearRect(0, 0, g.w, g.h);
+      if (!hill) hill = buildHill();
+      ctx.drawImage(hill, 0, 0, g.w, g.h);
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sw, sy: sb,
+        xTicks: MLViz.range(-2, 12, 2), yTicks: MLViz.range(-6, 4, 2),
+        xLabel: T('axisW'), yLabel: T('axisB')
+      });
+
+      // Дно
+      ctx.fillStyle = C_TEXT; ctx.font = 'bold ' + Math.round(MLViz.fontPx(g.w) * 1.4) + 'px ' + MLViz.cssVar('--font');
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('★', sw(BOTTOM.w), sb(BOTTOM.b));
+
+      // Путь шагов (обрезаем по области графика)
+      ctx.save();
+      ctx.beginPath(); ctx.rect(PAD.l, PAD.t, g.w - PAD.l - PAD.r, g.h - PAD.t - PAD.b); ctx.clip();
+      ctx.strokeStyle = C_TEXT; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      state.path.forEach(function (p, i) { if (i === 0) ctx.moveTo(sw(p.w), sb(p.b)); else ctx.lineTo(sw(p.w), sb(p.b)); });
+      ctx.stroke(); ctx.setLineDash([]);
+      state.path.forEach(function (p) {
+        ctx.beginPath(); ctx.arc(sw(p.w), sb(p.b), 2.5, 0, Math.PI * 2); ctx.fillStyle = C_TEXT; ctx.fill();
+      });
+      ctx.restore();
+
+      // Мяч и стрелка «куда вниз» (против градиента)
+      var c = cur();
+      var bx = Math.max(PAD.l, Math.min(g.w - PAD.r, sw(c.w))), by = Math.max(PAD.t, Math.min(g.h - PAD.b, sb(c.b)));
+      if (inDom(c)) {
+        var gr = grad(c.w, c.b), dx = -gr[0], db = -gr[1];
+        var len = Math.hypot(sw(c.w + dx) - sw(c.w), sb(c.b + db) - sb(c.b));
+        if (len > 1e-6) {
+          var ux = (sw(c.w + dx) - sw(c.w)) / len, uy = (sb(c.b + db) - sb(c.b)) / len, L = 34;
+          var ex = bx + ux * L, ey = by + uy * L;
+          ctx.strokeStyle = C_TEXT; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(ex, ey);
+          ctx.lineTo(ex - ux * 9 - uy * 6, ey - uy * 9 + ux * 6); ctx.lineTo(ex - ux * 9 + uy * 6, ey - uy * 9 - ux * 6);
+          ctx.closePath(); ctx.fillStyle = C_TEXT; ctx.fill();
+        }
+      }
+      ctx.beginPath(); ctx.arc(bx, by, 9, 0, Math.PI * 2);
+      ctx.fillStyle = C_TEXT; ctx.fill(); ctx.strokeStyle = '#17132E'; ctx.lineWidth = 3; ctx.stroke();
+      if (!inDom(c)) {   // улетел за край — пунктирное кольцо
+        ctx.beginPath(); ctx.arc(bx, by, 15, 0, Math.PI * 2);
+        ctx.strokeStyle = C_TEXT; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+
+    // ======================= Пингвины и кривая уверенности =======================
+    var dataCv = document.getElementById('data'), dg, DP, sm, sp;
+    function resizeData() {
+      dg = MLViz.fitCanvas(dataCv, 0.42);
+      DP = MLViz.plotPad(dg.w, 3);
+      sm = MLViz.scale(2600, 6500, DP.l, dg.w - DP.r);
+      sp = MLViz.scale(-0.12, 1.12, dg.h - DP.b, DP.t);
+    }
+    // Вертикальный разброс точек, чтобы они не сливались (фиксированный для каждого пингвина)
+    var rnd = MLViz.rng(7);
+    all.forEach(function (p) { p.jit = (rnd() - 0.5) * 0.14; });
+
+    function drawData() {
+      var ctx = dg.ctx, c = cur();
+      ctx.clearRect(0, 0, dg.w, dg.h);
+      MLViz.drawAxes(ctx, {
+        w: dg.w, h: dg.h, pad: DP, sx: sm, sy: sp,
+        xTicks: MLViz.range(3000, 6000, 1000), yTicks: [0, 0.5, 1],
+        xLabel: T('axisMass'), yLabel: T('axisP')
+      });
+      train.forEach(function (p) {
+        ctx.beginPath(); ctx.arc(sm(p.mass), sp(p.y + p.jit), 3.5, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.8; ctx.fillStyle = COLORS[p.si]; ctx.fill(); ctx.globalAlpha = 1;
+      });
+      test.forEach(function (p) {
+        ctx.beginPath(); ctx.arc(sm(p.mass), sp(p.y + p.jit), 5, 0, Math.PI * 2);
+        ctx.strokeStyle = COLORS[p.si]; ctx.lineWidth = 2; ctx.stroke();
+      });
+      // Кривая уверенности
+      ctx.strokeStyle = C_TEXT; ctx.lineWidth = 3; ctx.beginPath();
+      for (var i = 0; i <= 200; i++) {
+        var m = 2600 + 3900 * i / 200, pr = 1 / (1 + Math.exp(-(c.w * (m - M) / S + c.b)));
+        if (i === 0) ctx.moveTo(sm(m), sp(pr)); else ctx.lineTo(sm(m), sp(pr));
+      }
+      ctx.stroke();
+      // Граница: где уверенность 50%
+      if (Math.abs(c.w) > 1e-9) {
+        var mb = M + S * (-c.b / c.w);
+        if (mb > 2600 && mb < 6500) {
+          ctx.strokeStyle = 'rgba(238,234,251,.6)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(sm(mb), DP.t); ctx.lineTo(sm(mb), dg.h - DP.b); ctx.stroke(); ctx.setLineDash([]);
+        }
+      }
+    }
+
+    // ======================= График ошибки =======================
+    var curveCv = document.getElementById('curve'), cg, CP;
+    function resizeCurve() { cg = MLViz.fitCanvas(curveCv, 0.36); CP = MLViz.plotPad(cg.w, 3); }
+
+    function drawCurve() {
+      var ctx = cg.ctx, n = state.path.length - 1;
+      var nMax = Math.max(20, Math.ceil(n / 20) * 20);
+      var lMax = Math.max(1, Math.ceil(state.path.reduce(function (m, p) { return Math.max(m, p.l); }, 0)));
+      lMax = Math.min(lMax, 10);
+      var cx = MLViz.scale(0, nMax, CP.l, cg.w - CP.r), cy = MLViz.scale(0, lMax, cg.h - CP.b, CP.t);
+      ctx.clearRect(0, 0, cg.w, cg.h);
+      var stepT = nMax / 5;
+      MLViz.drawAxes(ctx, {
+        w: cg.w, h: cg.h, pad: CP, sx: cx, sy: cy, xGrid: false,
+        xTicks: MLViz.range(0, nMax, stepT), yTicks: MLViz.range(0, lMax, lMax > 4 ? 2 : lMax > 2 ? 1 : 0.5),
+        xLabel: T('axisStep'), yLabel: T('axisLoss')
+      });
+      ctx.strokeStyle = C_MUTED; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(CP.l, cy(BOTTOM.l)); ctx.lineTo(cg.w - CP.r, cy(BOTTOM.l)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = C_TEXT; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.beginPath();
+      state.path.forEach(function (p, i) {
+        var Y = cy(Math.min(lMax, p.l));
+        if (i === 0) ctx.moveTo(cx(i), Y); else ctx.lineTo(cx(i), Y);
+      });
+      ctx.stroke();
+    }
+
+    // ======================= Панель =======================
+    function el(id) { return document.getElementById(id); }
+    function num(v) { return (v < 0 ? '−' : '') + Math.abs(v).toFixed(2); }
+    function pct(c, n) { return Math.round(100 * c / n) + '%'; }
+    function lrText(lr) { return String(lr); }
+    // «1 шаг», «2 шага», «5 шагов»
+    function stepWord(n) {
+      var f = T('stepForms').split('|'), a = n % 10, b = n % 100;
+      return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
+    }
+
+    function updatePanel() {
+      var c = cur(), lr = LRS[state.lrIdx], gm = state.game;
+      el('lr').value = state.lrIdx;
+      el('lrVal').textContent = lrText(lr);
+      el('loss').textContent = c.l.toFixed(3);
+      el('lossNote').textContent = T('lossNote', { m: BOTTOM.l.toFixed(3) });
+      el('steps').textContent = state.path.length - 1;
+      el('params').textContent = T(inDom(c) ? 'params' : 'paramsFar', { w: num(c.w), b: num(c.b) });
+      el('runBtn').textContent = T(state.running ? 'pauseBtn' : 'runBtn');
+
+      var ctr = correct(c.w, c.b, train), cte = correct(c.w, c.b, test);
+      el('accTrain').textContent = pct(ctr, train.length);
+      el('accTrainNote').textContent = T('accNote', { c: ctr, n: train.length });
+      el('accTest').textContent = pct(cte, test.length);
+      el('accTestNote').textContent = T('accNote', { c: cte, n: test.length });
+      el('baseline').textContent = T('baseline', {
+        ctr: train.filter(function (p) { return !p.y; }).length, ntr: train.length,
+        cte: test.filter(function (p) { return !p.y; }).length, nte: test.length
+      });
+
+      // В игре: шагать вручную и переставлять мяч нельзя, пока идёт попытка — и размер шага менять тоже
+      el('stepBtn').hidden = !!gm;
+      el('resetBtn').hidden = !!gm;
+      el('placeBox').hidden = !!gm;
+      el('lr').disabled = !!(gm && (state.running || gm.over));
+      el('runBtn').disabled = !!(gm && (gm.over || gm.wait));
+    }
+
+    function refresh() { updatePanel(); draw(); drawData(); drawCurve(); }
+
+    // ======================= Спуск =======================
+    function doStep() {
+      var c = cur(), lr = LRS[state.lrIdx], gr = grad(c.w, c.b);
+      var w = c.w - lr * gr[0], b = c.b - lr * gr[1];
+      state.path.push({ w: w, b: b, l: loss(w, b) });
+    }
+
+    var timer = null;
+    function stopRun() { state.running = false; clearTimeout(timer); timer = null; }
+    function tick() {
+      if (!state.running) return;
+      doStep();
+      var gm = state.game, n = state.path.length - 1;
+      if (gm) {
+        if (cur().l <= TARGET || n >= MAX_GAME_STEPS) { stopRun(); finishAttempt(); }
+      } else if (n >= 500) stopRun();
+      refresh();
+      if (state.running) timer = setTimeout(tick, gm ? 60 : 110);
+    }
+    function toggleRun() {
+      if (state.running) { stopRun(); refresh(); return; }
+      if (state.game) resetPath(START.w, START.b);   // каждая попытка — со старта
+      state.running = true; refresh();
+      timer = setTimeout(tick, 60);
+    }
+
+    // ======================= Игра «Спустись быстрее» (общий компонент MLViz.quiz) =======================
+    // Раунд = попытка: выбрать размер шага и запустить спуск со старта. Попыток три.
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 3,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('nextAttempt'), finish: T('finish'), finishTitle: T('gameDone'), again: T('again'),
+        final: function (q) {
+          var mine = q.data.log.filter(function (a) { return a.n; }).sort(function (a, b) { return a.n - b.n; })[0];
+          return T('final', {
+            best: mine ? T('finalBest', { lr: lrText(mine.lr), n: mine.n, sw: stepWord(mine.n) }) : T('finalNone'),
+            blr: lrText(BEST_LR.lr), bn: BEST_LR.n, sw: stepWord(BEST_LR.n)
+          });
+        }
+      },
+      start: function (q) { q.data.log = []; el('gameLog').innerHTML = ''; },
+      round: function () {
+        state.game = { over: false, wait: false };   // wait — попытка закончена, ждём «Дальше»
+        resetPath(START.w, START.b);
+        refresh();
+      },
+      onEnd: function () { state.game.over = true; refresh(); }
+    });
+
+    function finishAttempt() {
+      var n = state.path.length - 1, lr = LRS[state.lrIdx], ok = cur().l <= TARGET;
+      var log = quiz.data.log;
+      log.push({ lr: lr, n: ok ? n : null, l: cur().l });
+      el('gameLog').innerHTML = log.map(function (a, i) {
+        return a.n ? T('attemptOk', { i: i + 1, lr: lrText(a.lr), n: a.n, sw: stepWord(a.n) }) : T('attemptNo', { i: i + 1, lr: lrText(a.lr), l: a.l.toFixed(3) });
+      }).join('<br>');
+      state.game.wait = true;
+      quiz.answer(0, '');
+    }
+
+    function setMode(m) {
+      stopRun();
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('gamePanel').hidden = m !== 'game';
+      resetPath(START.w, START.b);
+      if (m === 'game') {
+        el('gameAsk').innerHTML = T('gameAsk', { target: TARGET.toFixed(3) });
+        el('hint').textContent = T('hintGame');
+        quiz.start();
+      } else {
+        state.game = null;
+        el('hint').textContent = T('hintExplore');
+      }
+      refresh();
+    }
+
+    // ======================= События =======================
+    el('lr').addEventListener('input', function (e) { state.lrIdx = +e.target.value; refresh(); });
+    el('stepBtn').addEventListener('click', function () { stopRun(); doStep(); refresh(); });
+    el('runBtn').addEventListener('click', toggleRun);
+    el('resetBtn').addEventListener('click', function () { stopRun(); resetPath(START.w, START.b); refresh(); });
+    // Готовые места для мяча — то же, что клик по горе, но доступно с клавиатуры
+    var PLACES = { start: [START.w, START.b], far: [10, 4], near: [4, -1], wrong: [-2, -6] };
+    Object.keys(PLACES).forEach(function (k) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = T('place_' + k);
+      b.addEventListener('click', function () { stopRun(); resetPath(PLACES[k][0], PLACES[k][1]); refresh(); });
+      el('placeBtns').appendChild(b);
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    // Клик по горе — поставить мяч в это место (только в «Исследуй»)
+    cv.addEventListener('pointerdown', function (e) {
+      if (state.game) return;
+      stopRun();
+      var m = MLViz.pointer(cv, e);
+      var w = Math.max(DOM.w0, Math.min(DOM.w1, sw.invert(m.x))), b = Math.max(DOM.b0, Math.min(DOM.b1, sb.invert(m.y)));
+      resetPath(w, b); refresh();
+    });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

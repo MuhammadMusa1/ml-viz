@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Свёртка: фильтр-лупа · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Только для этой страницы: цвет отрицательных значений и мини-таблицы расчёта */
+    .calc { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+    .calc .op { font-size: 26px; font-weight: 700; color: var(--muted); }
+    .calc figure { margin: 0; }
+    .calc figcaption { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .mini { display: grid; grid-template-columns: repeat(3, 42px); gap: 3px; }
+    .mini span { height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 6px;
+                 background: rgba(23, 19, 46, .7); border: 1px solid var(--line-soft); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; }
+    .mini span.on { background: rgba(238, 234, 251, .85); color: #17132E; }
+    .mini span.pos { color: var(--text); }
+    .mini span.neg { color: var(--c-neg); }
+    .calc .result { font-size: 18px; }
+    @media (max-width: 520px) {   /* телефон: уравнение «× =» помещается в одну строку */
+      .calc { gap: 6px 6px; }
+      .calc .op { font-size: 18px; }
+      .mini { grid-template-columns: repeat(3, 30px); gap: 2px; }
+      .mini span { height: 30px; font-size: 13px; }
+    }
+    .kgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; max-width: 200px; margin-top: 8px; }
+    .kgrid button { padding: 0; height: 44px; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+    .kgrid button.neg { color: var(--c-neg); }
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv" class="drag"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--text); border-radius:2px"></i><span data-i18n="legPos"></span></span>
+            <span><i style="background:var(--c-neg); border-radius:2px"></i><span data-i18n="legNeg"></span></span>
+            <span><i style="background:transparent; border:2px solid var(--c-val); border-radius:2px"></i><span data-i18n="legWin"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra" id="calcBox" style="padding:14px">
+          <h3 class="sub" id="calcTitle"></h3>
+          <div class="calc">
+            <figure><figcaption data-i18n="calcPatch"></figcaption><div class="mini" id="mPatch"></div></figure>
+            <span class="op">×</span>
+            <figure><figcaption data-i18n="calcKernel"></figcaption><div class="mini" id="mKernel"></div></figure>
+            <span class="op">=</span>
+            <figure><figcaption data-i18n="calcProd"></figcaption><div class="mini" id="mProd"></div></figure>
+          </div>
+          <p class="result" id="calcSum" style="margin:12px 0 0"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Игра «Угадай фильтр» -->
+        <div id="gamePanel" hidden style="border-bottom:1px solid var(--line); padding-bottom:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices" id="choices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+
+        <div id="exploreBox">
+          <div>
+            <h3 data-i18n="imgLabel"></h3>
+            <div class="seg" id="shapeBtns" style="margin-top:6px"></div>
+            <div class="row" style="margin-top:6px">
+              <button type="button" id="clearBtn" data-i18n="clearBtn"></button>
+            </div>
+            <p class="note" data-i18n="drawNote"></p>
+          </div>
+
+          <div style="margin-top:16px">
+            <h3 data-i18n="kernelLabel"></h3>
+            <div class="seg" id="kernelBtns" style="margin-top:6px"></div>
+            <div class="kgrid" id="kgrid"></div>
+            <p class="note" id="kernelNote"></p>
+          </div>
+        </div>
+
+        <div id="reluBox">
+          <label class="toggle"><input type="checkbox" id="relu"> <span data-i18n="reluLabel"></span></label>
+          <p class="note" data-i18n="reluNote"></p>
+        </div>
+        <label class="toggle"><input type="checkbox" id="nums" checked> <span data-i18n="numsLabel"></span></label>
+
+        <div class="row" id="runRow">
+          <button type="button" id="runBtn" class="primary"></button>
+        </div>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 data-i18n="statsTitle"></h3>
+          <p style="margin:6px 0 0" id="statMax"></p>
+          <p style="margin:2px 0 0" id="statMin"></p>
+          <p class="note" id="sizeNote"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 15 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/conv_shapes.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 15 · Нейросети',
+        title: 'Свёртка: фильтр-лупа ищет края',
+        analogy: '<b>Лупа скользит по картинке и ищет одну вещь.</b> Одна лупа замечает только вертикальные края, другая — только горизонтальные, третья размывает. Где лупа нашла «своё», на новой картинке загорается яркое пятно. Так первые слои нейросети, которая узнаёт цифры и лица, ищут на фото края и формы.',
+        cvLabel: 'Слева картинка 14 на 14 пикселей, справа карта признаков 12 на 12 после фильтра. Рамка — где сейчас лупа',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: угадай фильтр',
+        legPos: 'плюс: фильтр нашёл «своё»',
+        legNeg: 'минус: нашёл наоборот',
+        legWin: 'окно 3 × 3 — лупа',
+        hintExplore: 'Рисуй мышкой или пальцем на левой картинке. Кликни или веди по правой картинке, чтобы передвинуть лупу и увидеть расчёт ниже.',
+        hintGame: 'Слева картинка, справа — что с ней сделал спрятанный фильтр. Какой это фильтр?',
+        imgLabel: 'Картинка',
+        shape_seven: 'Семь',
+        shape_zero: 'Ноль',
+        shape_cross: 'Крестик',
+        shape_square: 'Рамка',
+        clearBtn: 'Очистить',
+        drawNote: 'Клик по тёмной клетке рисует, по светлой — стирает.',
+        kernelLabel: 'Фильтр 3 × 3',
+        k_vertical: 'Вертикальные края',
+        k_horizontal: 'Горизонтальные края',
+        k_blur: 'Размытие',
+        k_sharpen: 'Резкость',
+        k_custom: 'Свой',
+        kn_vertical: 'Справа минус слева: светится, где слева темно, а справа светло.',
+        kn_horizontal: 'Снизу минус сверху: светится, где сверху темно, а снизу светло.',
+        kn_blur: 'Среднее девяти соседей (каждый вес 1/9): картинка становится мягче.',
+        kn_sharpen: 'Центр ×5 минус четыре соседа: края становятся резче.',
+        kn_custom: 'Нажимай на клетки фильтра: значение меняется −1 → 0 → 1 → 2 → −2.',
+        reluLabel: 'ReLU после фильтра',
+        reluNote: 'Минусы превращаются в 0 — как в нейроне с ReLU (урок 13).',
+        numsLabel: 'Показывать числа',
+        runBtn: 'Провести лупой ▶',
+        pauseBtn: 'Пауза ❚❚',
+        statsTitle: 'Карта признаков',
+        statMax: 'Самый сильный отклик: <b>{v}</b> (строка {r}, столбец {c})',
+        statMin: 'Самый отрицательный: <b>{v}</b> (строка {r}, столбец {c})',
+        sizeNote: 'Картинка 14 × 14, а карта 12 × 12: лупа 3 × 3 не вылезает за край, поэтому по краям теряется по одной клетке.',
+        calcTitle: 'Расчёт для клетки: строка {r}, столбец {c}',
+        calcPatch: 'кусочек картинки',
+        calcKernel: 'фильтр',
+        calcProd: 'произведения',
+        calcSum: 'Сумма всех девяти = <b>{s}</b>{relu} → в клетку карты.',
+        calcRelu: ', после ReLU = <b>{v}</b>',
+        cvIn: 'картинка',
+        cvOut: 'карта признаков',
+        gameAsk: 'Посмотри, где на правой картинке светло, а где оранжево, и выбери фильтр.',
+        gameStep: 'Раунд {i} из {n} · счёт {s}',
+        gameRight: '<b style="color:var(--green)">✓ Верно!</b> {why}',
+        gameWrong: '<b style="color:var(--red)">✕ Это был фильтр «{name}».</b> {why}',
+        why_vertical: 'Светятся левые края линий, оранжевые — правые.',
+        why_horizontal: 'Светятся верхние края линий, оранжевые — нижние.',
+        why_blur: 'Минусов нет, всё стало мягким и расплывчатым.',
+        why_sharpen: 'Линии остались, но вокруг них оранжевая кайма.',
+        next: 'Следующий раунд',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        final: '<b>Итог: {s} из {n}.</b> Свёрточная сеть делает то же самое, только фильтров у неё десятки, и их значения она подбирает сама — градиентным спуском (урок 13, «Как учится сеть»).',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Картинка — это таблица чисел.</b> У нас 14 × 14 пикселей: светлый пиксель — 1, тёмный — 0. Компьютер видит не «семёрку», а 196 чисел.</li>' +
+          '<li><b>Фильтр — маленькая таблица 3 × 3.</b> Девять чисел, которые решают, что искать. Например, «−1 слева и +1 справа» ищет места, где слева темно, а справа светло, — то есть вертикальный край.</li>' +
+          '<li><b>Лупа скользит.</b> Ставим фильтр на кусочек картинки 3 × 3, умножаем каждое число на число под ним и складываем девять произведений. Получилось одно число — его записываем в новую картинку. Сдвигаемся на одну клетку и повторяем.</li>' +
+          '<li><b>Карта признаков</b> (здесь «признак» — то, что ищет фильтр, например край). Новая картинка показывает, где фильтр нашёл «своё»: большое число — нашёл, около нуля — ничего, минус — нашёл наоборот. После неё часто ставят ReLU, чтобы оставить только находки.</li>' +
+          '<li><b>Фильтры учатся сами.</b> В свёрточной нейросети мы не пишем фильтры руками: сеть начинает со случайных чисел и подбирает их градиентным спуском. Первые слои сами приходят к «поиску краёв», следующие складывают края в углы, круги и, наконец, в цифры и лица.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Выбери «Семь» и фильтр «Вертикальные края». Какие части семёрки светятся? Почему верхняя палочка почти не видна?</li>' +
+          '<li>Переключи на «Горизонтальные края». Что теперь видно, а что пропало?</li>' +
+          '<li>Нарисуй одну вертикальную линию. Где на карте будет плюс, а где минус? Сначала угадай, потом проверь.</li>' +
+          '<li>Выбери «Свой» фильтр и сделай так, чтобы он находил диагональные линии крестика.</li>' +
+          '<li>Включи ReLU. Что стало с оранжевыми клетками? Зачем нейросети это может быть нужно?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Клетка карты признаков: <code>out[i][j] = Σ Σ img[i + a][j + b] · k[a][b]</code>, где <i>a</i> и <i>b</i> пробегают 0, 1, 2. Это 9 умножений и одна сумма.</p>' +
+          '<p>Размер карты: <code>14 − 3 + 1 = 12</code>. Если нужна карта того же размера, картинку обкладывают по краю нулями (<i>padding</i>).</p>' +
+          '<p>Строго говоря, в нейросетях фильтр не переворачивают, и математики называют это <i>взаимной корреляцией</i>. Но в ML всё равно говорят «свёртка».</p>' +
+          '<p>В Python:</p>' +
+          '<p><code>import numpy as np<br>' +
+          'from scipy.signal import correlate2d<br><br>' +
+          'img = np.zeros((14, 14))<br>' +
+          'img[2:4, 2:12] = 1&nbsp;&nbsp;# верхняя палочка семёрки<br>' +
+          'k = np.array([[-1, 0, 1],<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[-1, 0, 1],<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[-1, 0, 1]])&nbsp;&nbsp;# вертикальные края<br>' +
+          'out = correlate2d(img, k, mode=\'valid\')&nbsp;&nbsp;# 12 × 12<br>' +
+          'print(out.max(), out.min())</code></p>' +
+          '<p>В PyTorch это слой <code>nn.Conv2d(1, 16, kernel_size=3)</code>: 16 таких фильтров, значения которых сеть подбирает сама.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Здесь не пингвины, а картинки: свёртка нужна для изображений. Четыре картинки 14 × 14 лежат в <code>data/conv_shapes.js</code>, ученик может рисовать свою. Фильтры — классические: Превитт для вертикальных и горизонтальных краёв, размытие (среднее), резкость. Самые сильные и самые отрицательные отклики и расчёт клетки (9, 5) для всех картинок и фильтров совпадают с <code>scipy.signal.correlate2d</code> (<code>tools/check_conv.py</code>).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: раздаём клетчатый листок с семёркой 14 × 14 и бумажную «лупу» 3 × 3 с числами −1, 0, 1. Каждый считает две-три клетки вручную, потом проверяем на экране. Затем ученики рисуют свою картинку и предсказывают карту. В конце игра «Угадай фильтр».</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему карта меньше картинки? Что будет, если все числа фильтра одинаковые? Как найти диагональный край? Почему сеть не пишет фильтры руками, а учит их?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    var N = CONV_SHAPES.size, K = 3, OUT = N - K + 1;   // 14 → 12
+    var SHAPES = CONV_SHAPES.shapes.map(function (s) {
+      return { id: s.id, img: s.rows.map(function (row) { return row.split('').map(function (ch) { return ch === '#' ? 1 : 0; }); }) };
+    });
+    var KERNELS = {
+      vertical: [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]],
+      horizontal: [[-1, -1, -1], [0, 0, 0], [1, 1, 1]],
+      blur: [[1 / 9, 1 / 9, 1 / 9], [1 / 9, 1 / 9, 1 / 9], [1 / 9, 1 / 9, 1 / 9]],
+      sharpen: [[0, -1, 0], [-1, 5, -1], [0, -1, 0]],
+      custom: [[0, 0, 0], [0, 1, 0], [0, 0, 0]]     // начинаем с «ничего не меняет»
+    };
+    var KNAMES = ['vertical', 'horizontal', 'blur', 'sharpen', 'custom'];
+    var CYCLE = [-1, 0, 1, 2, -2];
+
+    function copy(img) { return img.map(function (r) { return r.slice(); }); }
+
+    // Свёртка «valid» без переворота фильтра (как correlate2d и слои нейросетей)
+    function convolve(img, k) {
+      var out = [];
+      for (var i = 0; i < OUT; i++) {
+        var row = [];
+        for (var j = 0; j < OUT; j++) {
+          var s = 0;
+          for (var a = 0; a < K; a++) for (var b = 0; b < K; b++) s += img[i + a][j + b] * k[a][b];
+          row.push(s);
+        }
+        out.push(row);
+      }
+      return out;
+    }
+    // Самый сильный / отрицательный отклик; при равенстве — первая клетка слева-сверху (как np.argmax)
+    function extremes(out) {
+      var mx = { v: -Infinity }, mn = { v: Infinity };
+      for (var i = 0; i < OUT; i++) for (var j = 0; j < OUT; j++) {
+        var v = out[i][j];
+        if (v > mx.v + 1e-9) mx = { v: v, r: i, c: j };
+        if (v < mn.v - 1e-9) mn = { v: v, r: i, c: j };
+      }
+      return { max: mx, min: mn };
+    }
+    // Число для показа: до сотых, без лишних нулей, с настоящим минусом
+    function fmt(v) {
+      var r = Math.round(v * 100) / 100;
+      if (Math.abs(r) < 1e-9) return '0';
+      var s = Math.abs(r).toFixed(2).replace(/\.?0+$/, '');
+      return (r < 0 ? '−' : '') + s;
+    }
+    function kfmt(v) { return Math.abs(v - 1 / 9) < 1e-12 ? '1/9' : fmt(v); }
+
+    // ======================= Состояние =======================
+    var state = {
+      shape: 'seven', img: copy(SHAPES[0].img), kernel: 'vertical',
+      win: { r: 8, c: 4 }, relu: false, nums: true, running: false, mode: 'explore', game: null
+    };
+    function kernel() { return state.game ? KERNELS[state.game.k] : KERNELS[state.kernel]; }
+    function featureMap() {
+      var out = convolve(state.img, kernel());
+      if (state.relu && !state.game) out = out.map(function (r) { return r.map(function (v) { return Math.max(0, v); }); });
+      return out;
+    }
+
+    // ======================= Рисование =======================
+    var cv = document.getElementById('cv'), g, L;
+    var C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted'), C_VAL = MLViz.cssVar('--c-val');
+    var C_NEG = getComputedStyle(document.documentElement).getPropertyValue('--c-neg').trim();
+
+    // Разметка: на широком экране картинки рядом, на узком — одна под другой
+    function layout(w) {
+      var fs = MLViz.fontPx(w), lab = Math.round(fs * 1.8);
+      var stacked = w < 600, cell;
+      if (stacked) {
+        cell = Math.floor(Math.min(w / N, 30));
+        return { stacked: true, cell: cell, fs: fs, lab: lab,
+                 in: { x: (w - N * cell) / 2, y: lab }, out: { x: (w - OUT * cell) / 2, y: lab * 2 + N * cell + 24 },
+                 w: w, h: lab * 2 + (N + OUT) * cell + 34 };
+      }
+      cell = Math.floor(Math.min((w - 70) / (N + OUT), 34));
+      var x0 = (w - (N + OUT) * cell - 70) / 2;
+      return { stacked: false, cell: cell, fs: fs, lab: lab,
+               in: { x: x0, y: lab }, out: { x: x0 + N * cell + 70, y: lab + cell }, w: w, h: lab + N * cell + 8 };
+    }
+
+    function resize() {
+      var w0 = cv.parentElement.clientWidth - 20;
+      L = layout(w0);
+      g = MLViz.fitCanvas(cv, L.h / w0);
+      L = layout(g.w);
+      if (Math.abs(L.h - g.h) > 2) g = MLViz.fitCanvas(cv, L.h / g.w);
+      draw();
+    }
+
+    function draw() {
+      var ctx = g.ctx, cell = L.cell, font = MLViz.cssVar('--font'), out = featureMap(), k = kernel();
+      ctx.clearRect(0, 0, g.w, g.h);
+      // Масштаб цвета: самое большое возможное значение для картинки из 0 и 1
+      var pos = 0, neg = 0;
+      k.forEach(function (r) { r.forEach(function (v) { if (v > 0) pos += v; else neg -= v; }); });
+      var scale = Math.max(pos, neg, 1e-9);
+
+      ctx.font = 'bold ' + L.fs + 'px ' + font; ctx.fillStyle = C_MUTED; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillText(T('cvIn') + ' 14 × 14', L.in.x, L.in.y - 6);
+      ctx.fillText(T('cvOut') + ' 12 × 12', L.out.x, L.out.y - 6);
+
+      // Входная картинка
+      for (var i = 0; i < N; i++) for (var j = 0; j < N; j++) {
+        var x = L.in.x + j * cell, y = L.in.y + i * cell;
+        ctx.fillStyle = state.img[i][j] ? 'rgba(238,234,251,.92)' : 'rgba(23,19,46,.85)';
+        ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+      }
+      // Карта признаков
+      // Числа не мельче 13 px (проектор); в мелких клетках не рисуем — их видно в расчёте под графиком
+      var showNums = state.nums && cell >= 26;
+      ctx.font = 'bold ' + Math.max(13, Math.min(16, cell * 0.45)) + 'px ' + font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (var r = 0; r < OUT; r++) for (var c = 0; c < OUT; c++) {
+        var v = out[r][c], X = L.out.x + c * cell, Y = L.out.y + r * cell, a = Math.min(1, Math.abs(v) / scale);
+        ctx.fillStyle = 'rgba(23,19,46,.85)'; ctx.fillRect(X + 1, Y + 1, cell - 2, cell - 2);
+        if (a > 1e-9) {
+          ctx.globalAlpha = 0.15 + 0.85 * a;
+          ctx.fillStyle = v > 0 ? C_TEXT : C_NEG; ctx.fillRect(X + 1, Y + 1, cell - 2, cell - 2);
+          ctx.globalAlpha = 1;
+        }
+        if (showNums && Math.abs(v) > 1e-9) {
+          ctx.fillStyle = (v > 0 && a > 0.35) || (v < 0 && a > 0.6) ? '#17132E' : C_TEXT;   // тёмный текст на светлом фоне
+          ctx.fillText(fmt(v), X + cell / 2, Y + cell / 2 + 1);
+        }
+      }
+      // Лупа: рамка 3 × 3 на картинке и клетка на карте (в игре не показываем)
+      if (!state.game) {
+        var w = state.win;
+        ctx.strokeStyle = C_VAL; ctx.lineWidth = 3;
+        ctx.strokeRect(L.in.x + w.c * cell, L.in.y + w.r * cell, 3 * cell, 3 * cell);
+        ctx.strokeRect(L.out.x + w.c * cell, L.out.y + w.r * cell, cell, cell);
+        // Линии, связывающие рамку и клетку
+        ctx.strokeStyle = 'rgba(74,222,128,.45)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(L.in.x + (w.c + 3) * cell, L.in.y + w.r * cell); ctx.lineTo(L.out.x + w.c * cell, L.out.y + w.r * cell);
+        ctx.moveTo(L.in.x + (w.c + 3) * cell, L.in.y + (w.r + 3) * cell); ctx.lineTo(L.out.x + w.c * cell, L.out.y + (w.r + 1) * cell);
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+
+    // ======================= Панель и расчёт =======================
+    function el(id) { return document.getElementById(id); }
+    function cls(v) { return v > 1e-9 ? 'pos' : v < -1e-9 ? 'neg' : ''; }
+
+    function updateCalc() {
+      var w = state.win, k = kernel(), img = state.img, prods = [], s = 0;
+      el('calcTitle').textContent = T('calcTitle', { r: w.r + 1, c: w.c + 1 });
+      var patch = [], kern = [];
+      for (var a = 0; a < 3; a++) for (var b = 0; b < 3; b++) {
+        var p = img[w.r + a][w.c + b], kv = k[a][b], pr = p * kv;
+        s += pr;
+        patch.push('<span class="' + (p ? 'on' : '') + '">' + p + '</span>');
+        kern.push('<span class="' + cls(kv) + '">' + kfmt(kv) + '</span>');
+        prods.push('<span class="' + cls(pr) + '">' + fmt(pr) + '</span>');
+      }
+      el('mPatch').innerHTML = patch.join('');
+      el('mKernel').innerHTML = kern.join('');
+      el('mProd').innerHTML = prods.join('');
+      el('calcSum').innerHTML = T('calcSum', {
+        s: fmt(s), relu: state.relu ? T('calcRelu', { v: fmt(Math.max(0, s)) }) : ''
+      });
+    }
+
+    function updatePanel() {
+      MLViz.setPressed(el('shapeBtns'), function (b) { return b.dataset.shape === state.shape; });
+      MLViz.setPressed(el('kernelBtns'), function (b) { return b.dataset.k === state.kernel; });
+      var k = KERNELS[state.kernel], custom = state.kernel === 'custom';
+      el('kgrid').innerHTML = '';
+      k.forEach(function (row, a) {
+        row.forEach(function (v, b) {
+          var bt = document.createElement('button');
+          bt.type = 'button'; bt.textContent = kfmt(v); bt.className = v < 0 ? 'neg' : '';
+          bt.disabled = !custom;
+          bt.setAttribute('aria-label', T('kernelLabel') + ': ' + (a + 1) + ', ' + (b + 1) + ' = ' + kfmt(v));
+          bt.addEventListener('click', function () {
+            var i = CYCLE.indexOf(v);
+            KERNELS.custom[a][b] = CYCLE[(i + 1) % CYCLE.length];
+            refresh();
+          });
+          el('kgrid').appendChild(bt);
+        });
+      });
+      el('kernelNote').textContent = T('kn_' + state.kernel);
+
+      var ex = extremes(featureMap());
+      el('statMax').innerHTML = T('statMax', { v: fmt(ex.max.v), r: ex.max.r + 1, c: ex.max.c + 1 });
+      el('statMin').innerHTML = T('statMin', { v: fmt(ex.min.v), r: ex.min.r + 1, c: ex.min.c + 1 });
+      el('sizeNote').textContent = T('sizeNote');
+      el('runBtn').textContent = T(state.running ? 'pauseBtn' : 'runBtn');
+
+      var game = !!state.game;
+      el('exploreBox').hidden = game;
+      el('runRow').hidden = game;
+      el('reluBox').hidden = game;
+      el('calcBox').hidden = game;
+      if (!game) updateCalc();
+    }
+
+    function refresh() { updatePanel(); draw(); }
+
+    // Кнопки картинок и фильтров строим из списков, подписи — из STR
+    SHAPES.forEach(function (s) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.shape = s.id; b.textContent = T('shape_' + s.id);
+      b.addEventListener('click', function () { state.shape = s.id; state.img = copy(s.img); refresh(); });
+      el('shapeBtns').appendChild(b);
+    });
+    KNAMES.forEach(function (k) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.k = k; b.textContent = T('k_' + k);
+      b.addEventListener('click', function () { state.kernel = k; refresh(); });
+      el('kernelBtns').appendChild(b);
+    });
+
+    // ======================= «Провести лупой» =======================
+    var timer = null;
+    function stopRun() { state.running = false; clearTimeout(timer); }
+    function tick() {
+      if (!state.running) return;
+      var w = state.win;
+      w.c++;
+      if (w.c >= OUT) { w.c = 0; w.r++; }
+      if (w.r >= OUT) { w.r = OUT - 1; w.c = OUT - 1; stopRun(); }
+      refresh();
+      if (state.running) timer = setTimeout(tick, 90);
+    }
+    el('runBtn').addEventListener('click', function () {
+      if (state.running) { stopRun(); refresh(); return; }
+      if (state.win.r === OUT - 1 && state.win.c === OUT - 1) state.win = { r: 0, c: 0 };
+      state.running = true; refresh(); timer = setTimeout(tick, 90);
+    });
+
+    // ======================= Мышь и палец =======================
+    function hit(m) {
+      var cell = L.cell;
+      var ci = Math.floor((m.x - L.in.x) / cell), ri = Math.floor((m.y - L.in.y) / cell);
+      if (ri >= 0 && ri < N && ci >= 0 && ci < N) return { part: 'in', r: ri, c: ci };
+      var co = Math.floor((m.x - L.out.x) / cell), ro = Math.floor((m.y - L.out.y) / cell);
+      if (ro >= 0 && ro < OUT && co >= 0 && co < OUT) return { part: 'out', r: ro, c: co };
+      return null;
+    }
+    var drag = null;   // {part: 'in', paint: 0|1} или {part: 'out'}
+    cv.addEventListener('pointerdown', function (e) {
+      if (state.game) return;
+      var h = hit(MLViz.pointer(cv, e));
+      if (!h) return;
+      cv.setPointerCapture(e.pointerId);
+      stopRun();
+      if (h.part === 'in') {
+        drag = { part: 'in', paint: state.img[h.r][h.c] ? 0 : 1 };
+        state.img[h.r][h.c] = drag.paint; state.shape = null;
+      } else {
+        drag = { part: 'out' }; state.win = { r: h.r, c: h.c };
+      }
+      refresh();
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var h = hit(MLViz.pointer(cv, e));
+      if (!h || h.part !== drag.part) return;
+      if (h.part === 'in') { if (state.img[h.r][h.c] === drag.paint) return; state.img[h.r][h.c] = drag.paint; }
+      else { if (state.win.r === h.r && state.win.c === h.c) return; state.win = { r: h.r, c: h.c }; }
+      refresh();
+    });
+    cv.addEventListener('pointerup', function () { drag = null; });
+    cv.addEventListener('pointercancel', function () { drag = null; });
+
+    el('clearBtn').addEventListener('click', function () {
+      state.img = state.img.map(function (r) { return r.map(function () { return 0; }); }); state.shape = null; refresh();
+    });
+    el('relu').addEventListener('change', function (e) { state.relu = e.target.checked; refresh(); });
+    el('nums').addEventListener('change', function (e) { state.nums = e.target.checked; draw(); });
+
+    // ======================= Игра «Угадай фильтр» (общий компонент MLViz.quiz) =======================
+    var GAME_K = ['vertical', 'horizontal', 'blur', 'sharpen'];
+    var rand = MLViz.rng(Date.now() % 100000);
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n, s: q.score }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('final', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        // state.game.k — спрятанный фильтр (его применяет картинка); не повторяем подряд ту же пару
+        var prev = state.game && state.game.prev, k, s;
+        do {
+          k = GAME_K[Math.floor(rand() * GAME_K.length)];
+          s = SHAPES[Math.floor(rand() * SHAPES.length)];
+        } while (prev === k + s.id);
+        state.game = { k: k, prev: k + s.id };
+        state.img = copy(s.img);
+        q.choices(el('choices'), GAME_K.map(function (x) { return T('k_' + x); }), function (j) { return GAME_K[j] === k; }, function (j, ok) {
+          q.answer(ok ? 1 : 0, ok ? T('gameRight', { why: T('why_' + k) }) : T('gameWrong', { name: T('k_' + k), why: T('why_' + k) }));
+        });
+        refresh();
+      }
+    });
+
+    function setMode(m) {
+      stopRun();
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') {
+        state.game = null;
+        quiz.start();
+      } else {
+        state.game = null;
+        var s = SHAPES.filter(function (x) { return x.id === state.shape; })[0] || SHAPES[0];
+        state.shape = s.id; state.img = copy(s.img);
+        refresh();
+      }
+    }
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

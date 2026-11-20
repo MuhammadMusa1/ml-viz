@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KNN: метод ближайших соседей · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="stage">
+        <canvas id="cv" class="drag"></canvas>
+        <div class="legend" style="padding:8px 4px 0">
+          <span><i style="background:var(--adelie)"></i>Adelie</span>
+          <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+          <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+        </div>
+        <div class="hint" id="hint"></div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div>
+          <h3><span data-i18n="kLabel"></span> = <span id="kVal"></span></h3>
+          <input type="range" id="k" min="1" max="25" step="1" value="5" aria-label="K">
+        </div>
+
+        <div>
+          <label class="toggle"><input type="checkbox" id="map"> <span data-i18n="showMap"></span></label>
+          <p class="note" data-i18n="mapNote"></p>
+        </div>
+        <div>
+          <label class="toggle"><input type="checkbox" id="scaled"> <span data-i18n="scaleLabel"></span></label>
+          <p class="note" data-i18n="scaleNote"></p>
+        </div>
+
+        <!-- Режим «Исследуй» -->
+        <div id="explorePanel">
+          <h3 data-i18n="votes"></h3>
+          <div class="bars" id="bars"></div>
+          <p style="margin:10px 0 0"><span data-i18n="verdict"></span> <b id="pred"></b></p>
+        </div>
+
+        <!-- Режим «Угадай раньше модели» -->
+        <div id="gamePanel" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="row" id="guessBtns" style="margin-top:8px">
+            <button type="button" data-sp="Adelie">Adelie</button>
+            <button type="button" data-sp="Chinstrap">Chinstrap</button>
+            <button type="button" data-sp="Gentoo">Gentoo</button>
+          </div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+          <div class="row" style="margin-top:12px; justify-content:space-between">
+            <div><div class="big-number" id="scoreYou">0</div><small data-i18n="you"></small></div>
+            <div><div class="big-number" id="scoreModel">0</div><small data-i18n="model"></small></div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 data-i18n="accTitle"></h3>
+          <div class="big-number" id="acc"></div>
+          <small style="color:var(--muted)" id="accNote"></small>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 5 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 5 · Классические алгоритмы',
+        title: 'KNN: метод ближайших соседей',
+        analogy: '<b>Скажи мне, кто твой сосед, — и я скажу, кто ты.</b> Появился новый пингвин, и мы не знаем, какого он вида. Смотрим на <b>K</b> самых похожих пингвинов, которых уже знаем, и выбираем тот вид, которого среди них больше.',
+        cvLabel: 'Пингвины: длина и глубина клюва, новый пингвин и его соседи',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: угадай раньше модели',
+        kLabel: 'Число соседей K',
+        showMap: 'Показать карту решений',
+        mapNote: 'Карта решений: каждая точка фона окрашена в вид, который модель назвала бы пингвину в этом месте.',
+        scaleLabel: 'Привести признаки к одному масштабу',
+        scaleNote: 'Длина клюва у пингвинов меняется сильнее, чем глубина. Без масштаба длина «важнее» для расстояния.',
+        votes: 'Голоса соседей',
+        verdict: 'Модель считает, что это:',
+        hintExplore: 'Кликни или веди пальцем по графику: это новый пингвин. Линии ведут к его K ближайшим соседям.',
+        hintGame: 'Белый кружок с «?» — пингвин, которого модель не видела. Какого он вида?',
+        gameAsk: 'Какого вида пингвин с «?»',
+        next: 'Следующий пингвин →',
+        you: 'ты',
+        model: 'модель',
+        rounds: 'раунд из 10',
+        right: 'верно',
+        wrong: 'ошибка',
+        gameLine: 'На самом деле: <b>{truth}</b>.<br>Ты: {you} ({youOk}) · Модель при K={k}: {model} ({modelOk})',
+        gameOver: 'Итог: ты <b>{you}</b> : <b>{model}</b> модель. {verdict}',
+        gameStep: 'Раунд {i} из {n}',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        gameWin: 'Ты победил!',
+        gameTie: 'Ничья!',
+        gameLose: 'Модель оказалась точнее.',
+        accTitle: 'Точность (accuracy) на новых пингвинах',
+        accNote: 'Модель угадала {c} из {n} пингвинов, которых не видела при обучении. Точность (accuracy) — доля верных ответов.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Запоминаем.</b> У KNN нет «обучения» в привычном смысле: модель просто хранит всех известных пингвинов с их видами.</li>' +
+          '<li><b>Меряем расстояние.</b> Для нового пингвина считаем, насколько он далеко от каждого известного по двум <b>признакам</b> (свойствам пингвина): длине и глубине клюва. «Соседи» здесь — не по улице, а по похожести клюва.</li>' +
+          '<li><b>Берём K ближайших.</b> Сортируем по расстоянию и оставляем первых K.</li>' +
+          '<li><b>Голосуем.</b> Каждый сосед голосует за свой вид. Побеждает вид, за который больше голосов. Если голосов поровну — тот, что раньше по алфавиту (так делает sklearn).</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь пингвина на границу между двумя цветами. Как меняется ответ при K = 1, 5, 15?</li>' +
+          '<li>Включи карту решений и подвигай K от 1 до 25. Когда граница рваная, а когда гладкая?</li>' +
+          '<li>Посмотри на точность при K = 1 и K = 25. Какое K ты бы выбрал и почему? (Как выбирать K честно, узнаем на уроке 6.)</li>' +
+          '<li>Включи «Привести признаки к одному масштабу». Почему изменились соседи? Подсказка: длина клюва меняется на ~28 мм, а глубина всего на ~8 мм.</li>' +
+          '<li>Сыграй 10 раундов «Игра: угадай раньше модели». Кто точнее: ты или KNN?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Расстояние между пингвинами <i>a</i> и <i>b</i> (евклидово, как по линейке):</p>' +
+          '<p><code>d = √((длина<sub>a</sub> − длина<sub>b</sub>)² + (глубина<sub>a</sub> − глубина<sub>b</sub>)²)</code></p>' +
+          '<p>При «одном масштабе» каждый признак сначала превращается в <code>(x − среднее) / стандартное отклонение</code>, как делает <code>StandardScaler</code>. Стандартное отклонение — насколько пингвины обычно отличаются от среднего. Оба числа считаются только по обучающим пингвинам.</p>' +
+          '<p>В Python это:</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split<br>' +
+          'from sklearn.neighbors import KNeighborsClassifier<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'bill_length_mm\', \'bill_depth_mm\']]&nbsp;&nbsp;# признаки<br>' +
+          'y = df[\'species\']&nbsp;&nbsp;# ответ: вид<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br><br>' +
+          'model = KNeighborsClassifier(n_neighbors=5)<br>model.fit(X_train, y_train)<br>' +
+          'print(model.score(X_test, y_test))&nbsp;&nbsp;# точность (accuracy)</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина (без столбца sex, без пропусков). Делим так же, как в Colab: <code>train_test_split(test_size=0.2, random_state=42)</code>. 273 пингвина модель «знает», 69 отложены для проверки и для игры. Точность на сайте совпадает с точностью в ноутбуке при тех же K и признаках.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «Угадай раньше модели» на проекторе, класс голосует руками. Затем объяснение по блоку «Как это работает» и переход в Colab.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему для двух классов K берут нечётным? (Тогда не бывает ничьей. Для трёх видов нечётное K ничью не исключает: например, 2–2–1 при K = 5.) Что будет, если K равно числу всех пингвинов? Зачем приводить признаки к одному масштабу?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.',
+        axisX: 'Длина клюва, мм',
+        axisY: 'Глубина клюва, мм'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var COLORS = { Adelie: MLViz.cssVar('--adelie'), Chinstrap: MLViz.cssVar('--chinstrap'), Gentoo: MLViz.cssVar('--gentoo') };
+    var all = PENGUINS.rows.map(function (r) { return { sp: r[0], x: r[2], y: r[3], test: r[6] === 1, pos: r[7] }; }); // x = длина клюва, y = глубина
+
+    // Разбиение train/test и порядок строк взяты из sklearn: train_test_split(test_size=0.2, random_state=42)
+    var byPos = function (a, b) { return a.pos - b.pos; };
+    var train = all.filter(function (p) { return !p.test; }).sort(byPos);
+    var test = all.filter(function (p) { return p.test; }).sort(byPos);
+
+    // Параметры масштабирования считаем ТОЛЬКО по train — без утечки данных
+    function meanStd(key) {
+      var m = train.reduce(function (s, p) { return s + p[key]; }, 0) / train.length;
+      var v = train.reduce(function (s, p) { return s + (p[key] - m) * (p[key] - m); }, 0) / train.length;
+      return { m: m, s: Math.sqrt(v) };
+    }
+    var SX = meanStd('x'), SY = meanStd('y');
+
+    // ======================= KNN (настоящий расчёт) =======================
+    function neighbors(qx, qy, k, scaled) {
+      var d = train.map(function (p) {
+        var dx = p.x - qx, dy = p.y - qy;
+        if (scaled) { dx /= SX.s; dy /= SY.s; }
+        return { p: p, d: Math.sqrt(dx * dx + dy * dy) };
+      });
+      d.sort(function (a, b) { return a.d - b.d; });
+      return d.slice(0, k);
+    }
+    // Голосование. При ничьей — как в sklearn: побеждает вид, который раньше по алфавиту.
+    function vote(nb) {
+      var counts = { Adelie: 0, Chinstrap: 0, Gentoo: 0 };
+      nb.forEach(function (n) { counts[n.p.sp]++; });
+      var best = SPECIES[0];
+      SPECIES.forEach(function (sp) { if (counts[sp] > counts[best]) best = sp; });
+      return { counts: counts, pred: best };
+    }
+    function predict(qx, qy, k, scaled) { return vote(neighbors(qx, qy, k, scaled)).pred; }
+
+    // ======================= Состояние =======================
+    var state = {
+      k: 5, scaled: false, map: false, mode: 'explore',
+      q: { x: 45, y: 17 },              // новый пингвин в режиме «Исследуй»
+      game: null                        // {pool, cur, answered, you, model, n}
+    };
+
+    // ======================= Рисование =======================
+    var cv = document.getElementById('cv');
+    var PAD = { l: 52, r: 14, t: 14, b: 44 };
+    var DOM = { x0: 31, x1: 61, y0: 12.8, y1: 22 };
+    var g, sx, sy, mapCache = { key: '', img: null };
+
+    function resize() {
+      g = MLViz.fitCanvas(cv, 0.62);
+      PAD = MLViz.plotPad(g.w, 2);
+      sx = MLViz.scale(DOM.x0, DOM.x1, PAD.l, g.w - PAD.r);
+      sy = MLViz.scale(DOM.y0, DOM.y1, g.h - PAD.b, PAD.t);
+      mapCache.key = '';
+      draw();
+    }
+
+    function drawMap(ctx) {
+      var key = [state.k, state.scaled, g.w, g.h].join('|');
+      if (mapCache.key !== key) {
+        var step = 6, off = document.createElement('canvas');
+        off.width = g.w; off.height = g.h;
+        var oc = off.getContext('2d');
+        oc.globalAlpha = 0.22;
+        for (var px = PAD.l; px < g.w - PAD.r; px += step) {
+          for (var py = PAD.t; py < g.h - PAD.b; py += step) {
+            var sp = predict(sx.invert(px + step / 2), sy.invert(py + step / 2), state.k, state.scaled);
+            oc.fillStyle = COLORS[sp];
+            oc.fillRect(px, py, step, step);
+          }
+        }
+        mapCache = { key: key, img: off };
+      }
+      ctx.drawImage(mapCache.img, 0, 0, g.w, g.h);
+    }
+
+    function drawAxes(ctx) {
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy,
+        xTicks: MLViz.range(35, 60, 5), yTicks: MLViz.range(14, 21, 1),
+        xLabel: T('axisX'), yLabel: T('axisY')
+      });
+    }
+
+    function dot(ctx, p, r, fill, stroke) {
+      ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), r, 0, Math.PI * 2);
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
+    }
+
+    function draw() {
+      var ctx = g.ctx;
+      ctx.clearRect(0, 0, g.w, g.h);
+      if (state.map) drawMap(ctx);
+      drawAxes(ctx);
+
+      var q = state.mode === 'explore' ? state.q : (state.game && state.game.cur);
+      var nb = q ? neighbors(q.x, q.y, state.k, state.scaled) : [];
+      var showNb = state.mode === 'explore' || (state.game && state.game.answered);
+
+      // Обучающие пингвины
+      ctx.globalAlpha = 0.85;
+      train.forEach(function (p) { dot(ctx, p, 4, COLORS[p.sp]); });
+      ctx.globalAlpha = 1;
+
+      if (!q) return;
+
+      // Линии к соседям и обводка соседей
+      if (showNb) {
+        ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.2;
+        nb.forEach(function (n) {
+          ctx.beginPath(); ctx.moveTo(sx(q.x), sy(q.y)); ctx.lineTo(sx(n.p.x), sy(n.p.y)); ctx.stroke();
+        });
+        nb.forEach(function (n) { dot(ctx, n.p, 7, null, '#ffffff'); });
+      }
+
+      // Сам новый пингвин
+      if (state.mode === 'explore') {
+        var pred = vote(nb).pred;
+        dot(ctx, q, 9, COLORS[pred], '#ffffff');
+      } else {
+        var gm = state.game;
+        dot(ctx, q, 10, gm.answered ? COLORS[q.sp] : '#ffffff', '#ffffff');
+        if (!gm.answered) {
+          ctx.fillStyle = '#17132E'; ctx.font = 'bold 13px Calibri, system-ui, sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', sx(q.x), sy(q.y) + 1);
+        }
+      }
+    }
+
+    // ======================= Панель =======================
+    function updatePanel() {
+      document.getElementById('kVal').textContent = state.k;
+
+      if (state.mode === 'explore') {
+        var v = vote(neighbors(state.q.x, state.q.y, state.k, state.scaled));
+        document.getElementById('bars').innerHTML = SPECIES.map(function (sp) {
+          var c = v.counts[sp];
+          return '<div class="bar"><span>' + sp + '</span><div class="track"><div class="fill" style="width:' +
+            (100 * c / state.k) + '%;background:' + COLORS[sp] + '"></div></div><b>' + c + '</b></div>';
+        }).join('');
+        var pe = document.getElementById('pred');
+        pe.textContent = v.pred; pe.style.color = COLORS[v.pred];
+      }
+
+      // Точность на отложенных 69 пингвинах — честный расчёт при текущих K и масштабе
+      var correct = test.filter(function (p) { return predict(p.x, p.y, state.k, state.scaled) === p.sp; }).length;
+      document.getElementById('acc').textContent = Math.round(100 * correct / test.length) + '%';
+      document.getElementById('accNote').textContent = T('accNote', { c: correct, n: test.length });
+    }
+
+    function refresh() { updatePanel(); draw(); }
+
+    // ======================= Игра «Угадай раньше модели» (общий компонент MLViz.quiz) =======================
+    // 10 раундов: ученик и модель угадывают вид одного и того же пингвина из test
+    var SPECIES_LIST = ['Adelie', 'Chinstrap', 'Gentoo'];
+    function score(you, model) {
+      document.getElementById('scoreYou').textContent = you;
+      document.getElementById('scoreModel').textContent = model;
+    }
+    var quiz = MLViz.quiz({
+      box: document.getElementById('gamePanel'), rounds: 10,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) {
+          var you = q.score, model = q.data.model;
+          return T('gameOver', { you: you, model: model, verdict: T(you > model ? 'gameWin' : you === model ? 'gameTie' : 'gameLose') });
+        }
+      },
+      start: function (q) {
+        q.data.pool = MLViz.shuffle(test, Math.random).slice(0, 10);
+        q.data.model = 0;
+        score(0, 0);
+      },
+      round: function (q) {
+        var cur = q.data.pool[q.i];
+        state.game = { cur: cur, answered: false };   // графику: кого показать и открыт ли ответ
+        q.choices(document.getElementById('guessBtns'), SPECIES_LIST, function (k) { return SPECIES_LIST[k] === cur.sp; }, function (k, ok) {
+          var m = predict(cur.x, cur.y, state.k, state.scaled);
+          if (m === cur.sp) q.data.model++;
+          state.game.answered = true;
+          q.answer(ok ? 1 : 0, T('gameLine', {
+            truth: cur.sp, you: SPECIES_LIST[k], youOk: T(ok ? 'right' : 'wrong'),
+            model: m, modelOk: T(m === cur.sp ? 'right' : 'wrong'), k: state.k
+          }));
+          score(q.score, q.data.model);
+          draw();
+        });
+        draw();
+      },
+      onEnd: function () { state.game.cur = null; document.getElementById('guessBtns').innerHTML = ''; draw(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(document.getElementById('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      document.getElementById('explorePanel').hidden = m !== 'explore';
+      document.getElementById('gamePanel').hidden = m !== 'game';
+      document.getElementById('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start();
+      refresh();
+    }
+
+    // ======================= События =======================
+    var dragging = false;
+    function moveQuery(ev) {
+      if (state.mode !== 'explore') return;
+      var p = MLViz.pointer(cv, ev);
+      var x = Math.min(DOM.x1, Math.max(DOM.x0, sx.invert(p.x)));
+      var y = Math.min(DOM.y1, Math.max(DOM.y0, sy.invert(p.y)));
+      state.q = { x: x, y: y };
+      refresh();
+    }
+    cv.addEventListener('pointerdown', function (e) { dragging = true; cv.setPointerCapture(e.pointerId); moveQuery(e); });
+    cv.addEventListener('pointermove', function (e) { if (dragging) moveQuery(e); });
+    cv.addEventListener('pointerup', function () { dragging = false; });
+    cv.addEventListener('pointercancel', function () { dragging = false; });
+
+    document.getElementById('k').addEventListener('input', function (e) { state.k = +e.target.value; refresh(); });
+    document.getElementById('map').addEventListener('change', function (e) { state.map = e.target.checked; draw(); });
+    document.getElementById('scaled').addEventListener('change', function (e) { state.scaled = e.target.checked; refresh(); });
+    document.getElementById('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = document.getElementById('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

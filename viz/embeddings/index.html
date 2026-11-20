@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Эмбеддинги: карта слов · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Только для этой страницы: цвета групп слов (не цвета видов пингвинов), полоски вектора, списки */
+    /* Цвета групп слов: не цвета видов и не смысловые цвета курса (train, validation, минус) */
+    :root { --g-people: #60A5FA; --g-animals: #A3E635; --g-food: #FDA4AF; --g-transport: #D4D4D8; }
+    .vec { display: grid; grid-template-columns: minmax(80px, auto) minmax(0, 1fr) minmax(0, 1fr); gap: 6px 10px; align-items: center; font-size: 15px; }
+    .vec .head { font-size: 13px; color: var(--muted); font-weight: 700; }
+    .vec .track { position: relative; height: 16px; background: rgba(23, 19, 46, .7); border-radius: 6px; overflow: hidden; }
+    .vec .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
+    .vec .fill.a { background: var(--text); }
+    .vec .fill.b { background: var(--muted); opacity: .7; }
+    .vec .num { position: absolute; right: 6px; top: -1px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .nb { list-style: none; padding: 0; margin: 6px 0 0; }
+    .nb li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+    .nb li span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .panel select { font: inherit; font-size: 15px; color: var(--text); background: var(--bg-2); border: 1px solid var(--line);
+                    border-radius: 8px; padding: 8px 6px; min-height: 44px; min-width: 0; flex: 1 1 0; }
+    .ana { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+    .ana select { width: 0; }   /* три списка делят строку поровну и не распирают панель */
+    .ana b { color: var(--muted); }
+    @media (max-width: 520px) {   /* телефон: «A − B» в одну строку, «+ C» во вторую */
+      .ana { flex-wrap: wrap; }
+      .ana select { width: auto; flex: 1 1 40%; }
+    }
+    .atab { border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .atab th, .atab td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+    .atab th:first-child, .atab td:first-child { text-align: left; color: var(--muted); }
+    .atab th { font-size: 13px; color: var(--muted); }
+    .atab td.res { font-weight: 700; }
+    .atab td.neg { color: var(--c-neg); }
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .choices button { display: flex; flex-direction: column; align-items: center; font-size: 17px; font-weight: 700; }
+    .choices button small { font-size: 13px; font-weight: 400; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0" id="catLegend"></div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra" style="padding:14px" id="vecBox">
+          <h3 class="sub" id="vecTitle"></h3>
+          <p class="note" data-i18n="vecNote" style="margin-bottom:10px"></p>
+          <div class="vec" id="vec"></div>
+        </div>
+
+        <div class="stage viz-extra" style="padding:14px" id="anaBox">
+          <h3 class="sub" data-i18n="anaTableTitle"></h3>
+          <p class="note" data-i18n="anaTableNote" style="margin-bottom:10px"></p>
+          <div style="overflow-x:auto; width:0; min-width:100%"><table class="atab" id="anaTable"></table></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Игра «Угадай соседа» -->
+        <div id="gamePanel" hidden style="border-bottom:1px solid var(--line); padding-bottom:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameAsk"></p>
+          <div class="choices" id="choices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+
+        <div id="exploreBox">
+          <div>
+            <h3 data-i18n="wordLabel"></h3>
+            <div class="row" style="margin-top:6px"><select id="word" aria-label=""></select></div>
+            <ul class="nb" id="nb"></ul>
+            <p class="note" data-i18n="nbNote"></p>
+          </div>
+
+          <div style="border-top:1px solid var(--line); padding-top:12px; margin-top:12px">
+            <h3 data-i18n="anaLabel"></h3>
+            <div class="ana">
+              <select id="anaA"></select><b>−</b><select id="anaB"></select><b>+</b><select id="anaC"></select>
+            </div>
+            <div class="seg" id="presets" style="margin-top:8px"></div>
+            <p style="margin:10px 0 0; font-size:18px" id="anaResult"></p>
+            <p class="note" data-i18n="anaNote"></p>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 data-i18n="mapTitle"></h3>
+          <p class="note" id="mapNote"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 17 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/embed_words.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 17 · Как работают LLM',
+        title: 'Эмбеддинги: карта, где похожие слова живут рядом',
+        analogy: '<b>Каждое слово — это анкета из чисел.</b> Живое? Летает? Большое? Сладкое? Ответы записываем числами от 0 до 1 — получается список чисел, <b>вектор</b>. У похожих слов анкеты похожи, поэтому на карте они оказываются рядом. Языковая модель хранит такой вектор для каждого токена — это и есть <b>эмбеддинг</b>.',
+        cvLabel: 'Карта слов: каждое слово — точка, похожие слова рядом',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: угадай соседа',
+        cat_people: 'люди',
+        cat_animals: 'животные',
+        cat_food: 'еда',
+        cat_transport: 'транспорт',
+        f_alive: 'живое',
+        f_human: 'человек',
+        f_male: 'мужчина / самец',
+        f_adult: 'взрослый',
+        f_royal: 'королевский',
+        f_flies: 'летает',
+        f_swims: 'плавает',
+        f_big: 'большое',
+        f_food: 'съедобное',
+        f_sweet: 'сладкое',
+        f_fast: 'быстрое',
+        hintExplore: 'Кликни по слову на карте или выбери его в списке справа. Линии ведут к пяти самым похожим словам.',
+        hintGame: 'Какое слово ближе всего к выделенному? Смотри не только на карту: она сплющена из 11 чисел в 2.',
+        wordLabel: 'Слово и его соседи',
+        nbNote: 'Похожесть — насколько совпадают направления векторов (косинус). 100% — анкеты «смотрят» в одну сторону. Это число от 0 до 1, для удобства — в процентах.',
+        vecTitle: 'Анкета слова «{w}» и его ближайшего соседа «{n}»',
+        vecNote: 'Белая полоска — выбранное слово, серая — самый похожий сосед. Чем больше полосок совпадает, тем выше похожесть.',
+        anaLabel: 'Арифметика слов',
+        anaResult: '= <b>{w}</b> ({p})',
+        anaTableTitle: 'Арифметика по всем 11 признакам',
+        anaTableNote: 'Каждую строку считаем отдельно: первое − второе + третье. Последний столбец — анкета найденного слова.',
+        anaSum: 'итог',
+        anaNote: 'Из вектора первого слова вычитаем второй и прибавляем третий, а потом ищем ближайшее слово (кроме этих трёх). На карте — пунктирные стрелки.',
+        preset1: 'король − мужчина + женщина',
+        preset2: 'принц − мальчик + девочка',
+        preset3: 'самолёт − воробей + рыба',
+        mapTitle: 'Карта',
+        mapNote: 'У каждого слова 11 чисел, а экран плоский. Карту получили методом PCA: нашли 2 новых направления (смеси всех 11 признаков), вдоль которых слова различаются сильнее всего. Она сохраняет {p} различий, поэтому что-то на ней искажено: соседей честно считаем по всем 11 числам.',
+        axis1: 'ось 1 ({p})',
+        axis2: 'ось 2 ({p})',
+        gameAsk: 'Какое слово больше всего похоже на «<b>{w}</b>»?',
+        gameStep: 'Раунд {i} из {n} · счёт {s}',
+        gameRight: '<b style="color:var(--green)">✓ Верно!</b> Похожесть {p}.',
+        gameWrong: '<b style="color:var(--red)">✕ Ближе всех — «{w}»: {p}.</b>',
+        next: 'Следующий раунд',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        final: '<b>Итог: {s} из {n}.</b> Компьютер не «понимает» слова — он сравнивает их векторы. Чем больше совпадают числа, тем ближе слова.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Слово → числа.</b> Для каждого слова заполняем анкету из 11 вопросов: живое ли, летает ли, сладкое ли… Ответы от 0 до 1 записываем подряд — получается вектор, например «пингвин» = [1, 0, 0.5, 0.5, 0, 0, 1, …]. 0.5 значит «неважно / не подходит»: например, у яблока нет пола.</li>' +
+          '<li><b>Похожие слова — похожие векторы.</b> У «торта» и «мороженого» почти одинаковые анкеты, у «торта» и «ракеты» — совсем разные. Похожесть меряем тем, насколько две стрелки-вектора смотрят в одну сторону: 100% — в одну, 0% — под прямым углом (математики называют это косинусом угла).</li>' +
+          '<li><b>Карта.</b> 11 чисел на экран не нарисуешь, поэтому сплющиваем их в 2 (метод PCA). Получается карта: люди в одном углу, еда — в другом, транспорт — в третьем.</li>' +
+          '<li><b>Арифметика смыслов.</b> «король» − «мужчина» + «женщина»: вычитаем «мужчину», добавляем «женщину», а «королевское» остаётся. Ближайшее слово — «королева».</li>' +
+          '<li><b>Как у настоящей модели.</b> Здесь анкету заполнил человек, и вопросов 11. В языковой модели у каждого токена несколько тысяч чисел, и заполняет их сама модель во время обучения (градиентным спуском). Что значит каждое число, уже никто не знает, но похожие слова всё равно оказываются рядом. А арифметика слов у настоящих моделей работает лишь примерно и не всегда.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Выбери «пингвин». Кто его ближайшие соседи? Почему среди них есть лодка?</li>' +
+          '<li>Найди на карте место, где сидят люди. Почему «король» и «королева» рядом, но не в одной точке?</li>' +
+          '<li>Нажми «король − мужчина + женщина». Что получилось и почему похожесть 100%?</li>' +
+          '<li>Придумай свою арифметику, например «корова − большое…». Каких слов не хватает, чтобы она получилась?</li>' +
+          '<li>Сыграй «Игра: угадай соседа». Где карта обманывает: слова рядом на карте, а похожесть маленькая?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Косинусная похожесть: <code>cos(a, b) = (a · b) / (|a| · |b|)</code>, где <code>a · b = a₁b₁ + a₂b₂ + … + a₁₁b₁₁</code>, а <code>|a| = √(a · a)</code> — длина вектора.</p>' +
+          '<p>Аналогия: <code>v = король − мужчина + женщина</code> (поэлементно), ответ — слово с наибольшим <code>cos(v, слово)</code>, кроме трёх исходных.</p>' +
+          '<p>Карта — PCA: из всех направлений в 11-мерном пространстве берём два, вдоль которых слова различаются сильнее всего (собственные векторы матрицы ковариации).</p>' +
+          '<p>В Python:</p>' +
+          '<p><code>import numpy as np<br><br>' +
+          'words = [\'король\', \'королева\', \'мужчина\', \'женщина\']<br>' +
+          '#&nbsp;&nbsp;&nbsp;&nbsp;живое человек мужск взросл королев летает плавает больш съедоб сладк быстр<br>' +
+          'V = np.array([[1, 1, 1, 1, 1, 0, 0, .5, 0, 0, .5],<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1, 1, 0, 1, 1, 0, 0, .5, 0, 0, .5],<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1, 1, 1, 1, 0, 0, 0, .5, 0, 0, .5],<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1, 1, 0, 1, 0, 0, 0, .5, 0, 0, .5]])<br><br>' +
+          'def cos(a, b):<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;return a @ b / (np.linalg.norm(a) * np.linalg.norm(b))<br><br>' +
+          'v = V[0] - V[2] + V[3]&nbsp;&nbsp;# король − мужчина + женщина<br>' +
+          'print(cos(v, V[1]))&nbsp;&nbsp;# похожесть на «королева»</code></p>' +
+          '<p>Настоящие эмбеддинги можно получить, например, библиотекой <code>sentence-transformers</code> — у каждого текста там 384 числа и больше.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> 34 слова в четырёх группах и 11 признаков; числа от 0 до 1 расставлены вручную (<code>data/embed_words.js</code>, можно дополнить своими словами). Это учебная модель: настоящие эмбеддинги обучаются, их числа не имеют понятных названий. Недостаток ручной анкеты: 0.5 у неживых слов («мужчина», «взрослый») тоже добавляет похожести — поэтому «пингвин» похож на «лодку» не только потому, что оба плавают. Похожие слова, аналогии и координаты карты (PCA) совпадают с <code>tools/check_embeddings.py</code> (numpy). Карта может быть отражена зеркально по сравнению с <code>sklearn.decomposition.PCA</code> — это не ошибка, у осей PCA знак выбирается произвольно.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: каждый ученик загадывает слово и заполняет анкету из 5 вопросов (да = 1, нет = 0). Сравниваем анкеты соседей по парте — чьи слова «ближе»? Потом показываем карту и арифметику «король − мужчина + женщина». В конце игра «Угадай соседа».</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему «пингвин» похож на «лодку»? Каких признаков не хватает, чтобы их различить? Почему на карте видно не всё? Как модель могла бы сама заполнить анкету, если ей никто не говорит, что такое «сладкое»?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+    document.getElementById('word').setAttribute('aria-label', T('wordLabel'));
+
+    // ======================= Данные =======================
+    var FEAT = EMBED_WORDS.features;
+    var WORDS = EMBED_WORDS.words;
+    var CATS = ['people', 'animals', 'food', 'transport'];
+    var CAT_COLOR = {};
+    CATS.forEach(function (c) { CAT_COLOR[c] = getComputedStyle(document.documentElement).getPropertyValue('--g-' + c).trim(); });
+    var C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted');
+
+    // ======================= Векторы: косинус, соседи, аналогии =======================
+    function dot(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+    function norm(a) { return Math.sqrt(dot(a, a)); }
+    function cos(a, b) { return dot(a, b) / (norm(a) * norm(b)); }
+    function r9(x) { return Math.round(x * 1e9) / 1e9; }
+    // Слова по убыванию похожести на вектор v; при равенстве — кто раньше в списке
+    function ranked(v, skip) {
+      var list = [];
+      WORDS.forEach(function (w, j) { if (!skip || skip.indexOf(j) < 0) list.push({ j: j, s: cos(v, w.v) }); });
+      list.sort(function (a, b) { return r9(b.s) - r9(a.s) || a.j - b.j; });
+      return list;
+    }
+    function neighbors(i, k) { return ranked(WORDS[i].v, [i]).slice(0, k); }
+    function analogyVec(a, b, c) { return WORDS[a].v.map(function (x, k) { return x - WORDS[b].v[k] + WORDS[c].v[k]; }); }
+    function pct(s) { return Math.round(100 * s) + '%'; }
+
+    // ======================= PCA на 2 оси (метод Якоби для симметричной матрицы) =======================
+    var PCA = (function () {
+      var n = WORDS.length, d = FEAT.length;
+      var mean = FEAT.map(function (_, k) { return WORDS.reduce(function (s, w) { return s + w.v[k]; }, 0) / n; });
+      var C = [];
+      for (var a = 0; a < d; a++) {
+        C.push([]);
+        for (var b = 0; b < d; b++) {
+          var s = 0;
+          WORDS.forEach(function (w) { s += (w.v[a] - mean[a]) * (w.v[b] - mean[b]); });
+          C[a].push(s / n);
+        }
+      }
+      // Якоби: поворотами обнуляем внедиагональные элементы
+      var A = C.map(function (r) { return r.slice(); });
+      var Vm = []; for (var i = 0; i < d; i++) { Vm.push([]); for (var j = 0; j < d; j++) Vm[i].push(i === j ? 1 : 0); }
+      for (var sweep = 0; sweep < 100; sweep++) {
+        var off = 0;
+        for (var p = 0; p < d; p++) for (var q = p + 1; q < d; q++) off += A[p][q] * A[p][q];
+        if (off < 1e-24) break;
+        for (p = 0; p < d; p++) for (q = p + 1; q < d; q++) {
+          if (Math.abs(A[p][q]) < 1e-15) continue;
+          var th = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+          var t = (th >= 0 ? 1 : -1) / (Math.abs(th) + Math.sqrt(th * th + 1));
+          var c = 1 / Math.sqrt(t * t + 1), sn = t * c;
+          for (var k = 0; k < d; k++) {
+            var akp = A[k][p], akq = A[k][q];
+            A[k][p] = c * akp - sn * akq; A[k][q] = sn * akp + c * akq;
+          }
+          for (k = 0; k < d; k++) {
+            var apk = A[p][k], aqk = A[q][k];
+            A[p][k] = c * apk - sn * aqk; A[q][k] = sn * apk + c * aqk;
+          }
+          for (k = 0; k < d; k++) {
+            var vkp = Vm[k][p], vkq = Vm[k][q];
+            Vm[k][p] = c * vkp - sn * vkq; Vm[k][q] = sn * vkp + c * vkq;
+          }
+        }
+      }
+      var idx = []; for (i = 0; i < d; i++) idx.push(i);
+      idx.sort(function (x, y) { return A[y][y] - A[x][x]; });
+      var total = 0; for (i = 0; i < d; i++) total += A[i][i];
+      var axes = idx.slice(0, 2).map(function (col) {
+        var v = Vm.map(function (row) { return row[col]; });
+        // Знак оси: самый большой по модулю коэффициент — положительный (как в tools/check_embeddings.py)
+        var big = 0; v.forEach(function (x, k) { if (Math.abs(x) > Math.abs(v[big])) big = k; });
+        if (v[big] < 0) v = v.map(function (x) { return -x; });
+        return v;
+      });
+      function project(vec) {
+        var c0 = vec.map(function (x, k) { return x - mean[k]; });
+        return [dot(c0, axes[0]), dot(c0, axes[1])];
+      }
+      return { project: project, ratio: [A[idx[0]][idx[0]] / total, A[idx[1]][idx[1]] / total] };
+    })();
+    WORDS.forEach(function (w) { w.xy = PCA.project(w.v); });
+
+    // ======================= Состояние =======================
+    function idxOf(w) { return WORDS.map(function (x) { return x.w; }).indexOf(w); }
+    var PRESETS = [['король', 'мужчина', 'женщина'], ['принц', 'мальчик', 'девочка'], ['самолёт', 'воробей', 'рыба']];
+    var state = { sel: idxOf('пингвин'), ana: PRESETS[0].map(idxOf), mode: 'explore', game: null };
+
+    // ======================= Карта =======================
+    var cv = document.getElementById('cv'), g, PAD, sx, sy;
+    var DOM = (function () {
+      var xs = WORDS.map(function (w) { return w.xy[0]; }), ys = WORDS.map(function (w) { return w.xy[1]; });
+      var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+      var mx = (x1 - x0) * 0.12, my = (y1 - y0) * 0.1;
+      return { x0: x0 - mx, x1: x1 + mx * 1.6, y0: y0 - my, y1: y1 + my };
+    })();
+
+    function resize() {
+      g = MLViz.fitCanvas(cv, cv.parentElement.clientWidth < 600 ? 0.95 : 0.62);
+      PAD = { l: 34, r: 12, t: 12, b: 34 };
+      sx = MLViz.scale(DOM.x0, DOM.x1, PAD.l, g.w - PAD.r);
+      sy = MLViz.scale(DOM.y0, DOM.y1, g.h - PAD.b, PAD.t);
+      draw();
+    }
+
+    function arrow(ctx, x0, y0, x1, y1, color) {
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.setLineDash([]);
+      var a = Math.atan2(y1 - y0, x1 - x0);
+      ctx.beginPath(); ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 - 11 * Math.cos(a - 0.4), y1 - 11 * Math.sin(a - 0.4));
+      ctx.lineTo(x1 - 11 * Math.cos(a + 0.4), y1 - 11 * Math.sin(a + 0.4)); ctx.closePath(); ctx.fill();
+    }
+
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), font = MLViz.cssVar('--font');
+      ctx.clearRect(0, 0, g.w, g.h);
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy, xTicks: [0], yTicks: [0],
+        xFmt: function () { return ''; }, yFmt: function () { return ''; },
+        xLabel: T('axis1', { p: pct(PCA.ratio[0]) }), yLabel: T('axis2', { p: pct(PCA.ratio[1]) })
+      });
+
+      var gm = state.game, focus = gm ? gm.w : state.sel;
+      var marked = {};   // какие слова выделить
+      if (gm) gm.opts.forEach(function (o) { marked[o] = true; });
+      var nbs = gm ? [] : neighbors(state.sel, 5);
+
+      // Линии к соседям
+      nbs.forEach(function (n) {
+        var w = WORDS[n.j];
+        ctx.strokeStyle = 'rgba(238,234,251,' + (0.2 + 0.6 * n.s) + ')'; ctx.lineWidth = 1 + 2 * n.s;
+        ctx.beginPath(); ctx.moveTo(sx(WORDS[focus].xy[0]), sy(WORDS[focus].xy[1])); ctx.lineTo(sx(w.xy[0]), sy(w.xy[1])); ctx.stroke();
+        marked[n.j] = true;
+      });
+
+      // Аналогия: стрелка B → C и такая же от A к результату (карта линейная, поэтому стрелки параллельны)
+      var ana = null;
+      if (!gm) {
+        var a = state.ana[0], b = state.ana[1], c = state.ana[2];
+        var v = analogyVec(a, b, c), p = PCA.project(v), res = ranked(v, state.ana)[0];
+        ana = res.j;
+        arrow(ctx, sx(WORDS[b].xy[0]), sy(WORDS[b].xy[1]), sx(WORDS[c].xy[0]), sy(WORDS[c].xy[1]), C_MUTED);
+        arrow(ctx, sx(WORDS[a].xy[0]), sy(WORDS[a].xy[1]), sx(p[0]), sy(p[1]), C_TEXT);
+        ctx.fillStyle = C_TEXT; ctx.font = 'bold ' + Math.round(fs * 1.3) + 'px ' + font;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('✦', sx(p[0]), sy(p[1]));
+      }
+
+      // Точки
+      WORDS.forEach(function (w, j) {
+        var X = sx(w.xy[0]), Y = sy(w.xy[1]), hot = j === focus || marked[j] || j === ana;
+        ctx.globalAlpha = gm && !hot ? 0.35 : 1;
+        ctx.beginPath(); ctx.arc(X, Y, j === focus ? 7 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = CAT_COLOR[w.cat]; ctx.fill();
+        if (j === focus) { ctx.strokeStyle = C_TEXT; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X, Y, 11, 0, Math.PI * 2); ctx.stroke(); }
+      });
+      // Подписи без наложений: важные слова первыми, каждой ищем свободное место рядом с точкой
+      var order = WORDS.map(function (w, j) { return j; });
+      var isHot = function (j) { return j === focus || marked[j] || j === ana; };
+      order.sort(function (a, b) { return (isHot(b) ? 1 : 0) - (isHot(a) ? 1 : 0) || a - b; });
+      var placed = [], lh = fs + 3;
+      var spots = [[1, 0], [1, -1], [1, 1], [-1, 0], [1, -2], [1, 2], [-1, -1], [-1, 1], [1, -3], [1, 3], [-1, -2], [-1, 2]];
+      ctx.textBaseline = 'middle';
+      order.forEach(function (j) {
+        var w = WORDS[j], X = sx(w.xy[0]), Y = sy(w.xy[1]), hot = isHot(j);
+        ctx.font = (hot ? 'bold ' : '') + (fs - (hot ? 0 : 1)) + 'px ' + font;
+        var tw = ctx.measureText(w.w).width, box = null;
+        for (var k = 0; k < spots.length && !box; k++) {
+          var bx = spots[k][0] > 0 ? X + 9 : X - 9 - tw, by = Y + spots[k][1] * lh - lh / 2;
+          var cand = { x: bx, y: by, w: tw, h: lh, dy: spots[k][1] };
+          var free = cand.x >= 0 && cand.x + tw <= g.w && placed.every(function (q) {
+            return cand.x + cand.w < q.x || q.x + q.w < cand.x || cand.y + cand.h < q.y || q.y + q.h < cand.y;
+          });
+          if (free) box = cand;
+        }
+        if (!box) box = { x: X + 9, y: Y - lh / 2, w: tw, h: lh, dy: 0 };
+        placed.push(box);
+        ctx.globalAlpha = gm && !hot ? 0.35 : 1;
+        if (box.dy !== 0) {   // подпись сдвинута — тонкая ниточка к точке
+          ctx.strokeStyle = 'rgba(169,162,204,.4)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(box.x < X ? box.x + box.w : box.x, box.y + lh / 2); ctx.stroke();
+        }
+        ctx.fillStyle = hot ? C_TEXT : C_MUTED; ctx.textAlign = 'left';
+        ctx.fillText(w.w, box.x, box.y + lh / 2);
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    // ======================= Панель =======================
+    function el(id) { return document.getElementById(id); }
+
+    function renderVec() {
+      var focus = state.game ? state.game.w : state.sel, nb = neighbors(focus, 1)[0];
+      var a = WORDS[focus], b = WORDS[nb.j];
+      el('vecTitle').textContent = T('vecTitle', { w: a.w, n: b.w });
+      var html = '<span class="head"></span><span class="head">' + a.w + '</span><span class="head">' + b.w + '</span>';
+      FEAT.forEach(function (f, k) {
+        html += '<span>' + T('f_' + f) + '</span>' +
+          '<span class="track"><span class="fill a" style="width:' + (100 * a.v[k]) + '%"></span><span class="num">' + a.v[k] + '</span></span>' +
+          '<span class="track"><span class="fill b" style="width:' + (100 * b.v[k]) + '%"></span><span class="num">' + b.v[k] + '</span></span>';
+      });
+      el('vec').innerHTML = html;
+    }
+
+    function num(x) { var r = Math.round(x * 100) / 100; return (r < 0 ? '−' : '') + Math.abs(r); }
+    function renderAnaTable(resJ) {
+      var a = WORDS[state.ana[0]], b = WORDS[state.ana[1]], c = WORDS[state.ana[2]], r = WORDS[resJ];
+      var html = '<tr><th></th><th>' + a.w + '</th><th>− ' + b.w + '</th><th>+ ' + c.w + '</th><th>= ' + T('anaSum') + '</th><th>' + r.w + '</th></tr>';
+      FEAT.forEach(function (f, k) {
+        var v = a.v[k] - b.v[k] + c.v[k];
+        html += '<tr><td>' + T('f_' + f) + '</td><td>' + num(a.v[k]) + '</td><td>' + num(b.v[k]) + '</td><td>' + num(c.v[k]) +
+          '</td><td class="res' + (v < 0 ? ' neg' : '') + '">' + num(v) + '</td><td>' + num(r.v[k]) + '</td></tr>';
+      });
+      el('anaTable').innerHTML = html;
+    }
+
+    function updatePanel() {
+      el('word').value = state.sel;
+      el('nb').innerHTML = neighbors(state.sel, 5).map(function (n) {
+        return '<li><span>' + WORDS[n.j].w + '</span><span>' + pct(n.s) + '</span></li>';
+      }).join('');
+      ['anaA', 'anaB', 'anaC'].forEach(function (id, k) { el(id).value = state.ana[k]; });
+      var res = ranked(analogyVec(state.ana[0], state.ana[1], state.ana[2]), state.ana)[0];
+      el('anaResult').innerHTML = T('anaResult', { w: WORDS[res.j].w, p: pct(res.s) });
+      MLViz.setPressed(el('presets'), function (b) { return PRESETS[+b.dataset.i].map(idxOf).join() === state.ana.join(); });
+      el('mapNote').textContent = T('mapNote', { p: pct(PCA.ratio[0] + PCA.ratio[1]) });
+      el('exploreBox').hidden = !!state.game;
+      el('vecBox').hidden = !!state.game;
+      el('anaBox').hidden = !!state.game;
+      if (!state.game) renderAnaTable(res.j);   // в игре анкета соседа выдала бы ответ
+      if (!state.game) renderVec();
+    }
+
+    function refresh() { updatePanel(); draw(); }
+
+    // Списки слов и кнопки-примеры
+    ['word', 'anaA', 'anaB', 'anaC'].forEach(function (id) {
+      WORDS.forEach(function (w, j) {
+        var o = document.createElement('option'); o.value = j; o.textContent = w.w; el(id).appendChild(o);
+      });
+    });
+    PRESETS.forEach(function (p, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.i = i; b.textContent = T('preset' + (i + 1));
+      b.addEventListener('click', function () { state.ana = p.map(idxOf); refresh(); });
+      el('presets').appendChild(b);
+    });
+    CATS.forEach(function (c) {
+      el('catLegend').insertAdjacentHTML('beforeend', '<span><i style="background:var(--g-' + c + ')"></i>' + T('cat_' + c) + '</span>');
+    });
+
+    // ======================= Игра «Угадай соседа» (общий компонент MLViz.quiz) =======================
+    var rand = MLViz.rng(Date.now() % 100000);
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n, s: q.score }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('final', { s: q.score, n: q.n }); }
+      },
+      start: function (q) { q.data.used = []; },
+      round: function (q) {
+        var w;
+        do { w = Math.floor(rand() * WORDS.length); } while (q.data.used.indexOf(w) >= 0);
+        q.data.used.push(w);
+        var list = ranked(WORDS[w].v, [w]), best = list[0];
+        // Правильный ответ + три слова подальше (6-е место и дальше), чтобы не было почти-ничьих
+        var far = MLViz.shuffle(list.slice(5), rand).slice(0, 3).map(function (x) { return x.j; });
+        var opts = MLViz.shuffle([best.j].concat(far), rand);
+        state.game = { w: w, opts: opts };   // карте нужно: какое слово выделить и какие варианты подсветить
+        el('gameAsk').innerHTML = T('gameAsk', { w: WORDS[w].w });
+        var sim = function (k) { return cos(WORDS[w].v, WORDS[opts[k]].v); };
+        q.choices(el('choices'), opts.map(function (j) { return WORDS[j].w + '<small></small>'; }),
+          function (k) { return r9(sim(k)) === r9(best.s); },
+          function (k, ok) {
+            el('choices').querySelectorAll('button').forEach(function (b, i) { b.querySelector('small').textContent = pct(sim(i)); });
+            q.answer(ok ? 1 : 0, ok ? T('gameRight', { p: pct(best.s) }) : T('gameWrong', { w: WORDS[best.j].w, p: pct(best.s) }));
+          });
+        refresh();
+      },
+      onEnd: function () { el('gameAsk').innerHTML = ''; el('choices').innerHTML = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start();
+      else { state.game = null; refresh(); }
+    }
+
+    // ======================= События =======================
+    el('word').addEventListener('change', function (e) { state.sel = +e.target.value; refresh(); });
+    ['anaA', 'anaB', 'anaC'].forEach(function (id, k) {
+      el(id).addEventListener('change', function (e) { state.ana[k] = +e.target.value; refresh(); });
+    });
+    cv.addEventListener('pointerdown', function (e) {
+      if (state.game) return;
+      var m = MLViz.pointer(cv, e), best = -1, bd = 22 * 22;
+      WORDS.forEach(function (w, j) {
+        var dx = sx(w.xy[0]) - m.x, dy = sy(w.xy[1]) - m.y, d = dx * dx + dy * dy;
+        if (d < bd) { bd = d; best = j; }
+      });
+      if (best >= 0) { state.sel = best; refresh(); }
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

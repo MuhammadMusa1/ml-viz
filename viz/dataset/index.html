@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Из чего состоит датасет · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Только для этой страницы: таблица пингвинов, анкета и игра со столбцами */
+    .viz-main > .stage { min-width: 0; }
+    .tbl { border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; width: 100%; }
+    .tbl th { position: sticky; top: 0; background: var(--card-2); z-index: 1; padding: 0; text-align: right; }
+    .tbl th button { width: 100%; border: 0; border-radius: 0; background: transparent; padding: 8px 8px; text-align: inherit; font-size: 13px; line-height: 1.2; min-height: 44px; }
+    .tbl th button small { display: block; color: var(--muted); font-family: var(--mono); font-size: 11px; font-weight: 400; }
+    .tbl th:first-child, .tbl td:first-child { text-align: right; color: var(--muted); }
+    .tbl th.txt, .tbl td.txt { text-align: left; }
+    .tbl td { padding: 5px 8px; border-bottom: 1px solid var(--line-soft); text-align: right; white-space: nowrap; cursor: pointer; }
+    .tbl tr:hover td { background: rgba(238, 234, 251, .05); }
+    .tbl tr.sel td { background: rgba(238, 234, 251, .14); }
+    .tbl .colsel { box-shadow: inset 1px 0 0 var(--text), inset -1px 0 0 var(--text); }
+    .tbl th.colsel button { color: var(--text); font-weight: 700; }
+    .tbl .target { background: rgba(74, 222, 128, .08); }
+    .tbl th.target { background: #22343A; }
+    .tbl th.target button::after { content: " · y"; color: var(--c-val); }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+    .card-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+    .card-row span:first-child { color: var(--muted); }
+    .card-row.target span:last-child { color: var(--c-val); font-weight: 700; }
+    .gcols { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage" style="padding:12px">
+          <div class="tbl-wrap"><table class="tbl" id="tbl"></table></div>
+          <div class="legend" style="padding:10px 4px 0">
+            <span><i style="background:rgba(74,222,128,.35); border-radius:2px"></i><span data-i18n="legTarget"></span></span>
+            <span><i style="background:rgba(238,234,251,.3); border-radius:2px"></i><span data-i18n="legRow"></span></span>
+          </div>
+          <div class="hint" data-i18n="hint"></div>
+        </div>
+
+        <div class="stage viz-extra">
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--adelie)"></i>Adelie</span>
+            <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+            <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+            <span><b>▼</b> <span data-i18n="legMark"></span></span>
+          </div>
+          <div class="hint" id="cvHint"></div>
+        </div>
+
+        <div class="stage viz-extra" style="padding:14px">
+          <h3 class="sub" id="cardTitle"></h3>
+          <div id="card"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Игра «Найди ответ» -->
+        <div id="gamePanel" hidden style="border-bottom:1px solid var(--line); padding-bottom:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameAsk"></p>
+          <div class="gcols" id="gcols"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+
+        <div id="exploreBox">
+          <div>
+            <h3 data-i18n="targetLabel"></h3>
+            <div class="seg" id="targetBtns" style="margin-top:6px"></div>
+            <p class="note" data-i18n="targetNote"></p>
+          </div>
+
+          <div style="border-top:1px solid var(--line); padding-top:12px; margin-top:12px">
+            <h3 data-i18n="shapeTitle"></h3>
+            <div class="row" style="justify-content:space-between; align-items:flex-start; margin-top:8px">
+              <div><small style="font-weight:700" data-i18n="rowsTitle"></small><div class="big-number" id="nRows"></div></div>
+              <div><small style="font-weight:700" data-i18n="featTitle"></small><div class="big-number" id="nFeat"></div></div>
+            </div>
+            <p style="margin:10px 0 0" id="taskType"></p>
+            <p class="note" id="shapeNote"></p>
+          </div>
+
+          <div style="border-top:1px solid var(--line); padding-top:12px; margin-top:12px">
+            <h3 id="colTitle"></h3>
+            <div id="colStats" style="margin-top:6px"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 2 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 2 · Данные',
+        title: 'Из чего состоит датасет',
+        analogy: '<b>Датасет — это стопка анкет.</b> Учёные поймали 342 пингвина и на каждого заполнили анкету: на каком острове живёт, какой длины клюв, сколько весит. Каждая анкета — <b>строка</b> таблицы, каждый вопрос — <b>столбец</b>. А один столбец особенный: это <b>ответ</b>, который модель будет учиться угадывать по остальным.',
+        cvLabel: 'Гистограмма выбранного столбца: сколько пингвинов с каждым значением, цвет — вид',
+        hint: 'Нажми на строку — ниже появится анкета этого пингвина. Нажми на заголовок столбца — увидишь, какие в нём бывают значения.',
+        legTarget: 'столбец-ответ (y)',
+        legRow: 'выбранная строка — один пингвин',
+        legMark: 'значение выбранного пингвина',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: найди ответ',
+        col_species: 'Вид',
+        col_island: 'Остров',
+        col_bill_length_mm: 'Длина клюва, мм',
+        col_bill_depth_mm: 'Глубина клюва, мм',
+        col_flipper_length_mm: 'Длина крыла, мм',
+        col_body_mass_g: 'Масса, г',
+        idx: '№',
+        targetLabel: 'Что модель будет угадывать (ответ y)',
+        targetNote: 'Обычно угадывают вид пингвина. Но можно выбрать любой столбец — например, угадывать массу без весов.',
+        shapeTitle: 'Размер таблицы',
+        rowsTitle: 'Строк (пингвинов)',
+        featTitle: 'Признаков (X)',
+        taskClass: '<b>Классификация</b>: ответ — категория («{v}»). Модель выбирает из нескольких вариантов.',
+        taskReg: '<b>Регрессия</b>: ответ — число («{v}»). Модель угадывает число — например, 4200 г или 45 мм.',
+        shapeNote: 'X — таблица {r} × {f} (признаки), y — столбец из {r} ответов. Изначально пингвинов было 344, но у двух не хватает измерений — о пропусках урок 4.',
+        colTitle: 'Столбец «{c}»',
+        kindNum: 'Тип: <b>число</b>. Можно сравнивать «больше / меньше» и считать среднее.',
+        kindCat: 'Тип: <b>категория</b>. Значения — названия, среднее посчитать нельзя.',
+        role: 'Роль: {r}.',
+        roleX: 'признак (часть X)',
+        roleY: '<b style="color:var(--c-val)">ответ (y)</b>',
+        statNum: 'Минимум: <b>{min}</b> · максимум: <b>{max}</b> · среднее: <b>{mean}</b>',
+        statCat: 'Разных значений: <b>{n}</b>',
+        cardTitle: 'Анкета пингвина № {i}',
+        cvHint: 'Сколько пингвинов с каждым значением столбца «{c}». Цвет — вид пингвина.',
+        axisCount: 'Пингвинов',
+        gameStep: 'Задача {i} из {n} · счёт {s}',
+        gameAsk: '<b>{task}</b><br>Какой столбец — ответ, который модель будет угадывать?',
+        gameRight: '<b style="color:var(--green)">✓ Верно!</b> {kind}',
+        gameWrong: '<b style="color:var(--red)">✕ Ответ — «{col}».</b> {kind}',
+        gKindNum: 'Ответ — число, значит, это регрессия.',
+        gKindCat: 'Ответ — категория, значит, это классификация.',
+        next: 'Следующая задача',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        final: '<b>Итог: {s} из {n}.</b> В любой задаче ML сначала спрашивают: что мы угадываем (y) и по каким данным (X)?',
+        games: [
+          { task: 'Угадать цену квартиры', cols: ['Площадь, м²', 'Этаж', 'Район', 'Цена', 'Год постройки'], y: 3, num: true },
+          { task: 'Отличить спам от обычного письма', cols: ['Длина письма', 'Спам или нет', 'Число ссылок', 'Есть слово «выигрыш»'], y: 1, num: false },
+          { task: 'Предсказать, будет ли завтра дождь', cols: ['Температура', 'Влажность', 'Дождь завтра', 'Облачность', 'Ветер'], y: 2, num: false },
+          { task: 'Сколько баллов из 100 наберёшь на тесте', cols: ['Часы подготовки', 'Часы сна', 'Баллы', 'Пропуски уроков'], y: 2, num: true },
+          { task: 'Узнать массу пингвина без весов', cols: ['Вид', 'Масса, г', 'Длина крыла', 'Длина клюва'], y: 1, num: true },
+          { task: 'Понравится ли песня', cols: ['Темп', 'Жанр', 'Длина песни', 'Лайк'], y: 3, num: false },
+          { task: 'Есть ли кошка на фото', cols: ['Кошка на фото', 'Яркость', 'Пиксели картинки'], y: 0, num: false },
+          { task: 'Сколько будет стоить поездка на такси', cols: ['Расстояние', 'Время суток', 'Пробки', 'Цена поездки'], y: 3, num: true }
+        ],
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Строка — один объект.</b> Здесь объект — это пингвин. 342 строки = 342 пингвина. В других задачах строкой может быть квартира, письмо или песня.</li>' +
+          '<li><b>Столбец — признак.</b> Один вопрос анкеты, на который у каждого пингвина есть ответ: длина клюва, остров, масса.</li>' +
+          '<li><b>Признаки бывают двух типов.</b> <b>Числа</b> (длина, масса) можно сравнивать и усреднять. <b>Категории</b> (остров, вид) — это названия: «среднего острова» не бывает.</li>' +
+          '<li><b>Ответ (y) — то, что угадываем.</b> Все остальные столбцы — признаки <b>X</b>, по которым угадываем. Модель смотрит на X и учится называть y.</li>' +
+          '<li><b>Тип задачи зависит от ответа.</b> Ответ — категория → <b>классификация</b> (какой вид?). Ответ — число → <b>регрессия</b> (сколько весит?). Об этих задачах — уроки 5 и 8.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Нажми на заголовок «Остров». Сколько разных островов? На каком больше всего пингвинов?</li>' +
+          '<li>Нажми на «Масса, г». Какие пингвины самые тяжёлые — какого цвета столбики справа?</li>' +
+          '<li>Нажми на «Длина клюва, мм». Какой самый длинный клюв (максимум)? Какого цвета самые правые столбики — какого вида эти пингвины?</li>' +
+          '<li>Сделай ответом «Масса, г». Как изменился тип задачи и число признаков?</li>' +
+          '<li>Сыграй «Игра: найди ответ». Придумай свою задачу: что было бы строкой, признаками и ответом?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: код',
+        mathBody:
+          '<p>В Python таблицу хранят в <b>DataFrame</b> библиотеки pandas:</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'print(df.shape)&nbsp;&nbsp;# (342, 7): строки и столбцы<br>' +
+          'print(df.head())&nbsp;&nbsp;# первые 5 анкет<br>' +
+          'print(df[\'species\'].value_counts())&nbsp;&nbsp;# сколько каких видов<br>' +
+          'print(df.describe())&nbsp;&nbsp;# минимум, максимум, среднее для чисел<br><br>' +
+          'X = df.drop(columns=[\'species\', \'year\'])&nbsp;&nbsp;# признаки<br>' +
+          'y = df[\'species\']&nbsp;&nbsp;# ответ<br>' +
+          'print(X.shape, y.shape)&nbsp;&nbsp;# (342, 5) (342,)</code></p>' +
+          '<p>В таблице есть ещё столбец <code>year</code> — год, когда пингвина измерили. Для угадывания вида он не нужен, поэтому на странице его нет. А строки в pandas нумеруются с нуля — как в таблице выше.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins: 344 пингвина, после удаления столбца sex и строк с пропусками — 342 (<code>load_penguins().drop(columns=[\'sex\']).dropna()</code>), как во всём курсе. Столбец year не показан. Количество видов и островов, минимум, максимум и среднее совпадают с <code>tools/check_dataset.py</code> (pandas).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: каждый ученик заполняет анкету о себе на доске (рост, класс, любимый предмет, кошка или собака) — получается датасет класса. Спрашиваем: что здесь строка, что столбец, что можно было бы угадывать? Потом смотрим таблицу пингвинов. В конце игра «Найди ответ».</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему остров — категория, хотя его можно закодировать числом? Что будет, если в анкете не хватает ответа? Чем отличается задача «какой вид» от задачи «сколько весит»?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    // Столбцы как в pandas; num — числовой ли столбец, i — номер в строке penguins.js
+    var COLS = [
+      { key: 'species', i: 0, num: false },
+      { key: 'island', i: 1, num: false },
+      { key: 'bill_length_mm', i: 2, num: true },
+      { key: 'bill_depth_mm', i: 3, num: true },
+      { key: 'flipper_length_mm', i: 4, num: true },
+      { key: 'body_mass_g', i: 5, num: true }
+    ];
+    var ROWS = PENGUINS.rows;   // порядок строк — как в df после dropna и reset_index
+
+    function fmtNum(v) { return String(Math.round(v * 10) / 10); }
+    function stats(col) {
+      var vals = ROWS.map(function (r) { return r[col.i]; });
+      if (col.num) {
+        var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+        var mean = vals.reduce(function (s, v) { return s + v; }, 0) / vals.length;
+        return { min: mn, max: mx, mean: mean };
+      }
+      var cnt = {};
+      vals.forEach(function (v) { cnt[v] = (cnt[v] || 0) + 1; });
+      return { counts: cnt };
+    }
+
+    // ======================= Состояние =======================
+    var state = { target: 'species', col: 'species', row: 0, mode: 'explore', game: null };
+    function colOf(key) { return COLS.filter(function (c) { return c.key === key; })[0]; }
+    function el(id) { return document.getElementById(id); }
+
+    // ======================= Таблица =======================
+    function buildTable() {
+      var head = '<thead><tr><th><button type="button" disabled>' + T('idx') + '</button></th>' + COLS.map(function (c) {
+        return '<th data-col="' + c.key + '" class="' + (c.num ? '' : 'txt') + '"><button type="button" data-col="' + c.key + '">' +
+          T('col_' + c.key) + '<small>' + c.key + '</small></button></th>';
+      }).join('') + '</tr></thead>';
+      var body = '<tbody>' + ROWS.map(function (r, i) {
+        return '<tr data-row="' + i + '"><td>' + i + '</td>' + COLS.map(function (c) {
+          var v = r[c.i];
+          var cell = c.key === 'species' ? '<span class="dot" style="background:' + COLORS[SPECIES.indexOf(v)] + '"></span>' + v : (c.num ? fmtNum(v) : v);
+          return '<td data-col="' + c.key + '" class="' + (c.num ? '' : 'txt') + '">' + cell + '</td>';
+        }).join('') + '</tr>';
+      }).join('') + '</tbody>';
+      el('tbl').innerHTML = head + body;
+    }
+    function paintTable() {
+      el('tbl').querySelectorAll('[data-col]').forEach(function (cell) {
+        if (cell.tagName === 'BUTTON') return;
+        cell.classList.toggle('target', cell.dataset.col === state.target);
+        cell.classList.toggle('colsel', cell.dataset.col === state.col);
+      });
+      el('tbl').querySelectorAll('tr[data-row]').forEach(function (tr) { tr.classList.toggle('sel', +tr.dataset.row === state.row); });
+      el('tbl').querySelectorAll('th button[data-col]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.col === state.col); });
+    }
+
+    // ======================= Гистограмма выбранного столбца =======================
+    var cv = el('cv'), g;
+    function resize() { g = MLViz.fitCanvas(cv, cv.parentElement.clientWidth < 600 ? 0.75 : 0.45); draw(); }
+
+    function draw() {
+      var col = colOf(state.col), ctx = g.ctx;
+      ctx.clearRect(0, 0, g.w, g.h);
+      var bins, labels, edges = null;
+      if (col.num) {
+        var st = stats(col), nb = 12, w = (st.max - st.min) / nb;
+        edges = []; for (var k = 0; k <= nb; k++) edges.push(st.min + k * w);
+        bins = []; for (k = 0; k < nb; k++) bins.push([0, 0, 0]);
+        ROWS.forEach(function (r) {
+          var b = Math.min(nb - 1, Math.floor((r[col.i] - st.min) / w));
+          bins[b][SPECIES.indexOf(r[0])]++;
+        });
+      } else {
+        labels = Object.keys(stats(col).counts).sort();
+        bins = labels.map(function () { return [0, 0, 0]; });
+        ROWS.forEach(function (r) { bins[labels.indexOf(r[col.i])][SPECIES.indexOf(r[0])]++; });
+      }
+      var maxH = Math.max.apply(null, bins.map(function (b) { return b[0] + b[1] + b[2]; }));
+      var yMax = Math.ceil(maxH / 10) * 10 + 5;
+      var PAD = MLViz.plotPad(g.w, 3), n = bins.length;
+      var sx = MLViz.scale(0, n, PAD.l, g.w - PAD.r), sy = MLViz.scale(0, yMax, g.h - PAD.b, PAD.t);
+      var ticks = col.num ? [] : [];
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy, xGrid: false,
+        xTicks: col.num ? [0, n / 2, n] : labels.map(function (_, i) { return i + 0.5; }),
+        xFmt: col.num ? function (x) { return fmtNum(edges[0] + (edges[n] - edges[0]) * x / n); } : function (x) { return labels[Math.floor(x)]; },
+        yTicks: MLViz.range(0, yMax, yMax > 60 ? 20 : 10),
+        xLabel: T('col_' + col.key), yLabel: T('axisCount')
+      });
+      var gap = col.num ? 1 : (sx(1) - sx(0)) * 0.25;
+      bins.forEach(function (b, i) {
+        var y0 = 0;
+        b.forEach(function (cnt, s) {
+          if (!cnt) return;
+          ctx.fillStyle = COLORS[s];
+          ctx.fillRect(sx(i) + gap, sy(y0 + cnt), sx(i + 1) - sx(i) - 2 * gap, sy(y0) - sy(y0 + cnt));
+          y0 += cnt;
+        });
+      });
+      // Где выбранный пингвин
+      var r = ROWS[state.row], pos;
+      if (col.num) pos = (r[col.i] - edges[0]) / (edges[n] - edges[0]) * n;
+      else pos = labels.indexOf(r[col.i]) + 0.5;
+      var X = sx(Math.min(n, Math.max(0, pos)));
+      ctx.fillStyle = MLViz.cssVar('--text'); ctx.beginPath();
+      ctx.moveTo(X, PAD.t + 12); ctx.lineTo(X - 8, PAD.t); ctx.lineTo(X + 8, PAD.t); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(238,234,251,.5)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(X, PAD.t + 12); ctx.lineTo(X, g.h - PAD.b); ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // ======================= Панель и анкета =======================
+    function updatePanel() {
+      MLViz.setPressed(el('targetBtns'), function (b) { return b.dataset.col === state.target; });
+      var tc = colOf(state.target), nf = COLS.length - 1;
+      el('nRows').textContent = ROWS.length;
+      el('nFeat').textContent = nf;
+      el('taskType').innerHTML = T(tc.num ? 'taskReg' : 'taskClass', { v: T('col_' + tc.key) });
+      el('shapeNote').textContent = T('shapeNote', { r: ROWS.length, f: nf });
+
+      var col = colOf(state.col), st = stats(col);
+      el('colTitle').textContent = T('colTitle', { c: T('col_' + col.key) });
+      var html = '<p style="margin:0">' + T(col.num ? 'kindNum' : 'kindCat') + '</p><p style="margin:4px 0 0">' +
+        T('role', { r: col.key === state.target ? T('roleY') : T('roleX') }) + '</p>';
+      if (col.num) html += '<p style="margin:6px 0 0">' + T('statNum', { min: fmtNum(st.min), max: fmtNum(st.max), mean: st.mean.toFixed(1) }) + '</p>';
+      else {
+        var keys = Object.keys(st.counts).sort();
+        html += '<p style="margin:6px 0 0">' + T('statCat', { n: keys.length }) + '</p>' + keys.map(function (k) {
+          var dot = col.key === 'species' ? '<span class="dot" style="background:' + COLORS[SPECIES.indexOf(k)] + '"></span>' : '';
+          return '<div class="card-row"><span>' + dot + k + '</span><span>' + st.counts[k] + '</span></div>';
+        }).join('');
+      }
+      el('colStats').innerHTML = html;
+      el('cvHint').textContent = T('cvHint', { c: T('col_' + col.key) });
+
+      var r = ROWS[state.row];
+      el('cardTitle').textContent = T('cardTitle', { i: state.row });
+      el('card').innerHTML = COLS.map(function (c) {
+        return '<div class="card-row' + (c.key === state.target ? ' target' : '') + '"><span>' + T('col_' + c.key) + '</span><span>' +
+          (c.num ? fmtNum(r[c.i]) : r[c.i]) + (c.key === state.target ? ' ← y' : '') + '</span></div>';
+      }).join('');
+      el('exploreBox').hidden = !!state.game;
+    }
+    function refresh() { updatePanel(); paintTable(); draw(); }
+
+    COLS.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.col = c.key; b.textContent = T('col_' + c.key);
+      b.addEventListener('click', function () { state.target = c.key; state.col = c.key; refresh(); });
+      el('targetBtns').appendChild(b);
+    });
+
+    // ======================= Игра «Найди ответ» (общий компонент MLViz.quiz) =======================
+    var GAMES = T('games');
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: GAMES.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n, s: q.score }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('final', { s: q.score, n: q.n }); }
+      },
+      start: function (q) { q.data.order = MLViz.shuffle(GAMES.map(function (_, i) { return i; }), MLViz.rng(Date.now() % 100000)); },
+      round: function (q) {
+        var g = GAMES[q.data.order[q.i]];
+        el('gameAsk').innerHTML = T('gameAsk', { task: g.task });
+        q.choices(el('gcols'), g.cols, function (j) { return j === g.y; }, function (j, ok) {
+          var kind = T(g.num ? 'gKindNum' : 'gKindCat');
+          q.answer(ok ? 1 : 0, ok ? T('gameRight', { kind: kind }) : T('gameWrong', { col: g.cols[g.y], kind: kind }));
+        });
+      },
+      onEnd: function () { el('gameAsk').innerHTML = ''; el('gcols').innerHTML = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('gamePanel').hidden = m !== 'game';
+      if (m === 'game') { state.game = true; quiz.start(); }
+      else state.game = null;
+      updatePanel();
+    }
+
+    // ======================= События =======================
+    buildTable();
+    el('tbl').addEventListener('click', function (e) {
+      var b = e.target.closest('th button[data-col]');
+      if (b) { state.col = b.dataset.col; refresh(); return; }
+      var tr = e.target.closest('tr[data-row]');
+      if (tr) { state.row = +tr.dataset.row; var td = e.target.closest('td[data-col]'); if (td) state.col = td.dataset.col; refresh(); }
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+    refresh();
+  })();
+  </script>
+</body>
+</html>

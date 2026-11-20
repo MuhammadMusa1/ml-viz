@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Токенизатор: текст на кусочки · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Только для этой страницы: поле текста, «фишки» токенов, список слияний */
+    .tok-input { width: 100%; min-height: 76px; resize: vertical; font: inherit; font-size: 18px; color: var(--text);
+                 background: rgba(23, 19, 46, .7); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+    .tok-input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px 3px; margin-top: 14px; min-height: 48px; }
+    .chip { display: inline-flex; flex-direction: column; align-items: center; padding: 5px 7px; border-radius: 7px;
+            font-size: 20px; line-height: 1.2; border: 1px solid rgba(238, 234, 251, .25); white-space: pre; }
+    .chip.a { background: rgba(238, 234, 251, .10); }
+    .chip.b { background: rgba(238, 234, 251, .24); }
+    .chip.new { border-style: dashed; border-color: var(--c-odd); }
+    .chip.hl { box-shadow: 0 0 0 2px var(--c-val); }
+    .chip .sp { color: var(--muted); }
+    .chip small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .merges { max-height: 380px; overflow: auto; margin-top: 8px; border-top: 1px solid var(--line-soft); }
+    .merges table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .merges td { padding: 5px 8px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+    .merges td.n { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+    .merges tr.last td { background: rgba(74, 222, 128, .12); }
+    .merges tr.next td { color: var(--muted); font-style: italic; }
+    .pair { font-weight: 700; }
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .choices button { font-size: 18px; font-weight: 700; display: flex; flex-direction: column; align-items: center; }
+    .choices button small { font-size: 13px; font-weight: 400; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage" style="padding:14px">
+          <label for="text" style="font-weight:700" data-i18n="textLabel"></label>
+          <textarea id="text" class="tok-input" maxlength="300" style="margin-top:6px"></textarea>
+          <div class="chips" id="chips" aria-live="polite"></div>
+          <div class="legend" style="padding:10px 0 0">
+            <span><b style="color:var(--muted)">▁</b>&nbsp;<span data-i18n="legSpace"></span></span>
+            <span><i style="background:rgba(238,234,251,.24); border-radius:3px"></i><span data-i18n="legToken"></span></span>
+            <span><i style="background:transparent; border:1.5px dashed var(--c-odd); border-radius:3px"></i><span data-i18n="legNew"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra" style="padding:14px">
+          <h3 class="sub" data-i18n="mergesTitle"></h3>
+          <p class="note" data-i18n="mergesNote"></p>
+          <div class="merges" id="merges"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Игра «Угадай слияние» -->
+        <div id="gamePanel" hidden style="border-bottom:1px solid var(--line); padding-bottom:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices" id="choices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+
+        <div id="mergeBox">
+          <h3><span data-i18n="mLabel"></span>: <span id="mVal"></span></h3>
+          <input type="range" id="m" min="0" step="1" value="20">
+          <div class="row" style="margin-top:6px">
+            <button type="button" id="minusBtn" data-i18n="minusBtn"></button>
+            <button type="button" id="plusBtn" data-i18n="plusBtn"></button>
+          </div>
+          <p class="note" id="mNote"></p>
+        </div>
+
+        <label class="toggle"><input type="checkbox" id="ids"> <span data-i18n="idsLabel"></span></label>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <div class="row" style="justify-content:space-between; align-items:flex-start">
+            <div>
+              <small style="font-weight:700" data-i18n="tokTitle"></small>
+              <div class="big-number" id="nTok"></div>
+            </div>
+            <div>
+              <small style="font-weight:700" data-i18n="charTitle"></small>
+              <div class="big-number" id="nChar"></div>
+            </div>
+          </div>
+          <p class="note" id="ratio" style="margin-top:8px"></p>
+          <p class="note" id="vocab"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="corpusTitle"></summary>
+      <div><p id="corpusText"></p></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 17 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/tok_corpus.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 17 · Как работают LLM',
+        title: 'Токенизатор: как текст режется на кусочки',
+        analogy: '<b>Языковая модель читает не буквы и не слова, а кусочки — токены.</b> Это как конструктор: из маленьких деталей можно собрать любое слово, а частые слова удобно держать уже собранными. Токенизатор сам решает, какие кусочки нужны: он ищет в текстах, какие буквы чаще всего стоят рядом, и склеивает их.',
+        textLabel: 'Напиши любой текст',
+        defaultText: 'Пингвины учатся плавать, а модели учатся на примерах.',
+        legSpace: '— пробел перед словом',
+        legToken: 'один токен',
+        legNew: 'символ, которого не было в учебном тексте',
+        hintExplore: 'Двигай ползунок слияний и смотри, как буквы склеиваются в кусочки побольше. Нажми на строку в списке слияний — эти токены подсветятся.',
+        hintGame: 'Токенизатор учится. Какую пару соседей он склеит следующей? Подсказка: ту, что чаще всего встречается в учебном тексте.',
+        mergesTitle: 'Чему научился токенизатор',
+        mergesNote: 'Каждое слияние склеивает самую частую пару соседей в учебном тексте. Число справа — сколько раз пара встретилась.',
+        mergeRow: '{a} + {b} → {ab}',
+        nextRow: 'следующее: {a} + {b}',
+        mLabel: 'Сколько слияний выучено',
+        minusBtn: '◀ Назад',
+        plusBtn: 'Ещё слияние ▶',
+        mNote0: '0 слияний: каждая буква — отдельный токен.',
+        mNoteN: 'Последнее слияние: «{a}» + «{b}» → «{ab}» (встретилось {n} {w}).',
+        mNoteEnd: 'Дальше склеивать нечего: все оставшиеся пары встречаются по одному разу.',
+        idsLabel: 'Показать номера токенов',
+        tokTitle: 'Токенов',
+        charTitle: 'Символов',
+        ratio: 'В среднем {r} символа на токен.',
+        vocab: 'Словарь: {b} начальных символов + {m} слияний = {v} токенов. У GPT-4 словарь около 100 000 токенов, у новых моделей — около 200 000, и учится он на огромном количестве текстов.',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: угадай слияние',
+        gameAsk: 'Какую пару токенизатор склеит следующей? Выбери ту, что чаще всего встречается в учебном тексте.',
+        gameStep: 'Раунд {i} из {n} · счёт {s}',
+        times: '{n} {w}',
+        timesForms: 'раз|раза|раз',
+        gameRight: '<b style="color:var(--green)">✓ Верно!</b> «{ab}» встречается чаще всех — {n} {w}.',
+        gameTie: '<b style="color:var(--green)">✓ Верно — эта пара тоже встречается {n} {w}!</b> При равенстве токенизатор склеивает пару раньше в таблице символов (почти по алфавиту): «{ab}».',
+        gameWrong: '<b style="color:var(--red)">✕ Чаще всех — «{ab}»: {n} {w}.</b>',
+        next: 'Склеить и дальше',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        final: '<b>Итог: {s} из {n}.</b> Ты прошёл первые {n} шагов обучения токенизатора. Настоящий токенизатор GPT делает то же самое десятки тысяч раз на огромных текстах.',
+        corpusTitle: 'Учебный текст токенизатора',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Модель понимает только числа.</b> Поэтому текст сначала режут на кусочки (токены), и каждый кусочек получает номер. Модель видит последовательность номеров.</li>' +
+          '<li><b>Начинаем с букв.</b> Сначала каждая буква — отдельный токен, а перед каждым словом стоит значок пробела «▁». Так ничего не теряется: любое слово можно записать буквами.</li>' +
+          '<li><b>Склеиваем самую частую пару.</b> Токенизатор смотрит на учебный текст и считает, какие два соседа встречаются чаще всего. Например, «и» + «н». Их склеивают в новый токен «ин». Это одно <b>слияние</b>.</li>' +
+          '<li><b>Повторяем.</b> Новые токены тоже склеиваются: «в» + «ин», потом «г» + «вин»… и вот уже «▁пингвин» — один токен. Частые слова становятся одним токеном, редкие режутся на несколько кусочков. Алгоритм называется <b>BPE</b> (<i>Byte Pair Encoding</i>).</li>' +
+          '<li><b>Зачем это модели.</b> Букв мало, но текст из букв очень длинный. Слов слишком много, и новое слово модель бы не поняла. Кусочки — середина: словарь не огромный, текст короче, а любое новое слово собирается из частей.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь 0 слияний. Сколько токенов в твоём тексте? Сравни с числом символов.</li>' +
+          '<li>Нажимай «Ещё слияние ▶». На каком слиянии «пингвин» стал одним токеном?</li>' +
+          '<li>Напиши слово, которого нет в учебном тексте, например «жираф». На сколько кусочков оно режется? Почему?</li>' +
+          '<li>Напиши текст по-английски или со смайликом. Что случилось с буквами, которых не было в учебном тексте?</li>' +
+          '<li>Сыграй «Игра: угадай слияние». Почему первыми склеиваются пары с пробелом «▁» и частые слоги?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: алгоритм и код',
+        mathBody:
+          '<p>Обучение BPE: <code>пока есть пара, которая встречается ≥ 2 раз: найти самую частую пару (a, b) → заменить её везде на ab → записать слияние</code>. При равенстве берём пару раньше в таблице символов (почти как по алфавиту).</p>' +
+          '<p>Разбиение нового текста: слово записываем буквами и применяем выученные слияния в том же порядке, в каком они выучены.</p>' +
+          '<p>Настоящие токенизаторы GPT начинают не с букв, а с байтов (кусочков по 8 бит), поэтому у них не бывает «неизвестных» символов. Русская буква — это 2 байта, а русских текстов при обучении было меньше, поэтому готовых русских кусочков в словаре мало и русский текст обычно режется на больше токенов, чем английский.</p>' +
+          '<p>Посмотреть настоящий токенизатор GPT в Colab:</p>' +
+          '<p><code>!pip install tiktoken<br>' +
+          'import tiktoken<br><br>' +
+          'enc = tiktoken.get_encoding(\'cl100k_base\')&nbsp;&nbsp;# словарь GPT-4<br>' +
+          'ids = enc.encode(\'Пингвины учатся плавать\')<br>' +
+          'print(len(ids), ids)<br>' +
+          'print([enc.decode([i]) for i in ids])&nbsp;&nbsp;# сами кусочки</code></p>' +
+          '<p>Код BPE, который делает ровно то же, что эта страница, лежит в <code>tools/check_tokenizer.py</code>: около 50 строк на чистом Python.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Учебный текст — около 1000 символов о пингвинах и моделях (<code>data/tok_corpus.js</code>, его можно заменить своим). Токенизатор — BPE на буквах в нижнем регистре, со знаком «▁» перед словом, как в SentencePiece. Обучение идёт прямо в браузере; список слияний и разбиение примеров совпадают с <code>tools/check_tokenizer.py</code>. Всего 133 слияния: дальше все пары встречаются по одному разу.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: пишем на доске фразу и вместе считаем, какие две буквы чаще всего стоят рядом, — склеиваем, повторяем. Потом ученики пишут свои фразы и смотрят, где токенов больше. В конце игра «Угадай слияние».</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему «пингвин» стал одним токеном, а «жираф» нет? Почему ChatGPT иногда плохо считает буквы в слове? (Он видит не буквы, а токены.) Почему одинаковый текст на русском стоит больше токенов, чем на английском?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('m').setAttribute('aria-label', T('mLabel'));
+
+    // ======================= BPE (настоящий расчёт) =======================
+    var SPACE = '▁', MAX_MERGES = 150;
+    var WORD = /[a-zа-яё0-9]+|[^\sa-zа-яё0-9]/g, ALNUM = /[a-zа-яё0-9]/;
+
+    // Слова и знаки: слово получает «▁» спереди, знак препинания — один символ
+    function pieces(text) {
+      var ws = text.toLowerCase().match(WORD) || [];
+      return ws.map(function (w) { return ALNUM.test(w[0]) ? [SPACE].concat(Array.from(w)) : [w]; });
+    }
+    function mergeWord(sym, a, b) {
+      var out = [];
+      for (var i = 0; i < sym.length; i++) {
+        if (i + 1 < sym.length && sym[i] === a && sym[i + 1] === b) { out.push(a + b); i++; }
+        else out.push(sym[i]);
+      }
+      return out;
+    }
+    // Пары соседей с числом повторов, от частых к редким (при равенстве — по алфавиту)
+    function countPairs(words) {
+      var cnt = new Map();
+      words.forEach(function (w) {
+        for (var i = 0; i + 1 < w.sym.length; i++) {
+          var key = w.sym[i] + '\u0000' + w.sym[i + 1];
+          cnt.set(key, (cnt.get(key) || 0) + w.n);
+        }
+      });
+      var list = [];
+      cnt.forEach(function (n, key) { var p = key.split('\u0000'); list.push({ a: p[0], b: p[1], n: n }); });
+      list.sort(function (x, y) {
+        if (x.n !== y.n) return y.n - x.n;
+        if (x.a !== y.a) return x.a < y.a ? -1 : 1;
+        return x.b < y.b ? -1 : x.b > y.b ? 1 : 0;
+      });
+      return list;
+    }
+    function train(text) {
+      var freq = new Map();
+      pieces(text).forEach(function (p) { var k = p.join('\u0001'); freq.set(k, (freq.get(k) || 0) + 1); });
+      var words = [];
+      freq.forEach(function (n, k) { words.push({ sym: k.split('\u0001'), n: n }); });
+      var merges = [];
+      while (merges.length < MAX_MERGES) {
+        var pairs = countPairs(words);
+        if (!pairs.length || pairs[0].n < 2) break;
+        var best = pairs[0];
+        merges.push({ a: best.a, b: best.b, n: best.n, top: pairs.slice(0, 8) });   // top — для игры
+        words.forEach(function (w) { w.sym = mergeWord(w.sym, best.a, best.b); });
+      }
+      return merges;
+    }
+    function encode(text, limit) {
+      var rank = new Map();
+      for (var i = 0; i < limit; i++) rank.set(MERGES[i].a + '\u0000' + MERGES[i].b, i);
+      var tokens = [];
+      pieces(text).forEach(function (sym) {
+        while (sym.length > 1) {
+          var best = -1, bi = -1;
+          for (var j = 0; j + 1 < sym.length; j++) {
+            var r = rank.get(sym[j] + '\u0000' + sym[j + 1]);
+            if (r !== undefined && (best < 0 || r < best)) { best = r; bi = j; }
+          }
+          if (bi < 0) break;
+          sym = mergeWord(sym, sym[bi], sym[bi + 1]);
+        }
+        tokens = tokens.concat(sym);
+      });
+      return tokens;
+    }
+
+    var CORPUS = TOK_CORPUS.text;
+    var MERGES = train(CORPUS);
+    // Номера токенов: сначала начальные символы по алфавиту, потом слияния по порядку
+    var BASE = Array.from(new Set([].concat.apply([], pieces(CORPUS)))).sort(function (x, y) { return x < y ? -1 : x > y ? 1 : 0; });
+    var ID = new Map();
+    BASE.forEach(function (s, i) { ID.set(s, i); });
+    MERGES.forEach(function (m, i) { if (!ID.has(m.a + m.b)) ID.set(m.a + m.b, BASE.length + i); });
+
+    // ======================= Состояние =======================
+    var state = { m: 20, ids: false, hl: null, mode: 'explore', game: null };
+    function el(id) { return document.getElementById(id); }
+    // «21 раз», «24 раза», «15 раз»
+    function timesWord(n) {
+      var f = T('timesForms').split('|'), a = n % 10, b = n % 100;
+      return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
+    }
+    function times(n) { return T('times', { n: n, w: timesWord(n) }); }
+    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function show(tok) { return esc(tok).replace(SPACE, '<span class="sp">' + SPACE + '</span>'); }
+
+    // ======================= Отрисовка =======================
+    function renderChips() {
+      var toks = encode(el('text').value, state.m);
+      var html = toks.map(function (t, i) {
+        var known = ID.has(t);
+        var cls = 'chip ' + (i % 2 ? 'b' : 'a') + (known ? '' : ' new') + (state.hl && t === state.hl ? ' hl' : '');
+        return '<span class="' + cls + '">' + show(t) + (state.ids ? '<small>' + (known ? ID.get(t) : '?') + '</small>' : '') + '</span>';
+      }).join('');
+      el('chips').innerHTML = html;
+      var nChar = Array.from(el('text').value).length;
+      el('nTok').textContent = toks.length;
+      el('nChar').textContent = nChar;
+      el('ratio').textContent = toks.length ? T('ratio', { r: (nChar / toks.length).toFixed(1) }) : '';
+      el('vocab').textContent = T('vocab', { b: BASE.length, m: state.m, v: BASE.length + state.m });
+    }
+
+    function renderMerges() {
+      var rows = [];
+      for (var i = 0; i < state.m; i++) {
+        var mg = MERGES[i];
+        rows.push('<tr data-tok="' + esc(mg.a + mg.b) + '" class="' + (i === state.m - 1 ? 'last' : '') + '" style="cursor:pointer"><td class="n">' + (i + 1) + '</td><td><span class="pair">' +
+          T('mergeRow', { a: show(mg.a), b: show(mg.b), ab: show(mg.a + mg.b) }) + '</span></td><td class="n">' + times(mg.n) + '</td></tr>');
+      }
+      if (state.m < MERGES.length && !state.game) {
+        var nx = MERGES[state.m];
+        rows.push('<tr class="next"><td class="n">' + (state.m + 1) + '</td><td>' + T('nextRow', { a: show(nx.a), b: show(nx.b) }) + '</td><td class="n">' + times(nx.n) + '</td></tr>');
+      }
+      el('merges').innerHTML = '<table><tbody>' + rows.join('') + '</tbody></table>';
+      var box = el('merges'); box.scrollTop = box.scrollHeight;
+    }
+
+    function updatePanel() {
+      el('m').max = MERGES.length;
+      el('m').value = state.m;
+      el('mVal').textContent = state.m + ' / ' + MERGES.length;
+      var last = MERGES[state.m - 1];
+      el('mNote').textContent = state.m === 0 ? T('mNote0')
+        : state.m === MERGES.length ? T('mNoteEnd')
+        : T('mNoteN', { a: last.a, b: last.b, ab: last.a + last.b, n: last.n, w: timesWord(last.n) });
+      el('minusBtn').disabled = state.m === 0;
+      el('plusBtn').disabled = state.m >= MERGES.length;
+      el('mergeBox').hidden = !!state.game;
+    }
+
+    function refresh() { updatePanel(); renderChips(); renderMerges(); }
+
+    // ======================= Игра «Угадай слияние» (общий компонент MLViz.quiz) =======================
+    var rand = MLViz.rng(Date.now() % 100000);
+    // Перед следующим раундом и в конце токенизатор выучивает слияние, о котором спрашивали
+    function learnMerge() { state.m++; state.hl = MERGES[state.m - 1].a + MERGES[state.m - 1].b; }
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n, s: q.score }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('final', { s: q.score, n: q.n }); }
+      },
+      start: function () { state.m = 0; state.hl = null; },
+      round: function (q) {
+        if (q.i > 0) learnMerge();
+        var best = MERGES[state.m];
+        // Правильный ответ + три других частых пары, перемешанные
+        var opts = MLViz.shuffle([best.top[0]].concat(MLViz.shuffle(best.top.slice(1), rand).slice(0, 3)), rand);
+        var labels = opts.map(function (o) { return show(o.a) + ' + ' + show(o.b) + '<small></small>'; });
+        // Пара с тем же числом повторов — тоже верный ответ
+        q.choices(el('choices'), labels, function (j) { return opts[j].n === best.n; }, function (j, ok) {
+          var exact = opts[j].a === best.a && opts[j].b === best.b;
+          el('choices').querySelectorAll('button').forEach(function (b, k) { b.querySelector('small').textContent = times(opts[k].n); });
+          q.answer(ok ? 1 : 0, T(ok ? (exact ? 'gameRight' : 'gameTie') : 'gameWrong', { ab: best.a + best.b, n: best.n, w: timesWord(best.n) }));
+        });
+        refresh();
+      },
+      onEnd: function () { learnMerge(); el('choices').innerHTML = ''; refresh(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      state.hl = null;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') {
+        if (!state.game) state.saved = state.m;   // запомнить, где ученик был в «Исследуй»
+        state.game = true;
+        quiz.start();
+      } else {
+        if (state.game && state.saved !== undefined) state.m = state.saved;   // вернуть как было
+        state.game = null;
+        refresh();
+      }
+    }
+
+    // ======================= События =======================
+    function setM(v) { state.m = Math.max(0, Math.min(MERGES.length, v)); state.hl = null; refresh(); }
+    el('m').addEventListener('input', function (e) { setM(+e.target.value); });
+    el('minusBtn').addEventListener('click', function () { setM(state.m - 1); });
+    el('plusBtn').addEventListener('click', function () {
+      setM(state.m + 1);
+      state.hl = MERGES[state.m - 1].a + MERGES[state.m - 1].b; renderChips();
+    });
+    el('text').addEventListener('input', renderChips);
+    el('ids').addEventListener('change', function (e) { state.ids = e.target.checked; renderChips(); });
+    el('merges').addEventListener('click', function (e) {
+      var tr = e.target.closest('tr[data-tok]');
+      if (!tr) return;
+      var t = MERGES.map(function (m) { return m.a + m.b; }).filter(function (s) { return esc(s) === tr.dataset.tok || s === tr.dataset.tok; })[0];
+      state.hl = state.hl === t ? null : t; renderChips();
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    el('text').value = T('defaultText');
+    el('corpusText').textContent = CORPUS;
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

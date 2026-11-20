@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Attention: кто на кого смотрит · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Только для этой страницы: таблица расчёта и кнопки слов в игре */
+    .atab { border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; width: 100%; }
+    .atab th, .atab td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+    .atab th:first-child, .atab td:first-child { text-align: left; }
+    .atab th { font-size: 13px; color: var(--muted); }
+    .atab td.w { font-weight: 700; }
+    .atab tr.top td { background: rgba(238, 234, 251, .08); }
+    .atab .bar { display: inline-block; height: 10px; background: var(--text); border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+    .choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra">
+          <canvas id="heat"></canvas>
+          <div class="hint" data-i18n="heatHint"></div>
+        </div>
+
+        <div class="stage viz-extra" style="padding:14px" id="calcBox">
+          <h3 class="sub" id="calcTitle"></h3>
+          <p style="margin:4px 0 10px" id="seeks"></p>
+          <div style="overflow-x:auto; width:0; min-width:100%"><table class="atab" id="calc"></table></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Игра «Куда смотрит слово» -->
+        <div id="gamePanel" hidden style="border-bottom:1px solid var(--line); padding-bottom:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameAsk"></p>
+          <div class="choices" id="choices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+
+        <div id="exploreBox">
+          <div>
+            <h3 data-i18n="sentLabel"></h3>
+            <div class="seg" id="sentBtns" style="margin-top:6px"></div>
+            <p class="note" id="sentNote"></p>
+          </div>
+
+          <div style="margin-top:14px">
+            <h3 data-i18n="wordLabel"></h3>
+            <div class="seg" id="wordBtns" style="margin-top:6px"></div>
+          </div>
+
+          <div style="margin-top:14px">
+            <h3><span data-i18n="sharpLabel"></span>: <span id="sharpVal"></span></h3>
+            <input type="range" id="sharp" min="0" max="3" step="0.25" value="1">
+            <p class="note" data-i18n="sharpNote"></p>
+          </div>
+
+          <div style="margin-top:10px">
+            <label class="toggle"><input type="checkbox" id="causal"> <span data-i18n="causalLabel"></span></label>
+            <p class="note" data-i18n="causalNote"></p>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 data-i18n="sumTitle"></h3>
+          <p style="margin:6px 0 0; font-size:18px" id="summary"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 17 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/attention_sentences.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 17 · Как работают LLM',
+        title: 'Attention: кто на кого смотрит в предложении',
+        analogy: '<b>Чтобы понять слово, нужно посмотреть на другие слова.</b> В предложении «Пингвин съел рыбу, потому что он был голоден» слово «он» само по себе ничего не значит — нужно оглянуться и найти, о ком речь. Механизм <b>внимания</b> (<i>attention</i>) делает именно это: каждое слово решает, на какие слова смотреть и насколько сильно.',
+        cvLabel: 'Слева слова, которые смотрят, справа — на кого. Толщина линии — сила внимания',
+        heatLabel: 'Таблица внимания: строка — кто смотрит, столбец — на кого',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: куда смотрит слово',
+        hintExplore: 'Кликни по слову в левом столбике: линии покажут, на какие слова оно смотрит. Чем толще линия, тем больше внимания.',
+        hintGame: 'Слово слева выделено. На какое слово оно посмотрит сильнее всего? Выбери в панели.',
+        heatHint: 'Вся таблица внимания сразу: строка — кто смотрит, столбец — на кого. В каждой строке проценты дают в сумме 100%.',
+        whoLabel: 'кто смотрит',
+        whomLabel: 'на кого',
+        sentLabel: 'Предложение',
+        sent_s1: '…он был голоден',
+        sent_s2: '…она была вкусной',
+        sent_s3: '…он помахал ей',
+        sent_s4: 'Хитрое: …она плакала',
+        note_s1: 'Слово «он» мужского рода — оно ищет существительное мужского рода.',
+        note_s2: 'Поменяли одно слово — и «она» смотрит уже на «рыбу»: рыба женского рода.',
+        note_s3: '«ей» находит девочку, «он» — пингвина. Глаголы ищут, кто делает действие.',
+        note_s4: '«она» — это девочка или конфета? По роду не понять: внимание делится поровну. Подсказка в слове «плакала» — но одному слою внимания её не взять. Поэтому в моделях много слоёв.',
+        wordLabel: 'Чьё внимание показать',
+        sharpLabel: 'Резкость внимания',
+        sharpNote: '0 — каждое слово смотрит на всех одинаково. Чем больше, тем сильнее внимание собирается на самом подходящем слове.',
+        causalLabel: 'Смотреть только назад (как GPT)',
+        causalNote: 'GPT пишет текст слева направо и не может подглядывать в слова, которых ещё нет.',
+        sumTitle: 'Главное',
+        summary: '«{w}» сильнее всего смотрит на «{to}» — {p}.',
+        calcTitle: 'Расчёт для слова «{w}»',
+        seeks: 'Что ищет «{w}»: {list}.',
+        seeksNone: 'ничего особенного — смотрит на всех почти одинаково',
+        colWord: 'на кого',
+        colHas: 'что в нём есть',
+        colScore: 'совпадение q·k',
+        colScaled: '÷ √8 × резкость',
+        colW: 'внимание',
+        masked: 'не видно',
+        f_masc: 'мужской род',
+        f_fem: 'женский род',
+        f_noun: 'существительное',
+        f_animate: 'живое',
+        f_pronoun: 'местоимение',
+        f_verb: 'глагол',
+        f_food: 'еда',
+        f_other: 'другое слово',
+        gameStep: 'Раунд {i} из {n} · счёт {s}',
+        gameAsk: 'На какое слово сильнее всего смотрит «<b>{w}</b>»?',
+        gameRight: '<b style="color:var(--green)">✓ Верно!</b> {p} внимания — на «{to}».',
+        gameWrong: '<b style="color:var(--red)">✕ Сильнее всего — на «{to}»: {p}.</b>',
+        next: 'Следующий раунд',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        final: '<b>Итог: {s} из {n}.</b> Ты угадывал, как работает внимание: каждое слово ищет слова с подходящими признаками. В настоящих моделях таких «голов» внимания десятки, и признаки они выучивают сами.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>У каждого слова есть признаки.</b> Это его эмбеддинг (прошлая страница). Здесь признаки простые: род, существительное ли, живое ли, глагол ли.</li>' +
+          '<li><b>Запрос: что я ищу?</b> Каждое слово превращает свои признаки в <b>запрос</b> (<i>query</i>, q). «он» ищет «мужской род + существительное». Глагол «съел» ищет «живое существительное» — того, кто ест.</li>' +
+          '<li><b>Ключ: что у меня есть?</b> Каждое слово показывает <b>ключ</b> (<i>key</i>, k) — свои признаки. Запрос сравниваем с ключом: перемножаем и складываем (q·k). Чем больше совпадений, тем больше число.</li>' +
+          '<li><b>Проценты.</b> Числа превращаем в проценты функцией <b>softmax</b>: все положительные, в сумме 100%, самое большое число получает больше всех. Это и есть внимание.</li>' +
+          '<li><b>Зачем это модели.</b> Узнав, на кого смотреть, слово «забирает» себе часть смысла этих слов: «он» становится «он = пингвин». Так модель связывает «он» с «пингвином» и точнее угадывает следующее слово. В GPT десятки слоёв и десятки «голов» внимания, и что искать, они выучивают сами.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>В первом предложении кликни на «он». На кого он смотрит? Переключи на «…она была вкусной» — что изменилось?</li>' +
+          '<li>Поставь резкость 0. Что стало с линиями и с таблицей? Поставь 3.</li>' +
+          '<li>Включи «Смотреть только назад». Почему первое слово всегда смотрит только на себя?</li>' +
+          '<li>Открой хитрое предложение. Почему «она» не может выбрать между девочкой и конфетой? Какое слово помогло бы?</li>' +
+          '<li>Сыграй «Игра: куда смотрит слово». На кого чаще всего смотрят глаголы?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Признаки слов — строки матрицы <i>X</i>. Запросы <code>Q = X·W<sub>Q</sub>ᵀ</code>, ключи <code>K = X·W<sub>K</sub></code> (здесь <i>W<sub>K</sub></i> — единичная матрица, ключ = признаки).</p>' +
+          '<p><code>Attention = softmax(Q·Kᵀ / √d)</code>, где <i>d</i> = 8 — число признаков. Деление на √d нужно, чтобы числа не становились слишком большими. Ползунок «резкость» дополнительно умножает их.</p>' +
+          '<p><code>softmax(z)ᵢ = e^(zᵢ) / Σ e^(zⱼ)</code> — превращает любые числа в проценты.</p>' +
+          '<p>Потом каждое слово берёт смесь <i>значений</i> (<i>values</i>) других слов с этими процентами: <code>выход = Attention · V</code>. Эту часть мы здесь не рисуем.</p>' +
+          '<p>В Python:</p>' +
+          '<p><code>import numpy as np<br><br>' +
+          '#&nbsp;&nbsp;&nbsp;муж жен сущ живое мест глаг еда служ<br>' +
+          'X = np.array([[1, 0, 1, 1, 0, 0, 0, 0],&nbsp;&nbsp;# Пингвин<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[0, 1, 1, 0, 0, 0, 1, 0],&nbsp;&nbsp;# рыбу<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1, 0, 0, 0, 1, 0, 0, 0]])&nbsp;&nbsp;# он<br>' +
+          'q_on = np.array([4, 0, 4, 0, 0, 0, 0, 0])&nbsp;&nbsp;# «он» ищет: мужской род, существительное<br>' +
+          'scores = X @ q_on / np.sqrt(8)<br>' +
+          'weights = np.exp(scores) / np.exp(scores).sum()<br>' +
+          'print(weights.round(2))&nbsp;&nbsp;# больше всего — на «Пингвин»</code></p>' +
+          '<p>В PyTorch всё это — одна строка: <code>torch.nn.functional.scaled_dot_product_attention(Q, K, V)</code>.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Четыре предложения, у каждого слова 8 признаков (0 или 1), и матрица запросов <i>W<sub>Q</sub></i>, заданная вручную: местоимение ищет существительное своего рода, глагол — живое существительное своего рода, существительное — свой глагол (<code>data/attention_sentences.js</code>). Это одна «голова» внимания с понятными признаками; в настоящих моделях признаки и матрицы выучиваются. Все веса внимания (с маской и без) совпадают с <code>tools/check_attention.py</code> (numpy).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: читаем вслух «Пингвин съел рыбу, потому что он был голоден» и «…потому что она была вкусной» и спрашиваем, как мы поняли, кто такие «он» и «она». Потом показываем линии внимания. В конце игра «Куда смотрит слово» и хитрое предложение про девочку и конфету.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему в английском «it» сложнее, чем русские «он / она»? Зачем модели много слоёв внимания? Почему GPT смотрит только назад, а модели-переводчики — во все стороны?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+    document.getElementById('heat').setAttribute('aria-label', T('heatLabel'));
+    document.getElementById('sharp').setAttribute('aria-label', T('sharpLabel'));
+
+    // ======================= Данные и внимание =======================
+    var FEAT = ATTN_DATA.features, WQ = ATTN_DATA.WQ, D = FEAT.length;
+    var SENTS = ATTN_DATA.sentences;
+    var C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted');
+
+    function query(x) { return WQ.map(function (row) { return row.reduce(function (s, w, k) { return s + w * x[k]; }, 0); }); }
+    function dot(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+
+    // Матрица внимания: строка i — как слово i распределяет внимание (сумма 100%)
+    function attention(tokens, sharp, causal) {
+      return tokens.map(function (ti, i) {
+        var q = query(ti.x);
+        var z = tokens.map(function (tj, j) { return causal && j > i ? -Infinity : dot(q, tj.x) / Math.sqrt(D) * sharp; });
+        var m = Math.max.apply(null, z), e = z.map(function (v) { return Math.exp(v - m); });
+        var s = e.reduce(function (a, b) { return a + b; }, 0);
+        return { q: q, raw: tokens.map(function (tj) { return dot(q, tj.x); }), z: z, w: e.map(function (v) { return v / s; }) };
+      });
+    }
+    // На кого слово смотрит сильнее всего (при равенстве — кто левее, как np.argmax)
+    function argmax(w) { var b = 0; for (var j = 1; j < w.length; j++) if (w[j] > w[b] + 1e-9) b = j; return b; }
+    function pct(x) { return Math.round(100 * x) + '%'; }
+
+    // ======================= Состояние =======================
+    var state = { s: 0, sel: 5, sharp: 1, causal: false, mode: 'explore', game: null };
+    function cur() {
+      var gm = state.game;
+      var s = gm ? gm.s : state.s, tokens = SENTS[s].tokens;
+      return { s: s, tokens: tokens, sel: gm ? gm.w : state.sel,
+               A: attention(tokens, gm ? 1 : state.sharp, gm ? false : state.causal), hide: gm && !gm.answered };
+    }
+
+    // ======================= Рисунок: два столбика слов и линии =======================
+    var cv = document.getElementById('cv'), g, L;
+    function layout(n) {
+      var fs = MLViz.fontPx(g ? g.w : 700) + 2, rowH = Math.max(44, Math.round(fs * 2.1));   // строка не ниже 44 px — удобно пальцем
+      return { fs: fs, rowH: rowH, top: Math.round(fs * 2.2), h: Math.round(fs * 2.2) + n * rowH + 10 };
+    }
+    function resize() {
+      var n = SENTS[cur().s].tokens.length;
+      var w0 = cv.parentElement.clientWidth - 20;
+      g = MLViz.fitCanvas(cv, layout(n).h / w0);
+      L = layout(n);
+      if (Math.abs(L.h - g.h) > 2) g = MLViz.fitCanvas(cv, L.h / g.w);
+      resizeHeat();
+      draw(); drawHeat();
+    }
+    function colX() { return { l: g.w * 0.08, r: g.w * 0.92 }; }   // края столбиков
+
+    function draw() {
+      var c = cur(), ctx = g.ctx, font = MLViz.cssVar('--font'), n = c.tokens.length;
+      var X = colX(), yOf = function (i) { return L.top + i * L.rowH + L.rowH / 2; };
+      ctx.clearRect(0, 0, g.w, g.h);
+      ctx.font = 'bold ' + L.fs + 'px ' + font; ctx.textBaseline = 'middle';
+      var wL = Math.max.apply(null, c.tokens.map(function (t) { return ctx.measureText(t.t).width; })) + 18;
+      var x1 = X.l + wL, x2 = X.r - wL;
+
+      ctx.fillStyle = C_MUTED; ctx.font = (L.fs - 2) + 'px ' + font;
+      ctx.textAlign = 'left'; ctx.fillText(T('whoLabel'), X.l, L.top - L.fs * 0.9);
+      ctx.textAlign = 'right'; ctx.fillText(T('whomLabel'), X.r, L.top - L.fs * 0.9);
+
+      // Линии: все слова — еле заметно, выбранное — ярко, толщина по силе внимания
+      if (!c.hide) {
+        c.A.forEach(function (row, i) {
+          if (i === c.sel) return;
+          row.w.forEach(function (w, j) {
+            if (w < 0.02) return;
+            ctx.strokeStyle = 'rgba(169,162,204,' + (0.06 + 0.25 * w) + ')'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x1, yOf(i)); ctx.lineTo(x2, yOf(j)); ctx.stroke();
+          });
+        });
+        c.A[c.sel].w.forEach(function (w, j) {
+          if (w < 0.005) return;
+          ctx.strokeStyle = 'rgba(238,234,251,' + (0.25 + 0.75 * w) + ')'; ctx.lineWidth = 1 + 14 * w;
+          ctx.beginPath(); ctx.moveTo(x1, yOf(c.sel)); ctx.lineTo(x2, yOf(j)); ctx.stroke();
+        });
+      }
+
+      // Слова
+      c.tokens.forEach(function (t, i) {
+        [[X.l, 'left', i === c.sel], [X.r, 'right', false]].forEach(function (side) {
+          var w = ctx.measureText(t.t).width;
+          ctx.font = (side[2] ? 'bold ' : '') + L.fs + 'px ' + font;
+          w = ctx.measureText(t.t).width;
+          var bx = side[1] === 'left' ? side[0] : side[0] - w - 14, by = yOf(i) - L.rowH * 0.38;
+          ctx.fillStyle = side[2] ? 'rgba(238,234,251,.92)' : 'rgba(38,31,74,.95)';
+          ctx.strokeStyle = 'rgba(169,162,204,.35)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.rect(bx, by, w + 14, L.rowH * 0.76); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = side[2] ? '#17132E' : C_TEXT; ctx.textAlign = 'left';
+          ctx.fillText(t.t, bx + 7, yOf(i) + 1);
+        });
+        // Проценты для выбранного слова — справа у слова «на кого»
+        if (!c.hide) {
+          var w = c.A[c.sel].w[i];
+          ctx.font = (L.fs - 2) + 'px ' + font; ctx.fillStyle = w > 0.005 ? C_TEXT : C_MUTED; ctx.textAlign = 'right';
+          var tw = ctx.measureText(t.t).width;
+          ctx.font = L.fs + 'px ' + font; tw = ctx.measureText(t.t).width;
+          ctx.font = (L.fs - 2) + 'px ' + font;
+          ctx.fillText(c.A[c.sel].z[i] === -Infinity ? '—' : pct(w), X.r - tw - 22, yOf(i) - L.rowH * 0.3);
+        }
+      });
+    }
+
+    // ======================= Таблица внимания (тепловая карта) =======================
+    var heat = document.getElementById('heat'), hg;
+    function resizeHeat() {
+      var n = SENTS[cur().s].tokens.length;
+      hg = MLViz.fitCanvas(heat, heat.parentElement.clientWidth < 600 ? 1.05 : 0.62);
+    }
+    function drawHeat() {
+      var c = cur(), ctx = hg.ctx, font = MLViz.cssVar('--font'), n = c.tokens.length;
+      var fs = Math.max(11, MLViz.fontPx(hg.w) - 1);
+      ctx.clearRect(0, 0, hg.w, hg.h);
+      ctx.font = fs + 'px ' + font;
+      var lw = Math.max.apply(null, c.tokens.map(function (t) { return ctx.measureText(t.t).width; })) + 10;
+      var top = lw * 0.75 + 6, cell = Math.min((hg.w - lw - 6) / n, (hg.h - top - 4) / n);
+      var x0 = lw, y0 = top;
+      c.tokens.forEach(function (t, i) {
+        ctx.fillStyle = i === c.sel ? C_TEXT : C_MUTED; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.fillText(t.t, x0 - 6, y0 + (i + 0.5) * cell);
+        ctx.save(); ctx.translate(x0 + (i + 0.5) * cell, y0 - 6); ctx.rotate(-Math.PI / 4);
+        ctx.fillStyle = C_MUTED; ctx.textAlign = 'left'; ctx.fillText(t.t, 0, 0); ctx.restore();
+      });
+      c.A.forEach(function (row, i) {
+        row.w.forEach(function (w, j) {
+          var X = x0 + j * cell, Y = y0 + i * cell;
+          ctx.fillStyle = 'rgba(23,19,46,.85)'; ctx.fillRect(X + 1, Y + 1, cell - 2, cell - 2);
+          if (!c.hide && row.z[j] !== -Infinity) {
+            ctx.fillStyle = 'rgba(238,234,251,' + Math.min(1, w * 1.6) + ')'; ctx.fillRect(X + 1, Y + 1, cell - 2, cell - 2);
+            if (cell > 30) {   // мельче 13 px не пишем
+              ctx.fillStyle = w > 0.28 ? '#17132E' : C_TEXT; ctx.textAlign = 'center';   // тёмный текст, когда фон уже светлый
+              ctx.font = Math.max(13, Math.min(16, cell * 0.4)) + 'px ' + font;
+              ctx.fillText(Math.round(100 * w), X + cell / 2, Y + cell / 2 + 1);
+              ctx.font = fs + 'px ' + font;
+            }
+          }
+        });
+      });
+      ctx.strokeStyle = C_TEXT; ctx.lineWidth = 2;
+      ctx.strokeRect(x0, y0 + c.sel * cell, n * cell, cell);
+    }
+
+    // ======================= Панель и расчёт =======================
+    function el(id) { return document.getElementById(id); }
+    function featList(vec, withNum) {
+      var parts = [];
+      vec.forEach(function (v, k) { if (v) parts.push(T('f_' + FEAT[k]) + (withNum ? ' (' + v + ')' : '')); });
+      return parts;
+    }
+
+    function updatePanel() {
+      var c = cur(), row = c.A[c.sel], word = c.tokens[c.sel].t;
+      MLViz.setPressed(el('sentBtns'), function (b) { return +b.dataset.s === state.s; });
+      el('sentNote').textContent = T('note_' + SENTS[state.s].id);
+      el('sharp').value = state.sharp;
+      el('sharpVal').textContent = String(state.sharp);
+      el('causal').checked = state.causal;
+      el('exploreBox').hidden = !!state.game;
+      // Те же слова кнопками: выбрать слово можно и с клавиатуры, не только кликом по рисунку
+      if (!state.game) {
+        el('wordBtns').innerHTML = '';
+        SENTS[state.s].tokens.forEach(function (t, i) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.textContent = t.t; b.setAttribute('aria-pressed', i === state.sel);
+          b.addEventListener('click', function () { state.sel = i; refresh(); });
+          el('wordBtns').appendChild(b);
+        });
+      }
+      el('calcBox').hidden = !!c.hide;
+
+      var best = argmax(row.w);
+      el('summary').innerHTML = c.hide ? '' : T('summary', { w: word, to: c.tokens[best].t, p: pct(row.w[best]) });
+
+      el('calcTitle').textContent = T('calcTitle', { w: word });
+      var seeks = featList(row.q, true);
+      el('seeks').textContent = T('seeks', { w: word, list: seeks.length ? seeks.join(', ') : T('seeksNone') });
+      var html = '<tr><th>' + T('colWord') + '</th><th>' + T('colHas') + '</th><th>' + T('colScore') + '</th><th>' + T('colScaled') + '</th><th>' + T('colW') + '</th></tr>';
+      c.tokens.forEach(function (t, j) {
+        var masked = row.z[j] === -Infinity;
+        html += '<tr class="' + (j === best ? 'top' : '') + '"><td class="w">' + t.t + '</td><td style="text-align:left; color:var(--muted)">' +
+          featList(t.x, false).join(', ') + '</td><td>' + row.raw[j] + '</td><td>' + (masked ? T('masked') : row.z[j].toFixed(2)) +
+          '</td><td><span class="bar" style="width:' + Math.round(60 * row.w[j]) + 'px"></span>' + (masked ? '—' : pct(row.w[j])) + '</td></tr>';
+      });
+      el('calc').innerHTML = html;
+    }
+
+    function refresh() { updatePanel(); draw(); drawHeat(); }
+
+    SENTS.forEach(function (s, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.s = i; b.textContent = T('sent_' + s.id);
+      b.addEventListener('click', function () {
+        state.s = i;
+        // Выбираем местоимение — самое интересное слово
+        var pi = s.tokens.map(function (t) { return t.x[FEAT.indexOf('pronoun')]; }).indexOf(1);
+        state.sel = pi >= 0 ? pi : 0;
+        resize(); refresh();
+      });
+      el('sentBtns').appendChild(b);
+    });
+
+    // ======================= Игра «Куда смотрит слово» (общий компонент MLViz.quiz) =======================
+    var GAME = ATTN_DATA.game;
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: GAME.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n, s: q.score }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('final', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var r = GAME[q.i];
+        // state.game — какое предложение и слово показать; до ответа линии и расчёт скрыты
+        state.game = { s: SENTS.map(function (s) { return s.id; }).indexOf(r[0]), w: r[1], answered: false };
+        var tokens = SENTS[state.game.s].tokens;
+        var row = attention(tokens, 1, false)[state.game.w], best = argmax(row.w);
+        el('gameAsk').innerHTML = T('gameAsk', { w: tokens[state.game.w].t });
+        // Равные по силе слова тоже засчитываем
+        q.choices(el('choices'), tokens.map(function (t) { return t.t; }),
+          function (k) { return Math.abs(row.w[k] - row.w[best]) < 1e-9; },
+          function (k, ok) {
+            state.game.answered = true;
+            q.answer(ok ? 1 : 0, T(ok ? 'gameRight' : 'gameWrong', { to: tokens[best].t, p: pct(row.w[best]) }));
+            refresh();
+          });
+        resize(); refresh();
+      },
+      onEnd: function () { el('gameAsk').innerHTML = ''; el('choices').innerHTML = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start();
+      else { state.game = null; resize(); refresh(); }
+    }
+
+    // ======================= События =======================
+    el('sharp').addEventListener('input', function (e) { state.sharp = +e.target.value; refresh(); });
+    el('causal').addEventListener('change', function (e) { state.causal = e.target.checked; refresh(); });
+    cv.addEventListener('pointerdown', function (e) {
+      if (state.game) return;
+      var m = MLViz.pointer(cv, e), i = Math.floor((m.y - L.top) / L.rowH);
+      if (m.x < g.w / 2 && i >= 0 && i < SENTS[state.s].tokens.length) { state.sel = i; refresh(); }
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

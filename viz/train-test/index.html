@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Train / Test: учёба и экзамен · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv" class="drag"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--adelie)"></i>Adelie</span>
+            <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+            <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+          </div>
+          <div class="legend" style="padding:4px 4px 0">
+            <span><i style="background:var(--muted)"></i><span data-i18n="legTrain"></span></span>
+            <span><i class="ring"></i><span data-i18n="legTest"></span></span>
+            <span><b style="color:var(--red)">✕</b> <span data-i18n="legError"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra">
+          <canvas id="chart" class="drag"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--c-train); border-radius:2px; height:4px; vertical-align:3px"></i><span data-i18n="lineTrain"></span></span>
+            <span><i style="background:var(--c-val); border-radius:2px; height:4px; vertical-align:3px"></i><span data-i18n="lineVal"></span></span>
+            <span id="legTestLine"><i style="background:var(--c-test); border-radius:2px; height:4px; vertical-align:3px"></i><span data-i18n="lineTest"></span></span>
+          </div>
+          <div class="hint" data-i18n="chartHint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div>
+          <h3><span data-i18n="kLabel"></span> = <span id="kVal"></span></h3>
+          <input type="range" id="k" min="1" max="50" step="1" value="1" aria-label="K">
+        </div>
+
+        <div>
+          <h3 data-i18n="showLabel"></h3>
+          <div class="seg" id="viewBtns" style="margin-top:6px">
+            <button type="button" data-view="train" data-i18n="viewTrain"></button>
+            <button type="button" data-view="test" data-i18n="viewTest"></button>
+            <button type="button" data-view="both" data-i18n="viewBoth"></button>
+          </div>
+        </div>
+
+        <div>
+          <label class="toggle"><input type="checkbox" id="map" checked> <span data-i18n="showMap"></span></label>
+          <p class="note" data-i18n="mapNote"></p>
+        </div>
+        <label class="toggle"><input type="checkbox" id="errors" checked> <span data-i18n="showErrors"></span></label>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 data-i18n="accTitle"></h3>
+          <div class="row" style="justify-content:space-between; align-items:flex-start; margin-top:8px">
+            <div>
+              <small data-i18n="colTrain" style="color:var(--c-train); font-weight:700"></small>
+              <div class="big-number" id="accTrain" style="color:var(--c-train)"></div>
+              <small class="muted" id="accTrainNote" style="color:var(--muted)"></small>
+            </div>
+            <div>
+              <small data-i18n="colVal" style="color:var(--c-val); font-weight:700"></small>
+              <div class="big-number" id="accVal" style="color:var(--c-val)"></div>
+              <small id="accValNote" style="color:var(--muted)"></small>
+            </div>
+            <div>
+              <small data-i18n="colTest" style="font-weight:700"></small>
+              <div class="big-number" id="accTest"></div>
+              <small id="accTestNote" style="color:var(--muted)"></small>
+            </div>
+          </div>
+          <p class="note" id="baseline"></p>
+        </div>
+
+        <!-- Игра «Выбери K честно» -->
+        <div id="gamePanel" hidden style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n-html="gameAsk"></p>
+          <button type="button" id="submitBtn" class="primary" style="margin-top:10px"></button>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 6 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 6 · Классические алгоритмы',
+        title: 'Train / Test: учёба и экзамен для модели',
+        analogy: '<b>Нельзя проверять знания по билетам, которые ты уже видел.</b> Кто выучил ответы наизусть, сдаст эти билеты на «отлично», но провалится на новых. Поэтому часть пингвинов мы прячем от модели (это <b>test</b>, «экзамен»), а учится она на остальных (<b>train</b>, «учёба»).',
+        cvLabel: 'Пингвины: длина клюва и масса тела, обучающие и экзаменационные',
+        chartLabel: 'График: точность на train, validation и test в зависимости от K',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: выбери K честно',
+        kLabel: 'Число соседей K',
+        showLabel: 'Показывать пингвинов',
+        viewTrain: 'Train',
+        viewTest: 'Test',
+        viewBoth: 'Обе группы',
+        showMap: 'Показать карту решений',
+        mapNote: 'Карта решений: каждая точка фона окрашена в вид, который модель назвала бы пингвину в этом месте.',
+        showErrors: 'Отметить ошибки модели',
+        legTrain: 'train (обучающие)',
+        legTest: 'test (экзамен)',
+        legError: 'ошибка модели',
+        lineTrain: 'train',
+        lineVal: 'validation (пробный экзамен)',
+        lineTest: 'test (экзамен)',
+        chartHint: 'Кликни или веди пальцем по графику, чтобы выбрать K.',
+        hintExplore: 'Закрашенные точки — 273 обучающих пингвина (train): их модель видела. Пустые кружки — 69 пингвинов для экзамена (test): их модель не видела.',
+        hintGame: 'Test спрятан. Выбирай K по зелёной линии validation — это «пробный экзамен», — а настоящий экзамен сдай один раз.',
+        accTitle: 'Точность (accuracy) — доля верных ответов',
+        colTrain: 'Train',
+        colVal: 'Validation',
+        colTest: 'Test',
+        accNote: '{c} из {n}',
+        hidden: '?',
+        hiddenNote: 'после экзамена',
+        baseline: 'Для сравнения: «ленивая» модель, которая всегда отвечает {sp} (самый частый вид в train), угадала бы на test {c} из {n} ({p}%).',
+        gameAsk: 'Экзамен (test) закрыт. Подбери K по <b>validation</b> — это «пробный экзамен»: 69 пингвинов, которых отложили из train. Модель для него учится на остальных 204. Настоящий экзамен сдаёшь <b>один раз</b>.',
+        submit: 'Сдать экзамен с K = {k}',
+        gameStepExam: 'Подбор K по validation → экзамен один раз',
+        gameStepDone: 'Экзамен сдан',
+        again: 'Сыграть ещё ↺',
+        gameLine:
+          'Твоё K = {k}: на экзамене <b>{c} из {n}</b> ({p}%).<br>' +
+          'Лучшее K по validation: {vk} → на экзамене {vc} из {n}.<br>' +
+          'Если выбрать K по train: {tk} → на экзамене {tc} из {n}.<br>' +
+          '{verdict}<br>' +
+          '<small style="color:var(--muted)">Экзамен сдают один раз: менять K после него уже нечестно — мы бы подглядывали в test. И помни: 1 пингвин из 69 — это 1.5%, разница в 1–2 пингвина почти случайна.</small>',
+        verdictBest: '<b style="color:var(--green)">Отлично: ты выбрал K по validation, как в настоящих проектах!</b>',
+        verdictGap: 'На validation было K получше — посмотри на зелёную линию.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Делим пингвинов на две группы.</b> 273 пингвина — <b>train</b> (учёба), по ним модель учится. 69 — <b>test</b> (экзамен), их модель не видит до самого конца.</li>' +
+          '<li><b>Проверяем на train.</b> При K = 1 каждый обучающий пингвин находит ближайшим соседом… самого себя. Точность 100%, но это как сдавать билеты, которые выучил наизусть.</li>' +
+          '<li><b>Проверяем на test.</b> Здесь модель встречает незнакомых пингвинов, поэтому эта оценка честная. Но test маленький: 1 пингвин — это 1.5%, так что разница в 1–2 пингвина ничего не значит.</li>' +
+          '<li><b>Две крайности.</b> Когда на train почти идеально, а на test заметно хуже, модель запомнила примеры, а не поняла закономерность. Это <b>переобучение</b> (<i>overfitting</i>) — посмотри на рваную карту при K = 1. При очень большом K граница слишком грубая, ошибки растут и на train, и на test — это <b>недообучение</b> (<i>underfitting</i>).</li>' +
+          '<li><b>Как выбрать K честно.</b> Если выбирать K по test, мы «подсмотрим» экзамен. Поэтому из train откладывают ещё часть — <b>validation</b>, «пробный экзамен». K выбирают по нему, а test открывают один раз в самом конце.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь K = 1. Какая точность на train, а какая на test? Почему они такие разные?</li>' +
+          '<li>Найди на графике место, где розовая и белая линии дальше всего друг от друга. Как в этот момент выглядит карта решений?</li>' +
+          '<li>Поставь K = 50. Что стало с картой и со всеми тремя точностями?</li>' +
+          '<li>Оставь только test-пингвинов и включи отметку ошибок. Где модель ошибается чаще всего и почему именно там?</li>' +
+          '<li>Сыграй «Игра: выбери K честно». Совпало ли лучшее K по validation с лучшим на test? Почему они не обязаны совпадать?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p><b>Точность (accuracy)</b> — доля верных ответов: <code>accuracy = верные ответы / все ответы</code>. Не путай с <i>precision</i> — это другая метрика, о ней на уроке 11.</p>' +
+          '<p><b>С чем сравнивать.</b> Модель, которая всегда называет самый частый вид, уже угадывает около половины test-пингвинов (число — в панели справа). Хорошая модель должна быть заметно лучше. А если какого-то вида очень мало, accuracy может обманывать: можно почти никогда не угадывать редкий вид и всё равно получить высокий процент. Поэтому потом смотрят ошибки по каждому виду (урок 11).</p>' +
+          '<p>В Python честный подбор K выглядит так:</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split<br>' +
+          'from sklearn.neighbors import KNeighborsClassifier<br>' +
+          'from sklearn.pipeline import make_pipeline&nbsp;&nbsp;# масштаб + модель, подробнее в уроке 10<br>' +
+          'from sklearn.preprocessing import StandardScaler<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'bill_length_mm\', \'body_mass_g\']]<br>' +
+          'y = df[\'species\']<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br>' +
+          'X_tr, X_val, y_tr, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42)<br><br>' +
+          'scores = {}<br>' +
+          'for k in range(1, 51):<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;model = make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=k))<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;scores[k] = model.fit(X_tr, y_tr).score(X_val, y_val)&nbsp;&nbsp;# пробный экзамен<br>' +
+          'best_k = max(scores, key=scores.get)<br><br>' +
+          'final = make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=best_k))<br>' +
+          'final.fit(X_train, y_train)<br>' +
+          'print(final.score(X_test, y_test))&nbsp;&nbsp;# настоящий экзамен — один раз</code></p>' +
+          '<p>Ещё надёжнее — <b>кросс-валидация</b> (<code>cross_val_score</code>): train делят на 5 частей, и каждая по очереди становится пробным экзаменом.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина (без столбца sex, без пропусков). Признаки — длина клюва и масса тела, приведённые к одному масштабу (<code>StandardScaler</code>, обученный только на обучающей части). Эту пару выбрали специально: на длине и глубине клюва (урок 5) виды разделяются почти идеально, и разница train/test не видна. Разбиение как в Colab: <code>train_test_split(test_size=0.2, random_state=42)</code> → 273 train и 69 test; train ещё раз делится <code>train_test_split(X_train, y_train, test_size=0.25, random_state=42)</code> → 204 на учёбу и 69 validation. Все три линии для K от 1 до 50 совпадают с sklearn (<code>tools/check_train_test.py</code>).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: класс голосует за K, видя только розовую линию train; многие выберут K = 1. Показываем, что на test так хуже, и вводим термин «переобучение». Затем игра «Выбери K честно»: выбираем по зелёной линии validation и сдаём экзамен один раз.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему при K = 1 на train ровно 100%? Почему нельзя выбирать K по test? Почему лучшее K на validation и на test может не совпасть? Что будет, если test-пингвинов совсем мало, например 5?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.',
+        axisX: 'Длина клюва, мм',
+        axisY: 'Масса тела, г',
+        chartX: 'Число соседей K',
+        chartY: 'Точность, %'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+    document.getElementById('chart').setAttribute('aria-label', T('chartLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];          // порядок по алфавиту — важен для ничьих
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    var C_TRAIN = MLViz.cssVar('--c-train'), C_VAL = MLViz.cssVar('--c-val'), C_TEST = MLViz.cssVar('--c-test'), C_ERR = MLViz.cssVar('--red');
+    var KMAX = 50;
+
+    // Признаки: длина клюва и масса тела. На этой паре виды Adelie и Chinstrap частично перекрываются,
+    // поэтому разница между train и test хорошо видна (на клюве длина+глубина виды разделяются почти идеально).
+    var all = PENGUINS.rows.map(function (r) {
+      return { si: SPECIES.indexOf(r[0]), x: r[2], y: r[5], test: r[6] === 1, pos: r[7], val: r[8] === 1, vpos: r[9] };
+    });
+    // Разбиения и порядок строк из sklearn: при равных расстояниях соседи берутся в том же порядке
+    var byPos = function (a, b) { return a.pos - b.pos; };
+    var byVpos = function (a, b) { return a.vpos - b.vpos; };
+    var train = all.filter(function (p) { return !p.test; }).sort(byPos);
+    var test = all.filter(function (p) { return p.test; }).sort(byPos);
+    var tr = train.filter(function (p) { return !p.val; }).sort(byVpos);   // 204 — учёба для пробного экзамена
+    var va = train.filter(function (p) { return p.val; }).sort(byVpos);    // 69 — validation
+
+    // Масштаб (StandardScaler) учится только на той части, на которой учится модель — без утечки данных
+    function stdOf(pts, key) {
+      var m = pts.reduce(function (s, p) { return s + p[key]; }, 0) / pts.length;
+      var v = pts.reduce(function (s, p) { return s + (p[key] - m) * (p[key] - m); }, 0) / pts.length;
+      return Math.sqrt(v);
+    }
+    var FULL = { base: train, sx: stdOf(train, 'x'), sy: stdOf(train, 'y') };   // модель для train/test
+    var SMALL = { base: tr, sx: stdOf(tr, 'x'), sy: stdOf(tr, 'y') };          // модель для validation
+
+    // ======================= KNN (настоящий расчёт) =======================
+    // Для точки один раз находим виды KMAX ближайших — дальше любое K считается мгновенно.
+    function nearestSpecies(M, qx, qy) {
+      var d = M.base.map(function (p, i) {
+        var dx = (p.x - qx) / M.sx, dy = (p.y - qy) / M.sy;   // среднее при вычитании сокращается, остаётся деление на отклонение
+        return { i: i, d: dx * dx + dy * dy };
+      });
+      d.sort(function (a, b) { return a.d - b.d; });          // сортировка стабильная: ничьи — в порядке строк sklearn
+      var out = new Uint8Array(KMAX);
+      for (var j = 0; j < KMAX; j++) out[j] = M.base[d[j].i].si;
+      return out;
+    }
+    // Голосование первых k соседей. При ничьей побеждает вид раньше по алфавиту — как в sklearn.
+    function vote(nb, k) {
+      var c = [0, 0, 0];
+      for (var j = 0; j < k; j++) c[nb[j]]++;
+      var best = 0;
+      if (c[1] > c[best]) best = 1;
+      if (c[2] > c[best]) best = 2;
+      return best;
+    }
+
+    // Обучающих пингвинов тоже проверяем на модели, которая их видела: так sklearn считает model.score(X_train, y_train)
+    train.forEach(function (p) { p.nb = nearestSpecies(FULL, p.x, p.y); });
+    test.forEach(function (p) { p.nb = nearestSpecies(FULL, p.x, p.y); });
+    va.forEach(function (p) { p.nbv = nearestSpecies(SMALL, p.x, p.y); });
+
+    function correctCount(set, k, key) {
+      return set.reduce(function (s, p) { return s + (vote(p[key || 'nb'], k) === p.si ? 1 : 0); }, 0);
+    }
+    // Кривые точности для всех K — число верных ответов
+    var CURVE = { train: [], val: [], test: [] };
+    for (var kk = 1; kk <= KMAX; kk++) {
+      CURVE.train[kk] = correctCount(train, kk);
+      CURVE.val[kk] = correctCount(va, kk, 'nbv');
+      CURVE.test[kk] = correctCount(test, kk);
+    }
+    function argmaxK(arr) {
+      var best = 1;
+      for (var k = 2; k <= KMAX; k++) if (arr[k] > arr[best]) best = k;
+      return best;
+    }
+    var BEST_VAL_K = argmaxK(CURVE.val), BEST_TRAIN_K = argmaxK(CURVE.train);
+
+    // «Ленивая» модель: всегда самый частый вид из train — точка отсчёта для любой точности
+    var BASE = (function () {
+      var c = [0, 0, 0]; train.forEach(function (p) { c[p.si]++; });
+      var sp = c.indexOf(Math.max.apply(null, c));
+      return { sp: sp, c: test.filter(function (p) { return p.si === sp; }).length };
+    })();
+
+    // ======================= Состояние =======================
+    var state = { k: 1, view: 'both', map: true, errors: true, mode: 'explore', game: null };
+    // В игре test спрятан, пока ученик не сдал экзамен
+    function testHidden() { return state.mode === 'game' && !state.game.done; }
+    function currentView() { return testHidden() ? 'train' : state.view; }
+
+    // ======================= Рисование: пингвины =======================
+    var cv = document.getElementById('cv');
+    var PAD, DOM = { x0: 31, x1: 61, y0: 2500, y1: 6500 };
+    var STEP = 6;
+    var g, sx, sy;
+    var grid = null;                       // соседи для каждой клетки карты (зависит только от размера canvas)
+    var mapCache = { key: '', img: null }; // готовая картинка карты для текущего K
+
+    function resize() {
+      g = MLViz.fitCanvas(cv, 0.62);
+      PAD = MLViz.plotPad(g.w, 4);
+      sx = MLViz.scale(DOM.x0, DOM.x1, PAD.l, g.w - PAD.r);
+      sy = MLViz.scale(DOM.y0, DOM.y1, g.h - PAD.b, PAD.t);
+      grid = null; mapCache.key = '';
+      resizeChart();
+      draw();
+      drawChart();
+    }
+
+    function buildGrid() {
+      var cells = [];
+      for (var px = PAD.l; px < g.w - PAD.r; px += STEP) {
+        for (var py = PAD.t; py < g.h - PAD.b; py += STEP) {
+          cells.push({ px: px, py: py, nb: nearestSpecies(FULL, sx.invert(px + STEP / 2), sy.invert(py + STEP / 2)) });
+        }
+      }
+      return cells;
+    }
+
+    function drawMap(ctx) {
+      var key = [state.k, g.w, g.h].join('|');
+      if (mapCache.key !== key) {
+        if (!grid) grid = buildGrid();
+        var off = document.createElement('canvas');
+        off.width = g.w; off.height = g.h;
+        var oc = off.getContext('2d');
+        oc.globalAlpha = 0.22;
+        grid.forEach(function (c) {
+          oc.fillStyle = COLORS[vote(c.nb, state.k)];
+          oc.fillRect(c.px, c.py, STEP, STEP);
+        });
+        mapCache = { key: key, img: off };
+      }
+      ctx.drawImage(mapCache.img, 0, 0, g.w, g.h);
+    }
+
+    function cross(ctx, p) {
+      var x = sx(p.x), y = sy(p.y), r = 6;
+      ctx.strokeStyle = C_ERR; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
+      ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
+    }
+
+    function draw() {
+      var ctx = g.ctx;
+      ctx.clearRect(0, 0, g.w, g.h);
+      if (state.map) drawMap(ctx);
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy,
+        xTicks: MLViz.range(35, 60, 5), yTicks: MLViz.range(3000, 6000, 500),
+        xLabel: T('axisX'), yLabel: T('axisY')
+      });
+
+      var view = currentView();
+      var showTrain = view !== 'test', showTest = view !== 'train';
+
+      // Обучающие пингвины — закрашенные точки
+      if (showTrain) {
+        ctx.globalAlpha = showTest ? 0.55 : 0.9;
+        train.forEach(function (p) {
+          ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 4, 0, Math.PI * 2);
+          ctx.fillStyle = COLORS[p.si]; ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
+      // Экзаменационные — кольца, чтобы их было видно поверх обучающих
+      if (showTest) {
+        test.forEach(function (p) {
+          ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 6, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(23,19,46,.75)'; ctx.fill();
+          ctx.strokeStyle = COLORS[p.si]; ctx.lineWidth = 2.5; ctx.stroke();
+        });
+      }
+      // Крестик там, где модель с текущим K ошибается
+      if (state.errors) {
+        if (showTrain) train.forEach(function (p) { if (vote(p.nb, state.k) !== p.si) cross(ctx, p); });
+        if (showTest) test.forEach(function (p) { if (vote(p.nb, state.k) !== p.si) cross(ctx, p); });
+      }
+    }
+
+    // ======================= Рисование: график точности от K =======================
+    var ch = document.getElementById('chart');
+    var CP, cg, cx, cy;
+    // Нижняя граница оси Y — чуть ниже худшей точки, чтобы разница линий была видна
+    var Y0 = (function () {
+      var m = 100;
+      for (var k = 1; k <= KMAX; k++) {
+        m = Math.min(m, 100 * CURVE.train[k] / train.length, 100 * CURVE.val[k] / va.length, 100 * CURVE.test[k] / test.length);
+      }
+      return Math.max(0, Math.floor((m - 2) / 5) * 5);
+    })();
+
+    function resizeChart() {
+      cg = MLViz.fitCanvas(ch, 0.42);
+      CP = MLViz.plotPad(cg.w, 3);
+      cx = MLViz.scale(1, KMAX, CP.l, cg.w - CP.r);
+      cy = MLViz.scale(Y0, 100, cg.h - CP.b, CP.t);
+    }
+
+    function line(ctx, arr, n, color) {
+      ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (var k = 1; k <= KMAX; k++) {
+        var X = cx(k), Y = cy(100 * arr[k] / n);
+        if (k === 1) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+      }
+      ctx.stroke();
+    }
+
+    function drawChart() {
+      var ctx = cg.ctx;
+      ctx.clearRect(0, 0, cg.w, cg.h);
+      MLViz.drawAxes(ctx, {
+        w: cg.w, h: cg.h, pad: CP, sx: cx, sy: cy, xGrid: false,
+        xTicks: [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50], yTicks: MLViz.range(Y0, 100, 5),
+        xLabel: T('chartX'), yLabel: T('chartY')
+      });
+
+      line(ctx, CURVE.train, train.length, C_TRAIN);
+      line(ctx, CURVE.val, va.length, C_VAL);
+      if (!testHidden()) line(ctx, CURVE.test, test.length, C_TEST);
+
+      // В игре после экзамена отмечаем, какое K выбрал ученик
+      if (state.mode === 'game' && state.game.done) {
+        ctx.strokeStyle = C_ERR; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(cx(state.game.k), CP.t); ctx.lineTo(cx(state.game.k), cg.h - CP.b); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Текущее K: вертикальная линия и точки на кривых
+      var X = cx(state.k);
+      ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(X, CP.t); ctx.lineTo(X, cg.h - CP.b); ctx.stroke();
+      var pts = [[CURVE.train[state.k] / train.length, C_TRAIN], [CURVE.val[state.k] / va.length, C_VAL]];
+      if (!testHidden()) pts.push([CURVE.test[state.k] / test.length, C_TEST]);
+      pts.forEach(function (p) {
+        ctx.beginPath(); ctx.arc(X, cy(100 * p[0]), 5.5, 0, Math.PI * 2);
+        ctx.fillStyle = p[1]; ctx.fill();
+        ctx.strokeStyle = '#17132E'; ctx.lineWidth = 2; ctx.stroke();
+      });
+    }
+
+    // ======================= Панель =======================
+    function pct(c, n) { return Math.round(100 * c / n) + '%'; }
+
+    function updatePanel() {
+      document.getElementById('kVal').textContent = state.k;
+      document.getElementById('k').value = state.k;
+
+      var ctr = CURVE.train[state.k], cva = CURVE.val[state.k], cte = CURVE.test[state.k];
+      document.getElementById('accTrain').textContent = pct(ctr, train.length);
+      document.getElementById('accTrainNote').textContent = T('accNote', { c: ctr, n: train.length });
+      document.getElementById('accVal').textContent = pct(cva, va.length);
+      document.getElementById('accValNote').textContent = T('accNote', { c: cva, n: va.length });
+      if (testHidden()) {
+        document.getElementById('accTest').textContent = T('hidden');
+        document.getElementById('accTestNote').textContent = T('hiddenNote');
+      } else {
+        document.getElementById('accTest').textContent = pct(cte, test.length);
+        document.getElementById('accTestNote').textContent = T('accNote', { c: cte, n: test.length });
+      }
+      document.getElementById('baseline').textContent = T('baseline', {
+        sp: SPECIES[BASE.sp], c: BASE.c, n: test.length, p: Math.round(100 * BASE.c / test.length)
+      });
+      document.getElementById('legTestLine').style.visibility = testHidden() ? 'hidden' : '';
+
+      var view = currentView(), vb = document.getElementById('viewBtns');
+      MLViz.setPressed(vb, function (b) { return b.dataset.view === view; });
+      vb.querySelectorAll('button').forEach(function (b) { b.disabled = testHidden(); });
+
+      if (state.mode === 'game') document.getElementById('submitBtn').textContent = T('submit', { k: state.k });
+    }
+
+    function refresh() { updatePanel(); draw(); drawChart(); }
+
+    // ======================= Игра «Выбери K честно» (общий компонент MLViz.quiz) =======================
+    // Один раунд: подбираешь K по validation и один раз сдаёшь экзамен
+    var quiz = MLViz.quiz({
+      box: document.getElementById('gamePanel'), rounds: 1,
+      text: { step: function () { return T('gameStepExam'); }, finishTitle: T('gameStepDone'), again: T('again') },
+      round: function () {
+        state.game = { done: false, k: null };
+        document.getElementById('submitBtn').hidden = false;
+        refresh();
+      }
+    });
+
+    function submitExam() {
+      var gm = state.game;
+      gm.done = true; gm.k = state.k;
+      var n = test.length, c = CURVE.test[gm.k], best = CURVE.val[gm.k] === CURVE.val[BEST_VAL_K];
+      document.getElementById('submitBtn').hidden = true;
+      document.getElementById('hint').textContent = T('hintExplore');
+      quiz.answer(best ? 1 : 0, T('gameLine', {
+        k: gm.k, c: c, n: n, p: Math.round(100 * c / n),
+        vk: BEST_VAL_K, vc: CURVE.test[BEST_VAL_K],
+        tk: BEST_TRAIN_K, tc: CURVE.test[BEST_TRAIN_K],
+        verdict: best ? T('verdictBest') : T('verdictGap')
+      }));
+      refresh();
+    }
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(document.getElementById('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      document.getElementById('gamePanel').hidden = m !== 'game';
+      document.getElementById('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else { state.game = null; refresh(); }
+    }
+
+    // ======================= События =======================
+    function setK(k) {
+      k = Math.max(1, Math.min(KMAX, Math.round(k)));
+      if (k === state.k) return;
+      state.k = k; refresh();
+    }
+
+    // Выбор K кликом или протягиванием по графику
+    var dragging = false;
+    function kFromChart(ev) { setK(cx.invert(MLViz.pointer(ch, ev).x)); }
+    ch.addEventListener('pointerdown', function (e) { dragging = true; ch.setPointerCapture(e.pointerId); kFromChart(e); });
+    ch.addEventListener('pointermove', function (e) { if (dragging) kFromChart(e); });
+    ch.addEventListener('pointerup', function () { dragging = false; });
+    ch.addEventListener('pointercancel', function () { dragging = false; });
+
+    document.getElementById('k').addEventListener('input', function (e) { setK(+e.target.value); });
+    document.getElementById('map').addEventListener('change', function (e) { state.map = e.target.checked; draw(); });
+    document.getElementById('errors').addEventListener('change', function (e) { state.errors = e.target.checked; draw(); });
+    document.querySelectorAll('#viewBtns button').forEach(function (b) {
+      b.addEventListener('click', function () { state.view = b.dataset.view; refresh(); });
+    });
+    document.getElementById('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
+    document.getElementById('submitBtn').addEventListener('click', submitExam);
+
+    var colab = document.getElementById('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

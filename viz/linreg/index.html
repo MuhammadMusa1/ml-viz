@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Линейная регрессия · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Стили только этой страницы: сетка из четырёх метрик и формула прямой */
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .metric { background: rgba(23, 19, 46, .55); border: 1px solid var(--line-soft); border-radius: 12px; padding: 10px 12px; }
+    .metric .big-number { font-size: 26px; margin-top: 4px; }
+    .metric small { color: var(--muted); font-size: 12px; }
+    .metric.hot { border-color: var(--cyan); }
+    .eq { font-family: var(--mono); font-size: 15px; background: rgba(23, 19, 46, .55); border: 1px solid var(--line-soft); border-radius: 10px; padding: 8px 10px; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="stage">
+        <canvas id="cv" class="drag"></canvas>
+        <div class="legend" style="padding:8px 4px 0">
+          <span><i style="background:var(--adelie)"></i>Adelie</span>
+          <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+          <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+          <span><i style="background:#fff; border:3px solid var(--violet)"></i><span data-i18n="legHandle"></span></span>
+          <span id="legOutlier" hidden><i style="background:var(--red)"></i><span data-i18n="legOutlier"></span></span>
+        </div>
+        <div class="hint" id="hint"></div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div class="eq" id="eq"></div>
+
+        <div>
+          <h3 data-i18n="residLabel"></h3>
+          <div class="seg" id="residBtns" style="margin-top:6px">
+            <button type="button" data-v="seg" data-i18n="residSeg"></button>
+            <button type="button" data-v="sq" data-i18n="residSq"></button>
+          </div>
+        </div>
+
+        <div>
+          <h3 data-i18n="metricsTitle"></h3>
+          <div class="metrics" style="margin-top:8px">
+            <div class="metric" id="mMAE"><small data-i18n-html="maeLbl"></small><div class="big-number" id="vMAE"></div></div>
+            <div class="metric" id="mMSE"><small data-i18n-html="mseLbl"></small><div class="big-number" id="vMSE"></div></div>
+          </div>
+          <!-- Остальные метрики — для тех, кто хочет глубже: сразу четыре аббревиатуры новичку тяжело -->
+          <details style="margin-top:8px">
+            <summary class="note" style="cursor:pointer" data-i18n="moreMetrics"></summary>
+            <div class="metrics" style="margin-top:8px">
+              <div class="metric"><small data-i18n-html="rmseLbl"></small><div class="big-number" id="vRMSE"></div></div>
+              <div class="metric"><small>R²</small><div class="big-number" id="vR2"></div></div>
+            </div>
+            <p class="note" id="testNote"></p>
+          </details>
+        </div>
+
+        <!-- Режим «Исследуй» -->
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:12px">
+          <button type="button" id="bestBtn" class="primary" data-i18n="best"></button>
+          <div>
+            <label class="toggle"><input type="checkbox" id="outlier"> <span data-i18n="outlier"></span></label>
+            <p class="note" data-i18n="outlierWhat"></p>
+          </div>
+          <p id="outlierNote" class="muted" style="margin:0" hidden></p>
+        </div>
+
+        <!-- Игра «Ближе к лучшей» -->
+        <div id="gamePanel" hidden style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n-html="gameAsk"></p>
+          <button type="button" id="checkBtn" class="primary" style="margin-top:10px" data-i18n="check"></button>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+          <p class="muted" id="record" style="margin:8px 0 0"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 8 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 8 · Классические алгоритмы',
+        title: 'Линейная регрессия',
+        analogy: '<b>Положи линейку через точки так, чтобы ошибок было меньше.</b> Чем длиннее у пингвина крыло, тем он обычно тяжелее. Одна прямая линия — и по длине крыла можно угадать массу.',
+        cvLabel: 'Пингвины: длина крыла и масса тела, прямая регрессии',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: прямая на глаз',
+        legHandle: 'тяни за концы',
+        legOutlier: 'выброс',
+        eq: 'масса ≈ {a} × крыло {s} {b}',
+        residLabel: 'Как показать ошибки',
+        residSeg: 'Отрезки',
+        residSq: 'Квадраты',
+        metricsTitle: 'Ошибки прямой на train',
+        maeLbl: '<b>MAE</b> — средняя ошибка, г',
+        mseLbl: '<b>MSE</b> — средний квадрат ошибки, г²',
+        rmseLbl: '<b>RMSE</b> = √MSE, г',
+        moreMetrics: 'Ещё метрики: RMSE и R² ▾',
+        testNote: 'На test-пингвинах (их прямая не видела): R² = {r2}',
+        best: 'Лучшая прямая',
+        outlier: 'Добавить выброс',
+        outlierWhat: 'Выброс — пингвин, который сильно не похож на остальных (например, ошибка при взвешивании).',
+        outlierNote: 'Выброс — всего 1 точка из {n}, но в MAE он даёт <b>{mae}%</b> всей ошибки, а в MSE — <b>{mse}%</b>.',
+        hintExplore: 'Тяни белые кружки на концах прямой. Можно взять и саму прямую — она сдвинется целиком.',
+        hintOutlier: 'Красную точку-выброс тоже можно таскать. Утащи её подальше от остальных.',
+        hintGame: 'Ошибки спрятаны. Поставь прямую на глаз как можно лучше и нажми «Проверить».',
+        gameAsk: 'Подбери прямую <b>на глаз</b>: цифры ошибок спрятаны. <b>Счёт = MSE лучшей прямой ÷ твоя MSE.</b> 100% — ты нашёл лучшую прямую, 50% — твоя ошибка вдвое больше. Соревнуйся с соседом!',
+        check: 'Проверить',
+        again: 'Новая прямая ↺',
+        gameStepTry: 'Положи прямую на глаз и проверь',
+        gameStepDone: 'Проверено',
+        gameLine: 'Твоя MSE: <b>{you}</b><br>Лучшая MSE: <b>{best}</b><br>Счёт: <b style="font-size:22px">{score}%</b> {verdict}',
+        vGreat: '— почти как модель!',
+        vGood: '— хорошо!',
+        vTry: '— попробуй ещё.',
+        record: 'Твой рекорд: {r}%',
+        hidden: '?',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Прямая — это правило.</b> <code>масса ≈ a × крыло + b</code>. Число <i>a</i> — наклон: сколько граммов прибавляется на каждый миллиметр крыла. Число <i>b</i> сдвигает прямую вверх или вниз.</li>' +
+          '<li><b>Ошибка</b> — насколько настоящая масса пингвина выше или ниже прямой. На графике это вертикальный отрезок. Прямая не пройдёт через все точки, и это нормально: пингвины с одинаковым крылом весят по-разному.</li>' +
+          '<li><b>Собираем ошибки в одно число.</b> <b>MAE</b> — средний размер ошибки в граммах. <b>MSE</b> — среднее квадратов ошибок: большая ошибка весит намного больше маленькой (ошибка 2 → квадрат 4, ошибка 10 → квадрат 100).</li>' +
+          '<li><b>R²</b> (в «Ещё метриках») сравнивает прямую с самым простым ответом — «все пингвины весят среднюю массу». 1 — идеально, 0 — не лучше среднего, а меньше 0 — прямая даже хуже, чем просто называть среднее.</li>' +
+          '<li><b>Лучшая прямая</b> — та, у которой MSE на train самая маленькая. Её не нужно искать перебором: <b>метод наименьших квадратов</b> находит <i>a</i> и <i>b</i> сразу по формуле.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Сделай прямую горизонтальной на уровне примерно 4200 г и открой «Ещё метрики». Чему равен R²? Почему именно столько? А если опустить прямую до 3000 г?</li>' +
+          '<li>Включи «Квадраты». Какие пингвины дают самые большие квадраты? Есть ли у них что-то общее?</li>' +
+          '<li>Найди прямую, у которой MAE меньше, чем у «лучшей». Получилось? Почему «лучшая» всё равно лучшая?</li>' +
+          '<li>Добавь выброс и утащи его ещё дальше от прямой. Какую долю всей ошибки он даёт в MAE, а какую в MSE? Почему так по-разному?</li>' +
+          '<li>Нажми «Лучшая прямая», когда выброс включён. Куда её потянуло? Справедливо ли это по отношению к остальным пингвинам?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Для пингвинов с длиной крыла <i>x</i> и массой <i>y</i> (черта сверху — среднее):</p>' +
+          '<p><code>a = Σ(x − x̄)(y − ȳ) / Σ(x − x̄)²&nbsp;&nbsp;&nbsp;b = ȳ − a·x̄</code></p>' +
+          '<p>Метрики для <i>n</i> пингвинов, где <i>ŷ</i> — масса по прямой:</p>' +
+          '<p><code>MAE = Σ|y − ŷ| / n&nbsp;&nbsp;&nbsp;MSE = Σ(y − ŷ)² / n&nbsp;&nbsp;&nbsp;RMSE = √MSE<br>R² = 1 − Σ(y − ŷ)² / Σ(y − ȳ)²</code></p>' +
+          '<p><b>RMSE</b> — корень из MSE. Он снова в граммах (а не в «граммах в квадрате»), поэтому его удобно сравнивать с MAE.</p>' +
+          '<p>В Python это (здесь <code>y</code> — масса, а не вид, как в уроках про классификацию):</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split<br>' +
+          'from sklearn.linear_model import LinearRegression<br>' +
+          'from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'flipper_length_mm\']]&nbsp;&nbsp;# признак: длина крыла<br>' +
+          'y = df[\'body_mass_g\']&nbsp;&nbsp;# ответ: масса<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br><br>' +
+          'model = LinearRegression().fit(X_train, y_train)<br>' +
+          'print(model.coef_, model.intercept_)&nbsp;&nbsp;# a и b<br>' +
+          'pred = model.predict(X_train)<br>' +
+          'print(mean_absolute_error(y_train, pred), mean_squared_error(y_train, pred), r2_score(y_train, pred))<br>' +
+          'print(r2_score(y_test, model.predict(X_test)))&nbsp;&nbsp;# R² на test</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина (без столбца sex, без пропусков). Предсказываем массу <code>body_mass_g</code> по длине крыла <code>flipper_length_mm</code>. Прямая и метрики считаются на 273 train-пингвинах, R² ещё и на 69 test. Разбиение как в Colab: <code>train_test_split(test_size=0.2, random_state=42)</code>. «Лучшая прямая» без выброса совпадает с <code>LinearRegression</code>: масса ≈ 49.85 × крыло − 5816.87, R² на train 0.755, на test 0.775 (<code>tools/check_linreg.py</code>).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «Ближе к лучшей» на проекторе — несколько учеников по очереди ставят прямую на глаз, класс записывает счёт. Затем включаем метрики и разбираем, почему квадраты важнее для MSE.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Когда лучше смотреть на MAE, а когда на MSE? Почему один выброс так сильно тянет прямую? Можно ли по прямой предсказать массу птенца с крылом 100 мм?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.',
+        axisX: 'Длина крыла, мм',
+        axisY: 'Масса тела, г'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var cv = document.getElementById('cv');
+    cv.setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    var C_RED = MLViz.cssVar('--red'), C_VIOLET = MLViz.cssVar('--violet');
+
+    var all = PENGUINS.rows.map(function (r) {
+      return { si: SPECIES.indexOf(r[0]), x: r[4], y: r[5], test: r[6] === 1, pos: r[7] }; // x = крыло, y = масса
+    });
+    var byPos = function (a, b) { return a.pos - b.pos; };
+    var train = all.filter(function (p) { return !p.test; }).sort(byPos);
+    var test = all.filter(function (p) { return p.test; }).sort(byPos);
+
+    // ======================= Расчёты =======================
+    // Прямую задаём двумя «ручками» на фиксированных x: ученик двигает их по вертикали.
+    var XL = 176, XR = 228;
+    function coef(line) { var a = (line.yR - line.yL) / (XR - XL); return { a: a, b: line.yL - a * XL }; }
+    function lineThrough(a, b) { return { yL: a * XL + b, yR: a * XR + b }; }
+
+    // Метод наименьших квадратов — та же формула, что внутри LinearRegression
+    function ols(pts) {
+      var n = pts.length, mx = 0, my = 0;
+      pts.forEach(function (p) { mx += p.x; my += p.y; });
+      mx /= n; my /= n;
+      var sxy = 0, sxx = 0;
+      pts.forEach(function (p) { sxy += (p.x - mx) * (p.y - my); sxx += (p.x - mx) * (p.x - mx); });
+      var a = sxy / sxx;
+      return { a: a, b: my - a * mx };
+    }
+    function metrics(pts, c) {
+      var n = pts.length, my = 0, abs = 0, sq = 0, tot = 0;
+      pts.forEach(function (p) { my += p.y; });
+      my /= n;
+      pts.forEach(function (p) {
+        var e = p.y - (c.a * p.x + c.b);
+        abs += Math.abs(e); sq += e * e; tot += (p.y - my) * (p.y - my);
+      });
+      return { mae: abs / n, mse: sq / n, rmse: Math.sqrt(sq / n), r2: 1 - sq / tot };
+    }
+
+    // ======================= Состояние =======================
+    var state = {
+      mode: 'explore', view: 'seg',
+      line: { yL: 3300, yR: 5400 },
+      outlierOn: false, outlier: { x: 181, y: 6300 },     // короткое крыло, но огромная масса — заметно мимо прямой
+      game: null, record: 0, anim: null
+    };
+    // Точки, по которым считаем ошибки и лучшую прямую (выброс — только если включён)
+    function fitPts() { return state.outlierOn ? train.concat([state.outlier]) : train; }
+    function metricsHidden() { return state.mode === 'game' && !state.game.done; }
+
+    // ======================= Рисование =======================
+    var PAD = { l: 62, r: 14, t: 14, b: 44 };
+    var DOM = { x0: 168, x1: 236, y0: 2500, y1: 6500 };
+    var g, sx, sy;
+
+    function resize() {
+      g = MLViz.fitCanvas(cv, 0.62);
+      PAD = MLViz.plotPad(g.w, 4);
+      sx = MLViz.scale(DOM.x0, DOM.x1, PAD.l, g.w - PAD.r);
+      sy = MLViz.scale(DOM.y0, DOM.y1, g.h - PAD.b, PAD.t);
+      draw();
+    }
+
+    function drawAxes(ctx) {
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy,
+        xTicks: MLViz.range(170, 230, 10), yTicks: MLViz.range(3000, 6000, 500),
+        xLabel: T('axisX'), yLabel: T('axisY')
+      });
+    }
+
+    // Ошибки: отрезок от точки до прямой или квадрат со стороной = ошибке (площадь = ошибка²)
+    function drawResiduals(ctx, c) {
+      var pts = fitPts();
+      ctx.save();
+      ctx.beginPath(); ctx.rect(PAD.l, PAD.t, g.w - PAD.l - PAD.r, g.h - PAD.t - PAD.b); ctx.clip();
+      pts.forEach(function (p) {
+        var px = sx(p.x), py = sy(p.y), ly = sy(c.a * p.x + c.b);
+        var isOut = p === state.outlier;
+        if (state.view === 'sq') {
+          var side = Math.abs(py - ly);
+          var left = px + side > g.w - PAD.r ? px - side : px;   // у правого края рисуем квадрат влево
+          ctx.fillStyle = isOut ? 'rgba(248,113,113,.18)' : 'rgba(34,211,238,.06)';
+          ctx.strokeStyle = isOut ? 'rgba(248,113,113,.7)' : 'rgba(34,211,238,.28)';
+          ctx.lineWidth = 1;
+          ctx.fillRect(left, Math.min(py, ly), side, side);
+          ctx.strokeRect(left, Math.min(py, ly), side, side);
+        } else {
+          ctx.strokeStyle = isOut ? 'rgba(248,113,113,.85)' : 'rgba(255,255,255,.32)';
+          ctx.lineWidth = isOut ? 2 : 1;
+          ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, ly); ctx.stroke();
+        }
+      });
+      ctx.restore();
+    }
+
+    function handle(ctx, x, y) {
+      ctx.beginPath(); ctx.arc(sx(x), sy(y), 9, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = C_VIOLET; ctx.lineWidth = 4; ctx.stroke();
+    }
+
+    function draw() {
+      var ctx = g.ctx, c = coef(state.line);
+      ctx.clearRect(0, 0, g.w, g.h);
+      drawAxes(ctx);
+      drawResiduals(ctx, c);
+
+      ctx.globalAlpha = 0.9;
+      train.forEach(function (p) {
+        ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 4, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS[p.si]; ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      if (state.outlierOn) {
+        var o = state.outlier;
+        ctx.beginPath(); ctx.arc(sx(o.x), sy(o.y), 8, 0, Math.PI * 2);
+        ctx.fillStyle = C_RED; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      }
+
+      // Сама прямая во всю ширину графика
+      ctx.save();
+      ctx.beginPath(); ctx.rect(PAD.l, PAD.t, g.w - PAD.l - PAD.r, g.h - PAD.t - PAD.b); ctx.clip();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+      ctx.shadowColor = 'rgba(167,139,250,.8)'; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.moveTo(sx(DOM.x0), sy(c.a * DOM.x0 + c.b)); ctx.lineTo(sx(DOM.x1), sy(c.a * DOM.x1 + c.b)); ctx.stroke();
+      ctx.restore();
+
+      handle(ctx, XL, state.line.yL);
+      handle(ctx, XR, state.line.yR);
+    }
+
+    // ======================= Панель =======================
+    // Тысячи через узкий пробел: 161 584 читается легче, чем 161584
+    function fmt(v, d) {
+      var s = v.toFixed(d), parts = s.split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      return parts.join('.');
+    }
+
+    function updatePanel() {
+      var c = coef(state.line);
+      document.getElementById('eq').textContent = T('eq', { a: fmt(c.a, 2), s: c.b < 0 ? '−' : '+', b: fmt(Math.abs(c.b), 1) });
+
+      var m = metrics(fitPts(), c), hid = metricsHidden();
+      document.getElementById('vMAE').textContent = hid ? T('hidden') : fmt(m.mae, 1);
+      document.getElementById('vMSE').textContent = hid ? T('hidden') : fmt(m.mse, 0);
+      document.getElementById('vRMSE').textContent = hid ? T('hidden') : fmt(m.rmse, 1);
+      document.getElementById('vR2').textContent = hid ? T('hidden') : m.r2.toFixed(3);
+      document.getElementById('testNote').textContent = hid ? '' : T('testNote', { r2: metrics(test, c).r2.toFixed(3) });
+      // Подсвечиваем метрику, которая соответствует выбранному виду ошибок
+      document.getElementById('mMAE').classList.toggle('hot', state.view === 'seg');
+      document.getElementById('mMSE').classList.toggle('hot', state.view === 'sq');
+
+      // Какую долю всей ошибки даёт один выброс: в MSE ошибка в квадрате, поэтому доля намного больше
+      var on = document.getElementById('outlierNote');
+      on.hidden = !state.outlierOn;
+      if (state.outlierOn) {
+        var n = fitPts().length, e = state.outlier.y - (c.a * state.outlier.x + c.b);
+        on.innerHTML = T('outlierNote', {
+          n: n,
+          mae: Math.round(100 * Math.abs(e) / (m.mae * n)),
+          mse: Math.round(100 * e * e / (m.mse * n))
+        });
+      }
+      document.getElementById('legOutlier').hidden = !state.outlierOn;
+
+      MLViz.setPressed(document.getElementById('residBtns'), function (b) { return b.dataset.v === state.view; });
+    }
+
+    function refresh() { updatePanel(); draw(); }
+
+    // Плавный переход прямой к новому положению — чтобы было видно, куда она «едет»
+    function animateTo(target, done) {
+      if (state.anim) { cancelAnimationFrame(state.anim); clearTimeout(state.animSafety); }
+      refresh();
+      var finish = function () {
+        cancelAnimationFrame(state.anim); clearTimeout(state.animSafety);
+        state.anim = null; state.line = target; refresh(); if (done) done();
+      };
+      // Без анимации, если она выключена в системе или вкладка не видна
+      var still = document.hidden || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+      if (still) { finish(); return; }
+      var from = { yL: state.line.yL, yR: state.line.yR }, t0 = performance.now(), dur = 700;
+      function step(now) {
+        var t = Math.min(1, (now - t0) / dur);
+        if (t >= 1) { finish(); return; }
+        var e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        state.line = { yL: from.yL + (target.yL - from.yL) * e, yR: from.yR + (target.yR - from.yR) * e };
+        refresh();
+        state.anim = requestAnimationFrame(step);
+      }
+      state.anim = requestAnimationFrame(step);
+      // Страховка: если браузер не дал кадров (свёрнутое окно, слабый компьютер), прямая всё равно встанет на место
+      state.animSafety = setTimeout(finish, dur + 100);
+    }
+    function bestLine() { var b = ols(fitPts()); return lineThrough(b.a, b.b); }
+
+    // ======================= Игра «Ближе к лучшей» =======================
+    function randomLine() {
+      var r = Math.random;
+      return { yL: 3000 + r() * 2600, yR: 3000 + r() * 2600 };
+    }
+    // Игра «Прямая на глаз» (общий компонент MLViz.quiz): один раунд — одна случайная прямая
+    var quiz = MLViz.quiz({
+      box: document.getElementById('gamePanel'), rounds: 1,
+      text: { step: function () { return T('gameStepTry'); }, finishTitle: T('gameStepDone'), again: T('again') },
+      round: function () {
+        state.game = { done: false };
+        state.line = randomLine();
+        document.getElementById('checkBtn').hidden = false;
+        refresh();
+      }
+    });
+    function checkGame() {
+      var gm = state.game;
+      if (gm.done) return;
+      var you = metrics(train, coef(state.line)).mse;
+      var bc = ols(train), best = metrics(train, bc).mse;
+      var score = Math.round(100 * best / you);
+      gm.done = true;
+      state.record = Math.max(state.record, score);
+      document.getElementById('record').textContent = T('record', { r: state.record });
+      document.getElementById('checkBtn').hidden = true;
+      quiz.answer(score, T('gameLine', {
+        you: fmt(you, 0), best: fmt(best, 0), score: score,
+        verdict: T(score >= 95 ? 'vGreat' : score >= 80 ? 'vGood' : 'vTry')
+      }));
+      // Показываем, где была лучшая прямая: прямая ученика плавно переезжает туда
+      animateTo(lineThrough(bc.a, bc.b));
+    }
+
+    function setMode(m) {
+      if (state.anim) { cancelAnimationFrame(state.anim); state.anim = null; }
+      state.mode = m;
+      MLViz.setPressed(document.getElementById('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      document.getElementById('explorePanel').hidden = m !== 'explore';
+      document.getElementById('explorePanel').style.display = m === 'explore' ? 'flex' : 'none';
+      document.getElementById('gamePanel').hidden = m !== 'game';
+      updateHint();
+      if (m === 'game') {
+        state.outlierOn = false; document.getElementById('outlier').checked = false;
+        quiz.start();
+      } else { state.game = null; refresh(); }
+    }
+    function updateHint() {
+      document.getElementById('hint').textContent =
+        state.mode === 'game' ? T('hintGame') : state.outlierOn ? T('hintOutlier') : T('hintExplore');
+    }
+
+    // ======================= Перетаскивание =======================
+    // Что под пальцем: выброс, левая/правая ручка или сама прямая
+    function hitTest(p) {
+      var R = 18;
+      function near(x, y) { var dx = sx(x) - p.x, dy = sy(y) - p.y; return dx * dx + dy * dy < R * R; }
+      if (state.outlierOn && near(state.outlier.x, state.outlier.y)) return 'out';
+      if (near(XL, state.line.yL)) return 'L';
+      if (near(XR, state.line.yR)) return 'R';
+      var c = coef(state.line);
+      if (p.x > PAD.l && p.x < g.w - PAD.r && Math.abs(sy(c.a * sx.invert(p.x) + c.b) - p.y) < 12) return 'line';
+      return null;
+    }
+    function locked() { return state.anim || (state.game && state.game.done); }
+    var drag = null;
+    function clampY(y) { return Math.min(DOM.y1, Math.max(DOM.y0, y)); }
+
+    cv.addEventListener('pointerdown', function (e) {
+      if (locked()) return;
+      var p = MLViz.pointer(cv, e), what = hitTest(p);
+      if (!what) return;
+      drag = { what: what, y0: sy.invert(p.y), line: { yL: state.line.yL, yR: state.line.yR } };
+      cv.setPointerCapture(e.pointerId);
+    });
+    cv.addEventListener('pointermove', function (e) {
+      var p = MLViz.pointer(cv, e);
+      if (!drag) {
+        var h = locked() ? null : hitTest(p);
+        cv.style.cursor = h === 'line' ? 'move' : h ? 'grab' : 'default';
+        return;
+      }
+      var y = clampY(sy.invert(p.y));
+      if (drag.what === 'L') state.line.yL = y;
+      else if (drag.what === 'R') state.line.yR = y;
+      else if (drag.what === 'line') {
+        var dy = y - drag.y0;
+        state.line = { yL: drag.line.yL + dy, yR: drag.line.yR + dy };
+      } else if (drag.what === 'out') {
+        state.outlier = { x: Math.min(DOM.x1 - 1, Math.max(DOM.x0 + 1, sx.invert(p.x))), y: y };
+      }
+      refresh();
+    });
+    function endDrag() { drag = null; }
+    cv.addEventListener('pointerup', endDrag);
+    cv.addEventListener('pointercancel', endDrag);
+
+    // ======================= События =======================
+    document.querySelectorAll('#residBtns button').forEach(function (b) {
+      b.addEventListener('click', function () { state.view = b.dataset.v; refresh(); });
+    });
+    document.getElementById('bestBtn').addEventListener('click', function () { animateTo(bestLine()); });
+    document.getElementById('outlier').addEventListener('change', function (e) {
+      state.outlierOn = e.target.checked; updateHint(); refresh();
+    });
+    document.getElementById('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
+    document.getElementById('checkBtn').addEventListener('click', checkGame);
+
+    var colab = document.getElementById('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

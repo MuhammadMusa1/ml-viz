@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Лаборатория ML</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <p class="lead" data-i18n="lead"></p>
+    <div id="catalog"></div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap" data-i18n-html="footer"></div>
+  </footer>
+
+  <script src="assets/core.js"></script>
+  <script src="assets/catalog.js"></script>
+  <script>
+    var STR = {
+      ru: {
+        eyebrow: 'Курс Machine Learning',
+        title: 'Машинное обучение, которое можно потрогать',
+        lead: 'Интерактивные визуализации к 24 урокам курса. Двигай точки, крути ползунки и смотри, как модель принимает решения. Без установки и без интернета.',
+        lesson: 'Урок {n}',
+        ready: 'Готово',
+        planned: 'Скоро',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Работает офлайн: скачайте папку и откройте <code>index.html</code>.'
+      }
+    };
+
+    MLViz.renderHeader('');
+    MLViz.applyI18n(STR);
+
+    var L = MLViz.lang;
+    var tx = function (o) { return (o && (o[L] || o.ru)) || ''; };
+    var html = CATALOG.map(function (ph) {
+      var cards = ph.items.map(function (it) {
+        var ready = it.status === 'ready';
+        var tag = ready ? 'a' : 'div';
+        var href = ready ? ' href="viz/' + it.id + '/index.html' + (L !== 'ru' ? '?lang=' + L : '') + '"' : '';
+        return '<' + tag + ' class="card ' + it.status + '"' + href + '>' +
+          '<div class="meta"><span>' + MLViz.t(STR, 'lesson', { n: it.lesson }) + '</span>' +
+          '<span class="badge ' + it.status + '">' + MLViz.t(STR, ready ? 'ready' : 'planned') + '</span></div>' +
+          '<h3>' + tx(it.title) + '</h3>' +
+          '<div class="analogy">' + tx(it.analogy) + '</div>' +
+        '</' + tag + '>';
+      }).join('');
+      return '<section class="phase"><div class="phase-head"><h2>' + tx(ph.phase) + '</h2>' +
+        '<span class="weeks">' + tx(ph.weeks) + '</span></div><div class="grid">' + cards + '</div></section>';
+    }).join('');
+    document.getElementById('catalog').innerHTML = html;
+  </script>
+</body>
+</html>

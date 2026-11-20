@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Корреляция · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Только для этой страницы */
+    .panel select { font: inherit; font-size: 15px; color: var(--text); background: var(--bg-2); border: 1px solid var(--line);
+                    border-radius: 8px; padding: 8px 6px; min-height: 44px; width: 100%; }
+    .pick { display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; align-items: center; margin-top: 6px; }
+    .per { list-style: none; padding: 0; margin: 6px 0 0; }
+    .per li { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+    .per li b { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv" class="drag"></canvas>
+          <div class="legend" style="padding:8px 4px 0" id="legSpecies">
+            <span><i style="background:var(--adelie)"></i>Adelie</span>
+            <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+            <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+            <span><i style="background:var(--text); border-radius:2px; height:3px; vertical-align:3px"></i><span data-i18n="legLine"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra" id="matBox">
+          <canvas id="mat"></canvas>
+          <div class="hint" data-i18n="matHint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" data-mode="penguins" data-i18n="modePenguins"></button>
+          <button type="button" data-mode="sandbox" data-i18n="modeSandbox"></button>
+          <button type="button" data-mode="game" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Пингвины -->
+        <div id="pengBox">
+          <h3 data-i18n="pairLabel"></h3>
+          <div class="pick">
+            <span>X</span><select id="selX"></select>
+            <span>Y</span><select id="selY"></select>
+          </div>
+          <label class="toggle" style="margin-top:10px"><input type="checkbox" id="bySpecies"> <span data-i18n="bySpecies"></span></label>
+          <ul class="per" id="per"></ul>
+          <p class="note" id="simpson"></p>
+        </div>
+
+        <!-- Песочница -->
+        <div id="sandBox" hidden>
+          <h3 data-i18n="presetLabel"></h3>
+          <div class="seg" id="presets" style="margin-top:6px"></div>
+          <p class="note" data-i18n="sandNote"></p>
+        </div>
+
+        <!-- Игра «Угадай r» -->
+        <div id="gameBox" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <h3 style="margin-top:10px"><span data-i18n="guessLabel"></span>: <span id="guessVal"></span></h3>
+          <input type="range" id="guess" min="-1" max="1" step="0.05" value="0">
+          <button type="button" id="checkBtn" class="primary" style="margin-top:8px" data-i18n="checkBtn"></button>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:8px" hidden></button>
+        </div>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px" id="rBox">
+          <h3 data-i18n="rTitle"></h3>
+          <div class="big-number" id="rVal"></div>
+          <p style="margin:6px 0 0" id="rText"></p>
+          <p class="note" id="rNote"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 3 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 3 · Данные',
+        title: 'Корреляция: растут ли вместе?',
+        analogy: '<b>У длинных пингвинов обычно и масса больше</b> — эти два числа «ходят вместе». Насколько дружно — показывает одно число от −1 до +1, <b>коэффициент корреляции r</b>. +1 — точки лежат на растущей прямой, −1 — на падающей, 0 — связи по прямой нет.',
+        cvLabel: 'Точечный график двух признаков и линия тренда',
+        matLabel: 'Таблица корреляций четырёх признаков пингвинов',
+        modePenguins: 'Пингвины',
+        modeSandbox: 'Песочница',
+        modeGame: 'Игра: угадай r',
+        legLine: 'линия тренда',
+        hintPenguins: 'Каждая точка — пингвин. Выбери в панели два признака или нажми на клетку таблицы под графиком.',
+        hintSandbox: 'Тащи точки мышью или пальцем. Клик по пустому месту добавляет точку, а точку, вытащенную за край графика, мы убираем.',
+        hintGame: 'Посмотри на облако точек и угадай r. За раунд до 100 очков: за каждую сотую ошибки минус 1. Всего 8 раундов, максимум 800.',
+        matHint: 'Корреляция каждой пары признаков, как печатает pandas df.corr(). Нажми на клетку, чтобы увидеть эту пару на графике. Диагональ — признак сам с собой, там всегда 1.',
+        pairLabel: 'Какие признаки сравниваем',
+        bySpecies: 'Показать по видам',
+        perAll: 'все вместе',
+        simpson: 'Смотри: вместе r отрицательный, а внутри каждого вида — положительный! Это парадокс Симпсона: виды стоят в разных местах графика и «переворачивают» общую картину.',
+        f_bill_length_mm: 'Длина клюва, мм',
+        f_bill_depth_mm: 'Глубина клюва, мм',
+        f_flipper_length_mm: 'Длина крыла, мм',
+        f_body_mass_g: 'Масса, г',
+        f_short_bill_length_mm: 'клюв: длина',
+        f_short_bill_depth_mm: 'клюв: глубина',
+        f_short_flipper_length_mm: 'крыло',
+        f_short_body_mass_g: 'масса',
+        presetLabel: 'Готовые облака',
+        p_line: 'Почти прямая',
+        p_cloud: 'Облако',
+        p_down: 'Вниз',
+        p_arc: 'Дуга',
+        p_outlier: 'Один выброс',
+        sandNote: 'Попробуй «Дугу»: связь явно есть, а r около нуля. r видит только связь «по прямой».',
+        rTitle: 'Корреляция r',
+        rNone: 'Почти нет связи по прямой.',
+        rWeak: '{dir}, слабая связь.',
+        rMid: '{dir}, средняя связь.',
+        rStrong: '{dir}, сильная связь.',
+        dirPos: 'Положительная: когда X растёт, Y обычно тоже растёт',
+        dirNeg: 'Отрицательная: когда X растёт, Y обычно уменьшается',
+        rNote: 'Точек: {n}. Корреляция — не причина: мороженого и солнечных ожогов летом больше, но мороженое ожоги не вызывает.',
+        rHidden: '?',
+        gameStep: 'Раунд {i} из {n} · очков {s}',
+        gameAsk: 'Какой здесь коэффициент корреляции r?',
+        guessLabel: 'Твоя догадка',
+        checkBtn: 'Проверить',
+        gameLine: 'На самом деле r = <b>{r}</b>. Ты ошибся на {d} — <b>+{p}</b> очков.',
+        next: 'Следующий раунд',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        final: '<b>Итог: {s} очков из {max}.</b> {comment}',
+        cGood: 'Ты отлично чувствуешь корреляцию!',
+        cMid: 'Неплохо! Подсказка: облако, похожее на узкий овал, — сильная связь; круглое — слабая.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Точечный график.</b> Каждый пингвин — точка: по горизонтали один признак, по вертикали другой. Сразу видно, «ходят ли числа вместе».</li>' +
+          '<li><b>Знак r.</b> Плюс — облако тянется вверх-вправо (длиннее крыло — больше масса). Минус — вниз-вправо.</li>' +
+          '<li><b>Сила r.</b> Чем ближе облако к узкой прямой, тем ближе r к +1 или −1. Круглое облако — r около 0.</li>' +
+          '<li><b>Ловушки.</b> r видит только связь «по прямой»: дуга может дать r ≈ 0. Один выброс может сильно изменить r. А если смешать группы (виды), общий r может даже сменить знак — парадокс Симпсона.</li>' +
+          '<li><b>Зачем это в ML.</b> Признаки, которые сильно связаны с ответом, помогают модели угадывать. А два почти одинаковых признака (r ≈ 1) дают модели мало новой информации.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Найди в таблице самую сильную связь между двумя разными признаками. Почему именно эти два? И почему на диагонали всегда 1.00?</li>' +
+          '<li>Выбери «Глубина клюва» и «Масса». Какой r? Теперь включи «Показать по видам». Что случилось?</li>' +
+          '<li>В песочнице выбери «Почти прямая» и утащи одну точку далеко вверх. Как изменился r?</li>' +
+          '<li>Построй облако с r около 0, но с явной связью. Получилось?</li>' +
+          '<li>Сыграй «Игра: угадай r». Удалось набрать больше 600 очков?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Коэффициент корреляции Пирсона:</p>' +
+          '<p><code>r = Σ (xᵢ − x̄)(yᵢ − ȳ) / √( Σ (xᵢ − x̄)² · Σ (yᵢ − ȳ)² )</code></p>' +
+          '<p>Сверху — сумма «отклонений вместе»: если оба числа одновременно больше среднего или оба меньше, произведение положительное. Снизу — нормировка, чтобы r всегда был от −1 до +1 и не зависел от единиц (граммы или килограммы — неважно).</p>' +
+          '<p>В Python:</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'cols = [\'bill_length_mm\', \'bill_depth_mm\', \'flipper_length_mm\', \'body_mass_g\']<br>' +
+          'print(df[cols].corr().round(2))&nbsp;&nbsp;# вся таблица корреляций<br><br>' +
+          '# по видам: парадокс Симпсона<br>' +
+          'for sp, g in df.groupby(\'species\'):<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;print(sp, round(g[\'bill_depth_mm\'].corr(g[\'body_mass_g\']), 2))</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина (без столбца sex, без пропусков). Таблица корреляций и r по видам совпадают с <code>tools/check_correlation.py</code> (pandas <code>df.corr()</code>). Песочница и игра используют свои точки; в игре облака генерируются случайно, r считается по той же формуле.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: ученики называют свой рост и размер обуви, учитель отмечает точки на доске — видна ли связь? Потом смотрим пингвинов и таблицу. Отдельно разбираем парадокс Симпсона (глубина клюва и масса). В конце игра «Угадай r».</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Если r = 0, значит ли это, что связи нет? Почему у Gentoo клюв мелкий, а масса большая, — и что это делает с общим r? Приведи пример корреляции без причины.</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+    document.getElementById('mat').setAttribute('aria-label', T('matLabel'));
+    document.getElementById('guess').setAttribute('aria-label', T('guessLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    var C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted');
+    var FEATS = ['bill_length_mm', 'bill_depth_mm', 'flipper_length_mm', 'body_mass_g'];
+    var FI = { bill_length_mm: 2, bill_depth_mm: 3, flipper_length_mm: 4, body_mass_g: 5 };
+    var ALL = PENGUINS.rows.map(function (r) { return { si: SPECIES.indexOf(r[0]), v: r }; });
+
+    // ======================= Корреляция и линия тренда =======================
+    function pearson(xs, ys) {
+      var n = xs.length, mx = 0, my = 0, i;
+      for (i = 0; i < n; i++) { mx += xs[i]; my += ys[i]; }
+      mx /= n; my /= n;
+      var sxy = 0, sxx = 0, syy = 0;
+      for (i = 0; i < n; i++) { var dx = xs[i] - mx, dy = ys[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+      return { r: sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0, k: sxx ? sxy / sxx : 0, mx: mx, my: my };
+    }
+    function pengXY(a, b, si) {
+      var pts = ALL.filter(function (p) { return si === undefined || p.si === si; });
+      return { xs: pts.map(function (p) { return p.v[FI[a]]; }), ys: pts.map(function (p) { return p.v[FI[b]]; }) };
+    }
+    function corrPeng(a, b, si) { var d = pengXY(a, b, si); return pearson(d.xs, d.ys); }
+    function fmtR(r) { var s = (Math.round(r * 100) / 100).toFixed(2); return s === '-0.00' ? '0.00' : s.replace('-', '−'); }
+    function describe(r) {
+      var a = Math.abs(r), dir = T(r > 0 ? 'dirPos' : 'dirNeg');
+      return a < 0.1 ? T('rNone') : a < 0.3 ? T('rWeak', { dir: dir }) : a < 0.7 ? T('rMid', { dir: dir }) : T('rStrong', { dir: dir });
+    }
+
+    // ======================= Песочница: готовые облака =======================
+    function gauss(rnd) { var u = 1 - rnd(), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+    function makeCloud(rho, n, rnd) {
+      var pts = [];
+      for (var i = 0; i < n; i++) {
+        var x = gauss(rnd), y = rho * x + Math.sqrt(Math.max(0, 1 - rho * rho)) * gauss(rnd);
+        pts.push({ x: 5 + 1.6 * x, y: 5 + 1.6 * y });
+      }
+      return pts.map(function (p) { return { x: Math.max(0.3, Math.min(9.7, p.x)), y: Math.max(0.3, Math.min(9.7, p.y)) }; });
+    }
+    var PRESETS = {
+      line: function () { return makeCloud(0.97, 18, MLViz.rng(3)); },
+      cloud: function () { return makeCloud(0.1, 18, MLViz.rng(5)); },
+      down: function () { return makeCloud(-0.8, 18, MLViz.rng(8)); },
+      arc: function () {
+        var pts = []; for (var i = 0; i < 17; i++) { var x = 0.8 + i * 0.52; pts.push({ x: x, y: 1 + 0.32 * (x - 5) * (x - 5) }); } return pts;
+      },
+      outlier: function () { var p = makeCloud(0.95, 15, MLViz.rng(11)); p.push({ x: 9, y: 1 }); return p; }
+    };
+
+    // ======================= Состояние =======================
+    var state = { mode: 'penguins', a: 'bill_depth_mm', b: 'body_mass_g', bySpecies: false, sand: PRESETS.line(), preset: 'line', game: null };
+
+    // ======================= График =======================
+    var cv = document.getElementById('cv'), g, PAD, sx, sy, dom;
+    function niceStep(range) { var raw = range / 5, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; }
+
+    function currentPoints() {
+      if (state.mode === 'penguins') {
+        var d = pengXY(state.a, state.b);
+        return ALL.map(function (p, i) { return { x: d.xs[i], y: d.ys[i], si: p.si }; });
+      }
+      if (state.mode === 'sandbox') return state.sand;
+      return state.game ? state.game.pts : [];
+    }
+
+    function resize() {
+      g = MLViz.fitCanvas(cv, cv.parentElement.clientWidth < 600 ? 0.9 : 0.62);
+      resizeMat(); draw(); drawMat();
+    }
+
+    function setDomain(pts) {
+      if (state.mode !== 'penguins') { dom = { x0: 0, x1: 10, y0: 0, y1: 10 }; return; }
+      var xs = pts.map(function (p) { return p.x; }), ys = pts.map(function (p) { return p.y; });
+      var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+      var mx = (x1 - x0) * 0.06, my = (y1 - y0) * 0.08;
+      dom = { x0: x0 - mx, x1: x1 + mx, y0: y0 - my, y1: y1 + my };
+    }
+
+    function trend(ctx, fit, color, width) {
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(sx(dom.x0), sy(fit.my + fit.k * (dom.x0 - fit.mx)));
+      ctx.lineTo(sx(dom.x1), sy(fit.my + fit.k * (dom.x1 - fit.mx)));
+      ctx.stroke();
+    }
+
+    function draw() {
+      var ctx = g.ctx, pts = currentPoints();
+      setDomain(pts);
+      var yChars = state.mode === 'penguins' && state.b === 'body_mass_g' ? 4 : 3;
+      PAD = MLViz.plotPad(g.w, yChars);
+      sx = MLViz.scale(dom.x0, dom.x1, PAD.l, g.w - PAD.r);
+      sy = MLViz.scale(dom.y0, dom.y1, g.h - PAD.b, PAD.t);
+      ctx.clearRect(0, 0, g.w, g.h);
+      var stx = niceStep(dom.x1 - dom.x0), sty = niceStep(dom.y1 - dom.y0);
+      var peng = state.mode === 'penguins';
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy,
+        xTicks: MLViz.range(Math.ceil(dom.x0 / stx) * stx, dom.x1, stx), yTicks: MLViz.range(Math.ceil(dom.y0 / sty) * sty, dom.y1, sty),
+        xFmt: peng ? String : function () { return ''; }, yFmt: peng ? String : function () { return ''; },
+        xLabel: peng ? T('f_' + state.a) : 'X', yLabel: peng ? T('f_' + state.b) : 'Y'
+      });
+      ctx.save(); ctx.beginPath(); ctx.rect(PAD.l, PAD.t, g.w - PAD.l - PAD.r, g.h - PAD.t - PAD.b); ctx.clip();
+      // Линии тренда
+      if (pts.length >= 2 && !(state.mode === 'game' && !state.game.answered)) {
+        if (peng && state.bySpecies) {
+          SPECIES.forEach(function (_, s) { var d = pengXY(state.a, state.b, s); trend(ctx, pearson(d.xs, d.ys), COLORS[s], 2.5); });
+          trend(ctx, pearson(pts.map(function (p) { return p.x; }), pts.map(function (p) { return p.y; })), 'rgba(238,234,251,.5)', 2);
+        } else {
+          trend(ctx, pearson(pts.map(function (p) { return p.x; }), pts.map(function (p) { return p.y; })), C_TEXT, 2.5);
+        }
+      }
+      ctx.restore();
+      // Точки
+      pts.forEach(function (p) {
+        ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), peng ? 4 : 7, 0, Math.PI * 2);
+        ctx.fillStyle = peng ? COLORS[p.si] : C_TEXT; ctx.globalAlpha = peng ? 0.85 : 1; ctx.fill(); ctx.globalAlpha = 1;
+        if (!peng) { ctx.strokeStyle = '#17132E'; ctx.lineWidth = 2; ctx.stroke(); }
+      });
+    }
+
+    // ======================= Таблица корреляций =======================
+    var mat = document.getElementById('mat'), mg;
+    function resizeMat() { mg = MLViz.fitCanvas(mat, mat.parentElement.clientWidth < 600 ? 0.95 : 0.5); }
+    var MATL = null;
+    function drawMat() {
+      var ctx = mg.ctx, font = MLViz.cssVar('--font'), fs = MLViz.fontPx(mg.w);
+      ctx.clearRect(0, 0, mg.w, mg.h);
+      ctx.font = fs + 'px ' + font;
+      var lw = Math.max.apply(null, FEATS.map(function (f) { return ctx.measureText(T('f_short_' + f)).width; })) + 14;
+      var top = fs * 3.4, cell = Math.min((mg.w - lw - 6) / 4, (mg.h - top - 4) / 4);
+      MATL = { x0: lw, y0: top, cell: cell };
+      FEATS.forEach(function (f, i) {
+        ctx.fillStyle = C_MUTED; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.fillText(T('f_short_' + f), lw - 8, top + (i + 0.5) * cell);
+        // Подпись столбца в две строки («клюв:» / «длина»), чтобы соседние не налезали
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        var parts = T('f_short_' + f).split(' ');
+        parts.forEach(function (part, k) { ctx.fillText(part, lw + (i + 0.5) * cell, top - 6 - (parts.length - 1 - k) * (fs + 2)); });
+      });
+      FEATS.forEach(function (fa, i) {
+        FEATS.forEach(function (fb, j) {
+          var r = corrPeng(fa, fb).r, X = lw + j * cell, Y = top + i * cell;
+          // Плюс — белым, минус — оранжевым (не цвета видов)
+          ctx.fillStyle = r >= 0 ? 'rgba(238,234,251,' + (0.08 + 0.7 * r) + ')' : 'rgba(251,146,60,' + (0.08 + 0.7 * -r) + ')';
+          ctx.fillRect(X + 2, Y + 2, cell - 4, cell - 4);
+          ctx.fillStyle = Math.abs(r) > 0.55 ? '#17132E' : C_TEXT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.font = 'bold ' + (fs + 1) + 'px ' + font;
+          ctx.fillText(fmtR(r), X + cell / 2, Y + cell / 2);
+          ctx.font = fs + 'px ' + font;
+          var on = state.mode === 'penguins' && ((fa === state.b && fb === state.a) || (fa === state.a && fb === state.b));
+          if (on) { ctx.strokeStyle = C_TEXT; ctx.lineWidth = 2.5; ctx.strokeRect(X + 2, Y + 2, cell - 4, cell - 4); }
+        });
+      });
+    }
+
+    // ======================= Панель =======================
+    function el(id) { return document.getElementById(id); }
+    function updatePanel() {
+      var m = state.mode, gm = state.game;
+      MLViz.setPressed(el('modes'), function (b) { return b.dataset.mode === m; });
+      el('pengBox').hidden = m !== 'penguins';
+      el('sandBox').hidden = m !== 'sandbox';
+      el('gameBox').hidden = m !== 'game';
+      el('matBox').hidden = m !== 'penguins';
+      el('legSpecies').style.display = m === 'penguins' ? '' : 'none';
+      el('hint').textContent = T({ penguins: 'hintPenguins', sandbox: 'hintSandbox', game: 'hintGame' }[m]);
+
+      var pts = currentPoints(), fit = pearson(pts.map(function (p) { return p.x; }), pts.map(function (p) { return p.y; }));
+      var hide = m === 'game' && gm && !gm.answered;
+      el('rVal').textContent = hide ? T('rHidden') : fmtR(fit.r);
+      el('rText').textContent = hide ? '' : describe(fit.r);
+      el('rNote').textContent = T('rNote', { n: pts.length });
+
+      if (m === 'penguins') {
+        el('selX').value = state.a; el('selY').value = state.b;
+        el('bySpecies').checked = state.bySpecies;
+        var all = corrPeng(state.a, state.b).r, rows = '<li><span>' + T('perAll') + '</span><b>' + fmtR(all) + '</b></li>';
+        var flip = false;
+        if (state.bySpecies) {
+          SPECIES.forEach(function (sp, s) {
+            var r = corrPeng(state.a, state.b, s).r;
+            if (r * all < 0) flip = true;
+            rows += '<li><span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:' + COLORS[s] + '"></i>' + sp + '</span><b>' + fmtR(r) + '</b></li>';
+          });
+        }
+        el('per').innerHTML = rows;
+        el('simpson').textContent = flip ? T('simpson') : '';
+      }
+      if (m === 'sandbox') MLViz.setPressed(el('presets'), function (b) { return b.dataset.p === state.preset; });
+      if (m === 'game') el('guessVal').textContent = fmtR(+el('guess').value);
+    }
+    function refresh() { updatePanel(); draw(); if (state.mode === 'penguins') drawMat(); }
+
+    ['selX', 'selY'].forEach(function (id) {
+      FEATS.forEach(function (f) { var o = document.createElement('option'); o.value = f; o.textContent = T('f_' + f); el(id).appendChild(o); });
+    });
+    el('selX').setAttribute('aria-label', 'X'); el('selY').setAttribute('aria-label', 'Y');
+    el('selX').addEventListener('change', function (e) { state.a = e.target.value; refresh(); });
+    el('selY').addEventListener('change', function (e) { state.b = e.target.value; refresh(); });
+    el('bySpecies').addEventListener('change', function (e) { state.bySpecies = e.target.checked; refresh(); });
+    Object.keys(PRESETS).forEach(function (k) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.p = k; b.textContent = T('p_' + k);
+      b.addEventListener('click', function () { state.preset = k; state.sand = PRESETS[k](); refresh(); });
+      el('presets').appendChild(b);
+    });
+    mat.addEventListener('pointerdown', function (e) {
+      if (!MATL) return;
+      var m = MLViz.pointer(mat, e), j = Math.floor((m.x - MATL.x0) / MATL.cell), i = Math.floor((m.y - MATL.y0) / MATL.cell);
+      if (i < 0 || j < 0 || i > 3 || j > 3 || i === j) return;
+      state.a = FEATS[j]; state.b = FEATS[i]; refresh();
+    });
+
+    // ======================= Песочница: перетаскивание =======================
+    var drag = -1;
+    cv.addEventListener('pointerdown', function (e) {
+      if (state.mode !== 'sandbox') return;
+      var m = MLViz.pointer(cv, e), best = -1, bd = 16 * 16;
+      state.sand.forEach(function (p, i) { var dx = sx(p.x) - m.x, dy = sy(p.y) - m.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = i; } });
+      if (best < 0) {
+        if (m.x < PAD.l || m.x > g.w - PAD.r || m.y < PAD.t || m.y > g.h - PAD.b) return;
+        state.sand.push({ x: sx.invert(m.x), y: sy.invert(m.y) }); best = state.sand.length - 1;
+      }
+      drag = best; state.preset = null; cv.setPointerCapture(e.pointerId); refresh();
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (drag < 0) return;
+      var m = MLViz.pointer(cv, e);
+      state.sand[drag] = { x: sx.invert(m.x), y: sy.invert(m.y) }; refresh();
+    });
+    function endDrag() {
+      if (drag < 0) return;
+      var p = state.sand[drag];
+      // Точку утащили за край — убираем
+      if ((p.x < 0 || p.x > 10 || p.y < 0 || p.y > 10) && state.sand.length > 2) state.sand.splice(drag, 1);
+      else state.sand[drag] = { x: Math.max(0, Math.min(10, p.x)), y: Math.max(0, Math.min(10, p.y)) };
+      drag = -1; refresh();
+    }
+    cv.addEventListener('pointerup', endDrag);
+    cv.addEventListener('pointercancel', endDrag);
+
+    // ======================= Игра «Угадай r» (общий компонент MLViz.quiz) =======================
+    var rand = MLViz.rng(Date.now() % 100000);
+    var quiz = MLViz.quiz({
+      box: el('gameBox'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n, s: q.score }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('final', { s: q.score, max: q.n * 100, comment: T(q.score >= 600 ? 'cGood' : 'cMid') }); }
+      },
+      round: function () {
+        // state.game — облако точек раунда (его рисует график), счёт ведёт quiz
+        var rho = -0.95 + 1.9 * rand();
+        state.game = { pts: makeCloud(rho, 40, MLViz.rng(1 + Math.floor(rand() * 99999))), answered: false };
+        el('guess').value = 0; el('guess').disabled = false;
+        el('checkBtn').hidden = false;
+        refresh();
+      },
+      onEnd: function () { el('checkBtn').hidden = true; }
+    });
+    el('checkBtn').addEventListener('click', function () {
+      var gm = state.game, pts = gm.pts;
+      var r = Math.round(pearson(pts.map(function (p) { return p.x; }), pts.map(function (p) { return p.y; })).r * 100) / 100;
+      var d = Math.abs(+el('guess').value - r), pts100 = Math.max(0, 100 - Math.round(d * 100));
+      gm.answered = true;
+      el('guess').disabled = true;
+      el('checkBtn').hidden = true;
+      quiz.answer(pts100, T('gameLine', { r: fmtR(r), d: d.toFixed(2), p: pts100 }));
+      refresh();
+    });
+    el('guess').addEventListener('input', function () { el('guessVal').textContent = fmtR(+el('guess').value); });
+
+    function setMode(m) {
+      state.mode = m;
+      if (m === 'game') quiz.start();
+      else { state.game = null; refresh(); }
+    }
+    el('modes').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('penguins');
+  })();
+  </script>
+</body>
+</html>

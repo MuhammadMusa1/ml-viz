@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pipeline · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Стили только этой страницы: конвейер из трёх станций */
+    .belt { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: stretch; margin-bottom: 12px; }
+    .station {
+      background: rgba(23, 19, 46, .6); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px;
+      transition: border-color .25s, box-shadow .25s, opacity .25s; min-width: 0;
+    }
+    .station .num { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .station .name { font-weight: 700; margin: 2px 0 6px; }
+    .station .val { font-family: var(--mono); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+    .station small { color: var(--muted); font-size: 12px; display: block; margin-top: 4px; }
+    .station.active { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(34, 211, 238, .18); }
+    .station.off { opacity: .45; border-style: dashed; }
+    .arrow { display: flex; align-items: center; color: var(--violet); font-size: 22px; }
+    /* Телефон: конвейер остаётся одной строкой, только компактнее — чтобы график и управление были близко */
+    @media (max-width: 640px) {
+      .belt { gap: 4px; margin-bottom: 0; }
+      .station { padding: 8px 7px; border-radius: 10px; }
+      .station .num, .station small { display: none; }
+      .station .name { font-size: 13px; margin: 0 0 4px; }
+      .station .val { font-size: 12px; }
+      .arrow { font-size: 16px; }
+    }
+    .cmp { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .cmp td { padding: 4px 2px; }
+    .cmp td:last-child { text-align: right; font-weight: 700; }
+    .cmp tr.cur td { color: var(--cyan); }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <!-- Конвейер: данные → StandardScaler → модель -->
+        <div class="belt" id="belt">
+          <div class="station" id="st1">
+            <div class="num" data-i18n="st1Num"></div>
+            <div class="name" data-i18n="st1Name"></div>
+            <div class="val" id="v1"></div>
+          </div>
+          <div class="arrow" aria-hidden="true">➜</div>
+          <div class="station" id="st2">
+            <div class="num" data-i18n="st2Num"></div>
+            <div class="name" data-i18n="st2Name"></div>
+            <div class="val" id="v2"></div>
+            <small id="v2note"></small>
+          </div>
+          <div class="arrow" aria-hidden="true">➜</div>
+          <div class="station" id="st3">
+            <div class="num" data-i18n="st3Num"></div>
+            <div class="name" id="modelName"></div>
+            <div class="val" id="v3"></div>
+            <small id="v3note"></small>
+          </div>
+        </div>
+
+        <div class="stage">
+          <canvas id="cv" class="drag"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--adelie)"></i>Adelie</span>
+            <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+            <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+            <span id="legNb"><i style="background:transparent; border:2px solid #fff"></i><span data-i18n="legNb"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+          <p class="note" style="padding:0 4px" data-i18n="mapNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <button type="button" id="sendBtn" class="primary" data-i18n="send"></button>
+
+        <div>
+          <h3 data-i18n="step2"></h3>
+          <label class="toggle" style="margin-top:8px"><input type="checkbox" id="scaler" checked> <span data-i18n="scalerOn"></span></label>
+          <label class="toggle" style="margin-top:8px" id="leakRow"><input type="checkbox" id="leak"> <span data-i18n-html="leak"></span></label>
+          <small class="muted" id="leakNote" style="display:block; margin-top:6px"></small>
+        </div>
+
+        <div>
+          <h3 data-i18n="step3"></h3>
+          <div class="seg" id="modelBtns" style="margin-top:6px">
+            <button type="button" data-m="knn">KNN</button>
+            <button type="button" data-m="tree" data-i18n="treeBtn"></button>
+          </div>
+          <div style="margin-top:10px">
+            <span id="paramLbl"></span> = <b id="paramVal"></b>
+            <input type="range" id="param" min="1" max="25" step="1" value="5">
+          </div>
+        </div>
+
+        <label class="toggle"><input type="checkbox" id="map" checked> <span data-i18n="showMap"></span></label>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 data-i18n="accTitle"></h3>
+          <div class="big-number" id="acc" style="margin-top:6px"></div>
+          <small class="muted" id="accNote"></small>
+          <table class="cmp" id="cmp" style="margin-top:8px"></table>
+        </div>
+
+        <!-- Игра: 3 проверки на validation, потом один экзамен на test -->
+        <div id="gamePanel" hidden style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n-html="gameAsk"></p>
+          <button type="button" id="runBtn" class="primary" style="margin-top:10px"></button>
+          <p id="gameLog" style="margin:10px 0 0"></p>
+          <button type="button" id="examBtn" class="primary" style="margin-top:10px" hidden data-i18n="exam"></button>
+          <p id="gameResult" role="status" style="margin:8px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 10 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 10 · Классические алгоритмы',
+        title: 'Pipeline: конвейер для модели',
+        analogy: '<b>Конвейер: данные заходят — прогноз выходит.</b> Как на фабрике: каждая станция делает свою работу и передаёт деталь дальше. Пингвин проходит подготовку данных, потом модель — и всегда в одном и том же порядке.',
+        cvLabel: 'Пингвины: длина клюва и масса, соседи нового пингвина и карта решений',
+        st1Num: 'Станция 1',
+        st1Name: 'Данные',
+        st2Num: 'Станция 2',
+        st2Name: 'Масштаб (StandardScaler)',
+        mapNote: 'Карта решений: каждая точка фона окрашена в вид, который конвейер назвал бы пингвину в этом месте.',
+        st3Num: 'Станция 3',
+        treeBtn: 'Дерево',
+        modelKnn: 'KNN, K = {k}',
+        modelTree: 'Дерево, глубина {d}',
+        raw: 'клюв {x} мм<br>масса {y} г',
+        scaled: 'клюв {x}<br>масса {y}',
+        skipped: '— шаг выключен —',
+        skippedNote: 'числа идут дальше как есть: масса у пингвинов отличается на сотни граммов, а клюв — на несколько миллиметров',
+        scaleNote: 'каждое число: (x − среднее) / стандартное отклонение — «на сколько типичных шагов от среднего»',
+        predKnn: '→ <b style="color:{c}">{sp}</b>',
+        predKnnNote: '{v} из {k} соседей — {sp}',
+        predTree: '→ <b style="color:{c}">{sp}</b>',
+        predTreeNote: 'ответ листа дерева',
+        truth: 'на самом деле {sp} {ok}',
+        legNb: 'соседи KNN',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: собери лучший конвейер',
+        send: 'Отправить пингвина из test ➜',
+        step2: 'Станция 2: подготовка',
+        scalerOn: 'Масштаб (StandardScaler)',
+        leak: '<span style="color:var(--red); font-weight:700">Утечка данных:</span> подсмотреть в test при масштабировании',
+        leakNote: 'Среднее и стандартное отклонение взяты из {src}: клюв {mx} ± {sx} мм, масса {my} ± {sy} г',
+        srcTrain: 'train',
+        srcAll: 'всех 342 пингвинов (test подсмотрен!)',
+        step3: 'Станция 3: модель',
+        kLbl: 'Соседей K',
+        dLbl: 'Глубина дерева (max_depth)',
+        showMap: 'Показать карту решений',
+        accTitle: 'Точность (accuracy) конвейера на test',
+        accNote: '{c} из {n} пингвинов',
+        cmpOff: 'без StandardScaler',
+        cmpOn: 'со StandardScaler',
+        hidden: '?',
+        hintExplore: 'Кликни по графику — это новый пингвин, он поедет по конвейеру. Белый овал — «круг соседей» так, как его видит KNN.',
+        hintTree: 'Дерево задаёт вопросы про один признак за раз, поэтому масштаб ему не важен — карта не меняется.',
+        hintGame: 'Собери конвейер: включи или выключи масштаб, выбери модель и её настройку. Проверяй на validation, экзамен на test — один раз.',
+        gameAsk: 'Точность на test спрятана. У тебя <b>3 проверки на validation</b> — «пробном экзамене» из 69 пингвинов, отложенных из train (конвейер учится на остальных 204). Потом лучший из твоих конвейеров сдаёт настоящий экзамен на test — <b>один раз</b>.',
+        run: 'Проверить на validation ({n} осталось)',
+        runLine: '{i}. {desc}: validation <b>{c} из {n}</b>',
+        exam: 'Сдать экзамен на test лучшим конвейером',
+        gameEnd: 'Экзамен сдаёт твой лучший по validation конвейер ({desc}): <b>{c} из {n}</b> на test ({p}%).<br>' +
+                 '<small style="color:var(--muted)">Для сравнения: лучший по validation среди всех конвейеров на странице — {how}, на test {mc} из {n}. Разница в 1–2 пингвина из 69 почти случайна.</small>',
+        again: 'Сыграть ещё ↺',
+        gameStepRuns: 'До 3 проверок на validation → экзамен один раз',
+        gameStepDone: 'Экзамен сдан',
+        descScaled: 'масштаб + ',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Конвейер — это список шагов.</b> Сначала подготовка данных (у нас <code>StandardScaler</code>), в конце модель (KNN или дерево). Каждый пингвин проходит все станции по порядку.</li>' +
+          '<li><b>Зачем масштаб.</b> KNN меряет расстояние. Масса у пингвинов отличается на сотни граммов, а длина клюва — всего на несколько миллиметров. Без масштаба разница в массе «перевешивает», и KNN почти не замечает клюв — посмотри, каким плоским стал «круг соседей».</li>' +
+          '<li><b>StandardScaler</b> считает для каждого признака среднее и <b>стандартное отклонение</b> — насколько пингвины обычно отличаются от среднего. Потом каждое число превращается в «на сколько таких шагов оно от среднего». После этого оба признака одного размера.</li>' +
+          '<li><b>Учим конвейер только на train.</b> <code>pipe.fit(X_train, y_train)</code> сам обучает и масштаб, и модель. Среднее и отклонение берутся только из train. Если подсмотреть в test, это <b>утечка данных</b>: проверка становится нечестной.</li>' +
+          '<li><b>Применяем одинаково.</b> <code>pipe.predict(X_test)</code> прогоняет новых пингвинов через те же станции с теми же числами. Конвейер сам следит, чтобы шаги шли в нужном порядке.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Выключи «Масштаб (StandardScaler)» при KNN. Как изменилась форма «круга соседей» и карта решений? Какой признак KNN теперь почти не видит?</li>' +
+          '<li>Сравни точность KNN с масштабом и без при K = 5. На сколько пингвинов разница?</li>' +
+          '<li>Переключись на дерево и снова включи-выключи масштаб. Почему для дерева ничего не меняется?</li>' +
+          '<li>Включи «Утечка данных: подсмотреть в test». Точность почти не изменилась — почему это всё равно нечестно?</li>' +
+          '<li>Сыграй «Игра: собери лучший конвейер» с соседом по парте. Чей конвейер лучше сдаст экзамен?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p><b>StandardScaler</b> для каждого признака: <code>z = (x − среднее<sub>train</sub>) / стандартное отклонение<sub>train</sub></code>.</p>' +
+          '<p>В Python конвейер собирается так:</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split, cross_val_score<br>' +
+          'from sklearn.pipeline import Pipeline<br>' +
+          'from sklearn.preprocessing import StandardScaler<br>' +
+          'from sklearn.neighbors import KNeighborsClassifier<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'bill_length_mm\', \'body_mass_g\']]<br>' +
+          'y = df[\'species\']<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br><br>' +
+          'pipe = Pipeline([<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;(\'scaler\', StandardScaler()),<br>' +
+          '&nbsp;&nbsp;&nbsp;&nbsp;(\'knn\', KNeighborsClassifier(n_neighbors=5)),<br>' +
+          '])<br>' +
+          'print(cross_val_score(pipe, X_train, y_train, cv=5).mean())&nbsp;&nbsp;# проверка без test<br>' +
+          'pipe.fit(X_train, y_train)&nbsp;&nbsp;&nbsp;# масштаб и модель учатся только на train<br>' +
+          'print(pipe.score(X_test, y_test))&nbsp;&nbsp;# точность (accuracy) на test</code></p>' +
+          '<p><b>Главная польза Pipeline против утечки.</b> В <code>cross_val_score</code> и <code>GridSearchCV</code> масштаб заново учится внутри каждой части данных, и проверочная часть никогда не подсматривается. Здесь утечка почти не изменила точность, но при других шагах (например, отбор признаков по ответам) она может сильно завысить результат.</p>' +
+          '<p><b>Не путай два pipeline!</b> <code>Pipeline</code> из sklearn (с большой буквы) — это конвейер, который <i>ты сам собираешь</i> из шагов подготовки и модели. А <code>pipeline(...)</code> из библиотеки Hugging Face (с маленькой буквы) — это <i>готовая обученная нейросеть</i> для задачи, например <code>pipeline("translation")</code>. Её мы увидим в уроках про большие языковые модели. Название похожее, смысл разный.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина (без столбца sex, без пропусков). Признаки специально с разным масштабом: длина клюва (мм) и масса (г). Разбиение как в Colab: <code>train_test_split(test_size=0.2, random_state=42)</code>, 273 train и 69 test; для игры train ещё раз делится на 204 + 69 validation (<code>train_test_split(X_train, y_train, test_size=0.25, random_state=42)</code>). Точность всех конвейеров на test и на validation совпадает с sklearn: KNN для K = 1–25 без масштаба, с <code>Pipeline(StandardScaler, KNN)</code> и с «утечкой»; дерево для глубины 1–6 (<code>tools/check_pipeline.py</code>).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: «фабрика» — три ученика у доски играют станции, учитель передаёт им карточку с данными пингвина. Затем на проекторе выключаем StandardScaler и смотрим, как «круг соседей» сплющивается в полосу.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему KNN нужен масштаб, а дереву нет? Что будет, если на test применить масштаб с другими числами, чем на train? Чем sklearn <code>Pipeline</code> отличается от Hugging Face <code>pipeline</code>?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.',
+        axisX: 'Длина клюва, мм',
+        axisY: 'Масса тела, г',
+        right: '✓',
+        wrong: '✗'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var cv = document.getElementById('cv');
+    cv.setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    var KMAX = 25, DMAX = 6;
+    var all = PENGUINS.rows.map(function (r) {
+      return { si: SPECIES.indexOf(r[0]), x: r[2], y: r[5], test: r[6] === 1, pos: r[7], val: r[8] === 1, vpos: r[9] };   // x = клюв (мм), y = масса (г)
+    });
+    var byPos = function (a, b) { return a.pos - b.pos; };
+    var byVpos = function (a, b) { return a.vpos - b.vpos; };
+    var train = all.filter(function (p) { return !p.test; }).sort(byPos);
+    var test = all.filter(function (p) { return p.test; }).sort(byPos);
+    // Для игры: train ещё раз делим на «учёбу» (204) и validation (69), как train_test_split(X_train, test_size=0.25, random_state=42)
+    var tr = train.filter(function (p) { return !p.val; }).sort(byVpos);
+    var va = train.filter(function (p) { return p.val; }).sort(byVpos);
+
+    // ======================= Станция 2: StandardScaler =======================
+    // Три варианта: без масштаба, масштаб по train (правильно, как Pipeline) и по всем данным (утечка).
+    function fitScaler(pts) {
+      function ms(key) {
+        var m = pts.reduce(function (s, p) { return s + p[key]; }, 0) / pts.length;
+        var v = pts.reduce(function (s, p) { return s + (p[key] - m) * (p[key] - m); }, 0) / pts.length;
+        return { m: m, s: Math.sqrt(v) };
+      }
+      return { x: ms('x'), y: ms('y') };
+    }
+    var IDENTITY = { x: { m: 0, s: 1 }, y: { m: 0, s: 1 } };
+    function transform(sc, x, y) { return [(x - sc.x.m) / sc.x.s, (y - sc.y.m) / sc.y.s]; }
+
+    // ======================= Станция 3б: дерево (CART как в sklearn, признаки во float32) =======================
+    function countsOf(pts) { var c = [0, 0, 0]; pts.forEach(function (p) { c[p.si]++; }); return c; }
+    function giniOf(c, n) { return n ? 1 - (c[0] * c[0] + c[1] * c[1] + c[2] * c[2]) / (n * n) : 0; }
+    function majority(c) { var b = 0; if (c[1] > c[b]) b = 1; if (c[2] > c[b]) b = 2; return b; }
+    function bestSplit(pts) {
+      var n = pts.length, best = null;
+      for (var f = 0; f < 2; f++) {
+        var s = pts.slice().sort(function (a, b) { return a.v[f] - b.v[f]; });
+        var L = [0, 0, 0], R = countsOf(s);
+        for (var i = 1; i < n; i++) {
+          L[s[i - 1].si]++; R[s[i - 1].si]--;
+          var a = s[i - 1].v[f], b = s[i].v[f];
+          if (b <= a + 1e-7) continue;
+          var proxy = (L[0] * L[0] + L[1] * L[1] + L[2] * L[2]) / i + (R[0] * R[0] + R[1] * R[1] + R[2] * R[2]) / (n - i);
+          if (!best || proxy > best.proxy) {
+            var thr = a / 2 + b / 2;
+            if (thr === b) thr = a;
+            best = { f: f, thr: thr, proxy: proxy };
+          }
+        }
+      }
+      return best;
+    }
+    function cart(pts, depth, maxDepth) {
+      var c = countsOf(pts), node = { pred: majority(c), f: null };
+      if (depth >= maxDepth || pts.length < 2 || giniOf(c, pts.length) <= 1e-7) return node;
+      var b = bestSplit(pts);
+      if (!b) return node;
+      node.f = b.f; node.thr = b.thr;
+      node.l = cart(pts.filter(function (p) { return p.v[b.f] <= b.thr; }), depth + 1, maxDepth);
+      node.r = cart(pts.filter(function (p) { return p.v[b.f] > b.thr; }), depth + 1, maxDepth);
+      return node;
+    }
+    // ======================= Конвейеры, обученные на заданных пингвинах =======================
+    // Один и тот же код учит конвейер на всём train (для экзамена на test) и на 204 пингвинах (для validation).
+    // scalers — варианты станции 2: без масштаба, масштаб по обучающей части, масштаб «с утечкой».
+    function makeModels(base, scalers) {
+      var TR = {};   // обучающие пингвины после каждого варианта масштаба
+      Object.keys(scalers).forEach(function (k) {
+        TR[k] = base.map(function (p) { return transform(scalers[k], p.x, p.y); });
+      });
+      // KNN: для точки один раз находим 25 ближайших — дальше любое K считается мгновенно
+      function nearest(scKey, x, y) {
+        var q = transform(scalers[scKey], x, y), t = TR[scKey];
+        var d = t.map(function (v, i) { var dx = v[0] - q[0], dy = v[1] - q[1]; return { i: i, d: dx * dx + dy * dy }; });
+        d.sort(function (a, b) { return a.d - b.d; });   // сортировка стабильная: ничьи — в порядке строк sklearn
+        return d.slice(0, KMAX);
+      }
+      // Голосование; ничья — вид раньше по алфавиту (как в sklearn)
+      function vote(nb, k) {
+        var c = [0, 0, 0];
+        for (var j = 0; j < k; j++) c[base[nb[j].i].si]++;
+        var b = 0; if (c[1] > c[b]) b = 1; if (c[2] > c[b]) b = 2;
+        return { pred: b, counts: c };
+      }
+      var treeCache = {};
+      function getTree(scKey, d) {
+        var key = scKey + d;
+        if (!treeCache[key]) {
+          var pts = base.map(function (p, i) { return { si: p.si, v: [Math.fround(TR[scKey][i][0]), Math.fround(TR[scKey][i][1])] }; });
+          treeCache[key] = cart(pts, 0, d);
+        }
+        return treeCache[key];
+      }
+      function treePredict(scKey, d, x, y) {
+        var q = transform(scalers[scKey], x, y), v = [Math.fround(q[0]), Math.fround(q[1])], n = getTree(scKey, d);
+        while (n.f !== null) n = v[n.f] <= n.thr ? n.l : n.r;
+        return n.pred;
+      }
+      // Ответ конвейера с настройкой cfg; nbCache — заранее найденные соседи точки
+      function predict(cfg, x, y, nbCache) {
+        var sk = scKeyOf(cfg);
+        if (cfg.model === 'knn') return vote(nbCache ? nbCache[sk] : nearest(sk, x, y), cfg.k).pred;
+        return treePredict(sk, cfg.d, x, y);
+      }
+      // Число верных ответов на наборе пингвинов (соседи каждого считаются один раз)
+      function scorer(set) {
+        var nbs = set.map(function (p) {
+          var o = {};
+          Object.keys(scalers).forEach(function (k) { o[k] = nearest(k, p.x, p.y); });
+          return o;
+        });
+        return function (cfg) {
+          return set.reduce(function (s, p, i) { return s + (predict(cfg, p.x, p.y, nbs[i]) === p.si ? 1 : 0); }, 0);
+        };
+      }
+      return { scalers: scalers, nearest: nearest, vote: vote, predict: predict, scorer: scorer };
+    }
+
+    // ======================= Конвейер целиком =======================
+    var state = {
+      mode: 'explore', scaler: true, leak: false, model: 'knn', k: 5, d: 3, map: true,
+      q: { x: 46.5, y: 3900, si: null },   // пингвин на конвейере (si — настоящий вид, если он из test)
+      game: null
+    };
+    function scKeyOf(cfg) { return !cfg.scaler ? 'none' : cfg.leak ? 'all' : 'train'; }
+    function cfgNow() { return { scaler: state.scaler, leak: state.leak, model: state.model, k: state.k, d: state.d }; }
+
+    // Основной конвейер учится на всём train (273) — его проверяем на test.
+    // Конвейер для пробного экзамена учится на 204 и проверяется на validation (69). Утечки в игре нет.
+    var FULL = makeModels(train, { none: IDENTITY, train: fitScaler(train), all: fitScaler(all) });
+    var SMALL = makeModels(tr, { none: IDENTITY, train: fitScaler(tr) });
+    var SCALERS = FULL.scalers;
+    function nearest(scKey, x, y) { return FULL.nearest(scKey, x, y); }
+    function voteKnn(nb, k) { return FULL.vote(nb, k); }
+    function predict(cfg, x, y, nbCache) { return FULL.predict(cfg, x, y, nbCache); }
+    var testCorrect = FULL.scorer(test);
+    var valCorrect = SMALL.scorer(va);
+
+    // ======================= Рисование =======================
+    var PAD = { l: 62, r: 14, t: 14, b: 44 };
+    var DOM = { x0: 31, x1: 61, y0: 2500, y1: 6500 };
+    var STEP = 6;
+    var g, sx, sy, grid = null, mapCache = { key: '', img: null };
+
+    function resize() {
+      g = MLViz.fitCanvas(cv, 0.62);
+      PAD = MLViz.plotPad(g.w, 4);
+      sx = MLViz.scale(DOM.x0, DOM.x1, PAD.l, g.w - PAD.r);
+      sy = MLViz.scale(DOM.y0, DOM.y1, g.h - PAD.b, PAD.t);
+      grid = null; mapCache.key = '';
+      draw();
+    }
+
+    // Клетки карты: соседи для каждого варианта масштаба считаются один раз на размер canvas
+    function buildGrid() {
+      var cells = [];
+      for (var px = PAD.l; px < g.w - PAD.r; px += STEP) {
+        for (var py = PAD.t; py < g.h - PAD.b; py += STEP) {
+          var x = sx.invert(px + STEP / 2), y = sy.invert(py + STEP / 2), nb = {};
+          Object.keys(SCALERS).forEach(function (k) { nb[k] = nearest(k, x, y); });
+          cells.push({ px: px, py: py, x: x, y: y, nb: nb });
+        }
+      }
+      return cells;
+    }
+    function drawMap(ctx) {
+      var cfg = cfgNow();
+      var key = [scKeyOf(cfg), cfg.model, cfg.model === 'knn' ? cfg.k : cfg.d, g.w, g.h].join('|');
+      if (mapCache.key !== key) {
+        if (!grid) grid = buildGrid();
+        var off = document.createElement('canvas');
+        off.width = g.w; off.height = g.h;
+        var oc = off.getContext('2d');
+        oc.globalAlpha = 0.2;
+        grid.forEach(function (c) {
+          oc.fillStyle = COLORS[predict(cfg, c.x, c.y, c.nb)];
+          oc.fillRect(c.px, c.py, STEP, STEP);
+        });
+        mapCache = { key: key, img: off };
+      }
+      ctx.drawImage(mapCache.img, 0, 0, g.w, g.h);
+    }
+
+    function drawAxes(ctx) {
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy,
+        xTicks: MLViz.range(35, 60, 5), yTicks: MLViz.range(3000, 6000, 500),
+        xLabel: T('axisX'), yLabel: T('axisY')
+      });
+    }
+
+    function draw() {
+      var ctx = g.ctx, q = state.q;
+      ctx.clearRect(0, 0, g.w, g.h);
+      if (state.map) drawMap(ctx);
+      drawAxes(ctx);
+
+      ctx.globalAlpha = 0.85;
+      train.forEach(function (p) {
+        ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 4, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS[p.si]; ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      ctx.save();
+      ctx.beginPath(); ctx.rect(PAD.l, PAD.t, g.w - PAD.l - PAD.r, g.h - PAD.t - PAD.b); ctx.clip();
+      if (state.model === 'knn') {
+        // «Круг соседей» глазами KNN: в пространстве модели это круг, а на нашем графике — овал.
+        // Без масштаба радиус в «граммах» = радиус в «миллиметрах», и овал сплющивается в полосу.
+        var sk = scKeyOf(cfgNow()), sc = SCALERS[sk], nb = nearest(sk, q.x, q.y).slice(0, state.k);
+        var r = Math.sqrt(nb[nb.length - 1].d);
+        var rx = Math.abs(sx(q.x + r * sc.x.s) - sx(q.x)), ry = Math.abs(sy(q.y + r * sc.y.s) - sy(q.y));
+        ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.ellipse(sx(q.x), sy(q.y), Math.max(rx, 1), Math.max(ry, 1), 0, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1;
+        nb.forEach(function (n) {
+          var p = train[n.i];
+          ctx.beginPath(); ctx.moveTo(sx(q.x), sy(q.y)); ctx.lineTo(sx(p.x), sy(p.y)); ctx.stroke();
+        });
+        nb.forEach(function (n) {
+          var p = train[n.i];
+          ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 7, 0, Math.PI * 2);
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+        });
+      }
+      ctx.restore();
+
+      var pred = predict(cfgNow(), q.x, q.y);
+      ctx.beginPath(); ctx.arc(sx(q.x), sy(q.y), 10, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS[pred]; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke();
+    }
+
+    // ======================= Конвейер (станции) =======================
+    function fmt(v, d) {
+      var s = v.toFixed(d), parts = s.split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      return parts.join('.');
+    }
+    function updateBelt() {
+      var q = state.q, cfg = cfgNow(), sk = scKeyOf(cfg);
+      document.getElementById('v1').innerHTML = T('raw', { x: fmt(q.x, 1), y: fmt(q.y, 0) });
+      var st2 = document.getElementById('st2');
+      st2.classList.toggle('off', !state.scaler);
+      if (state.scaler) {
+        var z = transform(SCALERS[sk], q.x, q.y);
+        document.getElementById('v2').innerHTML = T('scaled', { x: z[0].toFixed(2), y: z[1].toFixed(2) });
+        document.getElementById('v2note').textContent = T('scaleNote');
+      } else {
+        document.getElementById('v2').innerHTML = T('skipped');
+        document.getElementById('v2note').textContent = T('skippedNote');
+      }
+      document.getElementById('modelName').textContent = state.model === 'knn' ? T('modelKnn', { k: state.k }) : T('modelTree', { d: state.d });
+      var pred = predict(cfg, q.x, q.y), note;
+      if (state.model === 'knn') {
+        var v = voteKnn(nearest(sk, q.x, q.y), state.k);
+        note = T('predKnnNote', { v: v.counts[pred], k: state.k, sp: SPECIES[pred] });
+      } else note = T('predTreeNote');
+      document.getElementById('v3').innerHTML = T('predKnn', { sp: SPECIES[pred], c: COLORS[pred] });
+      if (q.si !== null) note += '<br>' + T('truth', { sp: SPECIES[q.si], ok: T(pred === q.si ? 'right' : 'wrong') });
+      document.getElementById('v3note').innerHTML = note;
+    }
+
+    // Станции по очереди подсвечиваются — пингвин «едет» по конвейеру
+    var beltTimers = [];
+    function runBelt() {
+      beltTimers.forEach(clearTimeout); beltTimers = [];
+      var ids = ['st1', 'st2', 'st3'];
+      ids.forEach(function (id, i) {
+        beltTimers.push(setTimeout(function () {
+          ids.forEach(function (o) { document.getElementById(o).classList.toggle('active', o === id); });
+        }, i * 450));
+      });
+      beltTimers.push(setTimeout(function () {
+        ids.forEach(function (o) { document.getElementById(o).classList.remove('active'); });
+      }, ids.length * 450 + 600));
+    }
+
+    // ======================= Панель =======================
+    function cfgDesc(cfg) {
+      return (cfg.scaler ? T('descScaled') : '') + (cfg.model === 'knn' ? T('modelKnn', { k: cfg.k }) : T('modelTree', { d: cfg.d }));
+    }
+    function accHidden() { return state.mode === 'game' && !(state.game && state.game.done); }   // после экзамена test открыт
+
+    function updatePanel() {
+      var cfg = cfgNow(), n = test.length;
+      var isKnn = state.model === 'knn';
+      MLViz.setPressed(document.getElementById('modelBtns'), function (b) { return b.dataset.m === state.model; });
+      var pr = document.getElementById('param');
+      pr.max = isKnn ? KMAX : DMAX;
+      pr.value = isKnn ? state.k : state.d;
+      document.getElementById('paramLbl').textContent = T(isKnn ? 'kLbl' : 'dLbl');
+      document.getElementById('paramVal').textContent = isKnn ? state.k : state.d;
+      document.getElementById('legNb').style.visibility = isKnn ? '' : 'hidden';
+
+      // В игре утечку включать нельзя: сравниваем только честные конвейеры
+      document.getElementById('leakRow').style.display = state.scaler && state.mode !== 'game' ? '' : 'none';
+      var sc = SCALERS[state.leak ? 'all' : 'train'];
+      document.getElementById('leakNote').style.display = state.scaler ? '' : 'none';
+      document.getElementById('leakNote').textContent = T('leakNote', {
+        src: T(state.leak ? 'srcAll' : 'srcTrain'),
+        mx: sc.x.m.toFixed(2), sx: sc.x.s.toFixed(2), my: fmt(sc.y.m, 0), sy: fmt(sc.y.s, 0)
+      });
+
+      if (accHidden()) {
+        document.getElementById('acc').textContent = T('hidden');
+        document.getElementById('accNote').textContent = '';
+        document.getElementById('cmp').innerHTML = '';
+      } else {
+        var c = testCorrect(cfg);
+        document.getElementById('acc').textContent = Math.round(100 * c / n) + '%';
+        document.getElementById('accNote').textContent = T('accNote', { c: c, n: n });
+        // Та же модель с масштабом и без — чтобы разница была видна сразу
+        var off = testCorrect({ scaler: false, leak: false, model: cfg.model, k: cfg.k, d: cfg.d });
+        var on = testCorrect({ scaler: true, leak: false, model: cfg.model, k: cfg.k, d: cfg.d });
+        document.getElementById('cmp').innerHTML =
+          '<tr' + (!state.scaler ? ' class="cur"' : '') + '><td>' + T('cmpOff') + '</td><td>' + off + ' / ' + n + '</td></tr>' +
+          '<tr' + (state.scaler ? ' class="cur"' : '') + '><td>' + T('cmpOn') + '</td><td>' + on + ' / ' + n + '</td></tr>';
+      }
+      if (state.game) document.getElementById('runBtn').textContent = T('run', { n: 3 - state.game.runs.length });
+      document.getElementById('hint').textContent =
+        state.mode === 'game' ? T('hintGame') : isKnn ? T('hintExplore') : T('hintTree');
+    }
+
+    function refresh() { updatePanel(); updateBelt(); draw(); }
+
+    // ======================= Игра =======================
+    // Честная игра: конвейеры сравниваем на validation, а test открываем один раз — для лучшего по validation.
+    // Для справки: лучший по validation конвейер среди всех на странице (без утечки; при равенстве — первый найденный).
+    function bestByValidation() {
+      var best = { c: -1 };
+      [true, false].forEach(function (s) {
+        for (var k = 1; k <= KMAX; k++) { var cfg1 = { scaler: s, leak: false, model: 'knn', k: k }, c1 = valCorrect(cfg1); if (c1 > best.c) best = { c: c1, cfg: cfg1 }; }
+        for (var d = 1; d <= DMAX; d++) { var cfg2 = { scaler: s, leak: false, model: 'tree', d: d }, c2 = valCorrect(cfg2); if (c2 > best.c) best = { c: c2, cfg: cfg2 }; }
+      });
+      return best;
+    }
+    var BEST = bestByValidation();
+
+    // Игра «Собери лучший конвейер» (общий компонент MLViz.quiz):
+    // один раунд — до 3 проверок на validation, затем один экзамен на test
+    var quiz = MLViz.quiz({
+      box: document.getElementById('gamePanel'), rounds: 1,
+      text: { step: function () { return T('gameStepRuns'); }, finishTitle: T('gameStepDone'), again: T('again') },
+      round: function () {
+        state.game = { runs: [], done: false };
+        state.leak = false; document.getElementById('leak').checked = false;
+        document.getElementById('gameLog').innerHTML = '';
+        document.getElementById('runBtn').hidden = false;
+        document.getElementById('examBtn').hidden = true;
+        refresh();
+      }
+    });
+    function runGame() {
+      var gm = state.game, cfg = cfgNow();
+      if (gm.runs.length >= 3 || gm.done) return;
+      gm.runs.push({ c: valCorrect(cfg), cfg: cfg, desc: cfgDesc(cfg) });
+      document.getElementById('gameLog').innerHTML = gm.runs.map(function (r, i) {
+        return T('runLine', { i: i + 1, desc: r.desc, c: r.c, n: va.length });
+      }).join('<br>');
+      if (gm.runs.length === 3) document.getElementById('runBtn').hidden = true;
+      document.getElementById('examBtn').hidden = false;
+      runBelt();
+      refresh();
+    }
+    // Экзамен: лучший по validation из проверенных конвейеров учится на всём train и сдаёт test один раз
+    function exam() {
+      var gm = state.game, n = test.length;
+      if (gm.done || !gm.runs.length) return;
+      var best = gm.runs.reduce(function (a, r) { return r.c > a.c ? r : a; });
+      var c = testCorrect(best.cfg);
+      gm.done = true;
+      document.getElementById('runBtn').hidden = true;
+      document.getElementById('examBtn').hidden = true;
+      quiz.answer(c, T('gameEnd', {
+        desc: best.desc, c: c, n: n, p: Math.round(100 * c / n),
+        how: cfgDesc(BEST.cfg), mc: testCorrect(BEST.cfg)
+      }));
+      refresh();
+    }
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(document.getElementById('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      document.getElementById('gamePanel').hidden = m !== 'game';
+      // В игре не показываем test-пингвинов с ответами — это было бы подглядыванием
+      document.getElementById('sendBtn').hidden = m === 'game';
+      if (m === 'game') quiz.start(); else { state.game = null; refresh(); }
+    }
+
+    // ======================= События =======================
+    var dragging = false;
+    function moveQuery(ev) {
+      var p = MLViz.pointer(cv, ev);
+      state.q = {
+        x: Math.min(DOM.x1, Math.max(DOM.x0, sx.invert(p.x))),
+        y: Math.min(DOM.y1, Math.max(DOM.y0, sy.invert(p.y))),
+        si: null
+      };
+      updateBelt(); draw();
+    }
+    cv.addEventListener('pointerdown', function (e) { dragging = true; cv.setPointerCapture(e.pointerId); moveQuery(e); });
+    cv.addEventListener('pointermove', function (e) { if (dragging) moveQuery(e); });
+    cv.addEventListener('pointerup', function () { if (dragging) runBelt(); dragging = false; });
+    cv.addEventListener('pointercancel', function () { dragging = false; });
+
+    // Случайный пингвин из test едет по конвейеру — и видно, угадал ли конвейер
+    var sendOrder = MLViz.shuffle(test, Math.random), sendI = 0;
+    document.getElementById('sendBtn').addEventListener('click', function () {
+      var p = sendOrder[sendI++ % sendOrder.length];
+      state.q = { x: p.x, y: p.y, si: p.si };
+      refresh(); runBelt();
+    });
+
+    document.getElementById('scaler').addEventListener('change', function (e) {
+      state.scaler = e.target.checked;
+      if (!state.scaler) { state.leak = false; document.getElementById('leak').checked = false; }
+      refresh(); runBelt();
+    });
+    document.getElementById('leak').addEventListener('change', function (e) { state.leak = e.target.checked; refresh(); });
+    document.querySelectorAll('#modelBtns button').forEach(function (b) {
+      b.addEventListener('click', function () { state.model = b.dataset.m; refresh(); runBelt(); });
+    });
+    document.getElementById('param').addEventListener('input', function (e) {
+      if (state.model === 'knn') state.k = +e.target.value; else state.d = +e.target.value;
+      refresh();
+    });
+    document.getElementById('map').addEventListener('change', function (e) { state.map = e.target.checked; draw(); });
+    document.getElementById('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
+    document.getElementById('runBtn').addEventListener('click', runGame);
+    document.getElementById('examBtn').addEventListener('click', exam);
+
+    var colab = document.getElementById('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

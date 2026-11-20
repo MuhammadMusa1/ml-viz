@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Матрица ошибок, precision и recall · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Матрица ошибок 2×2 — нужна только этой странице */
+    .cm { display: grid; grid-template-columns: minmax(0, 74px) 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .cm-h { font-size: 13px; color: var(--muted); text-align: center; align-self: end; line-height: 1.2; }
+    .cm-r { font-size: 13px; color: var(--muted); display: flex; align-items: center; line-height: 1.2; }
+    .cm button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 4px; border-radius: 10px; min-height: 76px; }
+    .cm button b { font-size: 32px; line-height: 1; font-variant-numeric: tabular-nums; }
+    .cm button span { font-size: 13px; color: var(--muted); line-height: 1.2; white-space: normal; }
+    .cm button.ok { background: rgba(255, 255, 255, .04); }
+    .cm button.bad { background: rgba(248, 113, 113, .12); border-color: rgba(248, 113, 113, .45); }
+    .cm button[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 1px var(--text); }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .metrics small { display: block; font-weight: 700; }
+    .metrics .big-number { font-size: 32px; margin: 2px 0; }
+    .metrics .note { margin: 0; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv" class="drag"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--adelie)"></i>Adelie</span>
+            <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+            <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+          </div>
+          <div class="legend" style="padding:4px 4px 0">
+            <span><i id="legSetIcon" class="ring"></i><span id="legSetText"></span></span>
+            <span><i style="background:rgba(34,211,238,.35); border-radius:3px"></i><span data-i18n="legAlarm"></span></span>
+            <span><b style="color:var(--red)">✕</b> <span data-i18n="legError"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra">
+          <canvas id="chart" class="drag"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--text); border-radius:2px; height:4px; vertical-align:3px"></i><span data-i18n="lineRec"></span></span>
+            <span><i class="dash" style="border-radius:2px; height:4px; width:16px; vertical-align:3px; border-color:var(--text)"></i><span data-i18n="linePrec"></span></span>
+            <span><i style="background:var(--muted); border-radius:2px; height:4px; vertical-align:3px"></i><span data-i18n="lineAcc"></span></span>
+          </div>
+          <div class="hint" id="chartHint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Игра «Настрой тревогу» -->
+        <div id="gamePanel" hidden style="border-bottom:1px solid var(--line); padding-bottom:12px">
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameTask"></p>
+          <p style="margin:8px 0 0" id="gameStatus"></p>
+          <button type="button" id="examBtn" class="primary" style="margin-top:10px"></button>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:10px" hidden></button>
+        </div>
+
+        <div id="modelBox">
+          <h3 data-i18n="modelLabel"></h3>
+          <div class="seg" id="modelBtns" style="margin-top:6px">
+            <button type="button" data-model="knn" data-i18n="modelKnn"></button>
+            <button type="button" data-model="lazy" data-i18n="modelLazy"></button>
+          </div>
+        </div>
+
+        <div>
+          <h3><span data-i18n="tLabel"></span>: <span id="tVal"></span></h3>
+          <input type="range" id="t" min="1" max="10" step="1" value="6">
+          <p class="note" id="tNote"></p>
+        </div>
+
+        <div style="border-top:1px solid var(--line); padding-top:12px">
+          <h3 id="cmTitle"></h3>
+          <div class="cm" id="cm">
+            <div></div>
+            <div class="cm-h" data-i18n="colNo"></div>
+            <div class="cm-h" data-i18n="colYes"></div>
+            <div class="cm-r" data-i18n="rowNo"></div>
+            <button type="button" class="ok" data-cell="tn"><b id="cTN"></b><span data-i18n="cellTN"></span></button>
+            <button type="button" class="bad" data-cell="fp"><b id="cFP"></b><span data-i18n="cellFP"></span></button>
+            <div class="cm-r" data-i18n="rowYes"></div>
+            <button type="button" class="bad" data-cell="fn"><b id="cFN"></b><span data-i18n="cellFN"></span></button>
+            <button type="button" class="ok" data-cell="tp"><b id="cTP"></b><span data-i18n="cellTP"></span></button>
+          </div>
+          <p class="note" data-i18n="cmNote"></p>
+        </div>
+
+        <div class="metrics">
+          <div>
+            <small>Accuracy</small>
+            <div class="big-number" id="mAcc"></div>
+            <p class="note" id="mAccNote"></p>
+          </div>
+          <div>
+            <small>Precision</small>
+            <div class="big-number" id="mPrec"></div>
+            <p class="note" id="mPrecNote"></p>
+          </div>
+          <div>
+            <small>Recall</small>
+            <div class="big-number" id="mRec"></div>
+            <p class="note" id="mRecNote"></p>
+          </div>
+        </div>
+        <p class="note" id="baseline"></p>
+
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 11 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 11 · Классические алгоритмы',
+        title: 'Матрица ошибок: когда accuracy обманывает',
+        analogy: '<b>Пожарная сигнализация, которая никогда не пищит, «права» почти каждый день</b> — пожаров ведь мало. Но толку от неё ноль. Поэтому датчик оценивают по двум вопросам: <b>сколько пожаров он заметил</b> и <b>сколько раз пищал зря</b>. Наша модель — такой датчик: она ищет редких пингвинов Chinstrap.',
+        cvLabel: 'Пингвины, разложенные по числу соседей-Chinstrap из 10. Справа от линии порога модель поднимает тревогу',
+        chartLabel: 'График: recall, precision и accuracy в зависимости от порога тревоги',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: настрой тревогу',
+        modelLabel: 'Модель',
+        modelKnn: 'KNN, 10 соседей',
+        modelLazy: 'Ленивая: всегда «нет»',
+        tLabel: 'Тревога, если Chinstrap среди 10 соседей не меньше',
+        tValue: '{t} из 10',
+        tNote: 'Обычный model.predict() — это 6 из 10 (больше половины).',
+        tNoteLazy: 'Ленивая модель никогда не поднимает тревогу: линия порога уехала за край.',
+        legTest: 'test (экзамен)',
+        legVal: 'validation (пробный экзамен)',
+        legAlarm: 'тревога «Chinstrap!»',
+        legError: 'ошибка модели',
+        lineRec: 'recall',
+        linePrec: 'precision',
+        lineAcc: 'accuracy',
+        chartHint: 'Кликни или веди пальцем по графику, чтобы выбрать порог. Числа — для {set}.',
+        setTest: 'test',
+        setVal: 'validation',
+        hintExplore: 'Каждый кружок — пингвин из test, модель его не видела. Он стоит в столбце с числом соседей-Chinstrap из 10. Вверху настоящие Chinstrap, внизу остальные. Справа от белой линии модель кричит «Chinstrap!». Перетащи линию или нажми на клетку матрицы.',
+        hintGame: 'Test спрятан. Порог подбирай по validation (пробный экзамен) — это закрашенные точки с зелёной обводкой.',
+        hintResult: 'Экзамен: кружки — пингвины test с порогом, который ты выбрал.',
+        cvYes: '▲ на самом деле Chinstrap',
+        cvNo: '▼ на самом деле не Chinstrap',
+        cvAlarm: 'тревога',
+        cvSilent: 'молчит',
+        cvAxis: 'Сколько из 10 соседей — Chinstrap',
+        cmTitleTest: 'Матрица ошибок · test, {n} пингвинов',
+        cmTitleVal: 'Матрица ошибок · validation, {n} пингвинов',
+        colNo: 'модель: «нет»',
+        colYes: 'модель: «Chinstrap!»',
+        rowNo: 'на самом деле не Chinstrap',
+        rowYes: 'на самом деле Chinstrap',
+        cellTN: '✓ верно молчали',
+        cellFP: '✕ ложная тревога',
+        cellFN: '✕ пропустили',
+        cellTP: '✓ нашли',
+        cmNote: 'Строки — правда, столбцы — ответ модели. Такой же порядок печатает sklearn: [[TN, FP], [FN, TP]]. Нажми на клетку — эти пингвины подсветятся.',
+        cellAria: '{name}: {c}. Подсветить этих пингвинов',
+        accNote: 'все верные: {c} из {n}',
+        precNote: 'настоящих среди тревог: {c} из {n}',
+        precNone: 'тревог не было',
+        recNote: 'нашли Chinstrap: {c} из {n}',
+        none: '—',
+        baseline: 'Accuracy (точность) — доля верных ответов. Для сравнения: ленивая модель «всегда нет» на test верна в {c} из {n} ({p}%) — и не находит ни одного Chinstrap. Здесь вопрос «да / нет», и ответ «нет» встречается гораздо чаще, чем самый частый вид в уроке 6 (там ленивая модель получала 51%).',
+        gameStep: 'Задание {i} из {n}',
+        task1: '<b>Перепись редких пингвинов.</b> Учёным нельзя пропускать Chinstrap: найди на validation <b>не меньше {need} из {p}</b> (recall ≥ 90%). Лишний осмотр не страшен, но чем меньше ложных тревог, тем лучше.',
+        task2: '<b>Фотограф.</b> Каждая тревога — поездка с камерой, и зря ездить обидно: <b>не больше {maxFp} ложных тревог</b> на validation. При этом найди как можно больше Chinstrap.',
+        status1: 'Validation: нашли {tp} из {p} — {ok}. Ложных тревог: {fp}.',
+        status2: 'Validation: ложных тревог {fp} — {ok}. Нашли {tp} из {p}.',
+        okYes: '<b style="color:var(--green)">условие выполнено</b>',
+        okNo: '<b style="color:var(--red)">условие не выполнено</b>',
+        exam: 'Сдать экзамен с порогом {t} из 10',
+        result1: 'Лучший порог по validation: {bt} из 10 (нашли {btp} из {p}, ложных тревог {bfp}).',
+        result2: 'Лучший порог по validation: {bt} из 10 (ложных тревог {bfp}, нашли {btp} из {p}).',
+        verdictBest: '<b style="color:var(--green)">★ Ты нашёл лучший порог!</b>',
+        verdictOk: '<b style="color:var(--green)">✓ Условие выполнено</b>, но был порог ещё лучше.',
+        verdictNo: '<b style="color:var(--red)">✕ Условие не выполнено.</b>',
+        examLine: 'Экзамен (test, порог {t}): нашли <b>{tp} из {p}</b> Chinstrap, ложных тревог <b>{fp}</b>.<br><small style="color:var(--muted)">На test всего {p} Chinstrap, поэтому 1 пингвин меняет recall на {step}%. Числа на экзамене и на пробном экзамене могут заметно отличаться.</small>',
+        next: 'Следующее задание',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        final: '<b>Итог: лучший порог найден в {best} из {n} заданий, условие выполнено в {ok} из {n}.</b><br>Модель одна и та же, а лучшие пороги разные: переписи важен <b>recall</b> (никого не пропустить), фотографу — <b>precision</b> (не пищать зря). Какой порог выбрать, решает задача, а не модель.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Задача «да или нет».</b> Модель отвечает на один вопрос: «Это Chinstrap?». Chinstrap редкие: в test их всего 11 из 69.</li>' +
+          '<li><b>Accuracy обманывает.</b> Ленивая модель, которая всегда говорит «нет», верна в 58 случаях из 69 — это 84%. Высокий процент, а не найдено ни одного Chinstrap. Так бывает всегда, когда одного ответа гораздо больше, чем другого.</li>' +
+          '<li><b>Матрица ошибок</b> (<i>confusion matrix</i>) раскладывает ответы на четыре клетки: нашли, пропустили, ложная тревога, верно молчали. Ошибок два вида, и они разные: пропуск и ложная тревога.</li>' +
+          '<li><b>Две метрики про редкий вид.</b> <b>Recall</b> (полнота): какую долю всех Chinstrap модель нашла. <b>Precision</b> (меткость тревог; в книгах её тоже называют «точностью»): какая доля тревог была настоящей. У ленивой модели recall = 0, и обман сразу виден.</li>' +
+          '<li><b>Порог — это рычаг.</b> Модель смотрит на 10 соседей. Если тревожиться уже от 1–2 соседей-Chinstrap, пропусков мало, но ложных тревог много. Если ждать 6–7, всё наоборот. Порог выбирают под задачу и подбирают на validation, а test открывают один раз.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Нажми «Ленивая: всегда «нет»». Какая accuracy? Сколько Chinstrap нашла эта модель?</li>' +
+          '<li>Вернись к KNN и поставь порог 1. Сколько ложных тревог? Какой recall? Хорошо ли это для переписи пингвинов?</li>' +
+          '<li>Нажми на клетку «ложная тревога». Какие виды чаще всего путают с Chinstrap? А какой вид не путают никогда?</li>' +
+          '<li>Подвигай порог от 1 до 10. Как меняется accuracy на test и сколько Chinstrap при этом пропущено? Почему лучший порог выбирают не здесь, а на validation (как в игре)?</li>' +
+          '<li>Сыграй «Игра: настрой тревогу». Почему в двух заданиях лучшие пороги получились разные?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Обозначения из матрицы ошибок: <b>TP</b> — нашли, <b>FN</b> — пропустили, <b>FP</b> — ложная тревога, <b>TN</b> — верно молчали.</p>' +
+          '<p><code>accuracy = (TP + TN) / все</code> — доля верных ответов.<br>' +
+          '<code>precision = TP / (TP + FP)</code> — какая доля тревог настоящая.<br>' +
+          '<code>recall = TP / (TP + FN)</code> — какую долю Chinstrap нашли.</p>' +
+          '<p>Осторожно со словами: в русских книгах «точностью» называют и accuracy, и precision. Поэтому здесь английские названия. Recall по-русски — «полнота».</p>' +
+          '<p>Если нужно одно число, берут <b>F1</b> = 2 · precision · recall / (precision + recall): оно высокое, только когда обе метрики высокие. Для трёх видов матрица ошибок будет 3 × 3: строка — настоящий вид, столбец — ответ модели.</p>' +
+          '<p>В Python (порог 3 из 10):</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split<br>' +
+          'from sklearn.neighbors import KNeighborsClassifier<br>' +
+          'from sklearn.pipeline import make_pipeline&nbsp;&nbsp;# масштаб + модель, урок 10<br>' +
+          'from sklearn.preprocessing import StandardScaler<br>' +
+          'from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'bill_depth_mm\', \'flipper_length_mm\', \'body_mass_g\']]<br>' +
+          'y = df[\'species\'] == \'Chinstrap\'&nbsp;&nbsp;# True / False<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br><br>' +
+          'model = make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=10))<br>' +
+          'model.fit(X_train, y_train)<br>' +
+          'pred = model.predict_proba(X_test)[:, 1] >= 0.3&nbsp;&nbsp;# тревога, если Chinstrap хотя бы 3 из 10<br><br>' +
+          'print(confusion_matrix(y_test, pred))&nbsp;&nbsp;# [[TN FP] [FN TP]]<br>' +
+          'print(accuracy_score(y_test, pred), precision_score(y_test, pred), recall_score(y_test, pred))</code></p>' +
+          '<p>Обычный <code>model.predict(X_test)</code> — это порог «больше половины», то есть 6 из 10.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина (без столбца sex, без пропусков). Задача «Chinstrap или нет». Признаки — глубина клюва, длина крыла и масса: по ним Chinstrap сильно похожи на Adelie, поэтому ошибок обоих видов хватает и порог заметно меняет картину. Без длины клюва нарочно: с ней Chinstrap узнаётся почти без ошибок. Модель — <code>StandardScaler</code> + KNN, 10 соседей; масштаб учится только на обучающей части. Признаков три, а не два, потому что длина крыла — целое число, и на двух признаках у пингвина часто находятся два соседа на одинаковом расстоянии; sklearn выбирает между ними по-разному в зависимости от компьютера. С тремя признаками таких ничьих нет.</p>' +
+          '<p>Разбиение как в Colab: <code>train_test_split(test_size=0.2, random_state=42)</code> → 273 train и 69 test (11 Chinstrap); для игры train делится ещё раз (<code>test_size=0.25, random_state=42</code>) → 204 на учёбу и 69 validation (14 Chinstrap). Матрицы для всех порогов совпадают с sklearn (<code>tools/check_confusion.py</code>).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: показываем ленивую модель и спрашиваем класс: «84% — хорошая модель?». Потом включаем KNN с порогом 6: accuracy почти такая же (86%), но 5 Chinstrap найдены. Обсуждаем, что значит «хорошая модель», и вводим матрицу ошибок. В конце игра «Настрой тревогу»: два заказчика, два разных лучших порога.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Где пропуск хуже ложной тревоги (болезнь, пожар, спам)? А где наоборот? Почему ленивая модель получает 84%? Почему порог нельзя подбирать по test? Почему на test числа заметно отличаются от validation?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.',
+        chartX: 'Порог: соседей-Chinstrap из 10',
+        chartY: '%'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+    document.getElementById('chart').setAttribute('aria-label', T('chartLabel'));
+    document.getElementById('t').setAttribute('aria-label', T('tLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    var C_VAL = MLViz.cssVar('--c-val'), C_ERR = MLViz.cssVar('--red');
+    var C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted');
+    var K = 10;
+
+    // Признаки: глубина клюва, длина крыла, масса. Ответ: Chinstrap (да) или нет.
+    var all = PENGUINS.rows.map(function (r) {
+      return { si: SPECIES.indexOf(r[0]), yes: r[0] === 'Chinstrap', f: [r[3], r[4], r[5]], test: r[6] === 1, pos: r[7], val: r[8] === 1, vpos: r[9] };
+    });
+    // Порядок строк как в sklearn
+    var byPos = function (a, b) { return a.pos - b.pos; };
+    var byVpos = function (a, b) { return a.vpos - b.vpos; };
+    var train = all.filter(function (p) { return !p.test; }).sort(byPos);
+    var test = all.filter(function (p) { return p.test; }).sort(byPos);
+    var tr = train.filter(function (p) { return !p.val; }).sort(byVpos);   // 204 — учёба для пробного экзамена
+    var va = train.filter(function (p) { return p.val; }).sort(byVpos);    // 69 — validation
+
+    // Масштаб (StandardScaler) учится только на той части, где учится модель
+    function stdOf(pts, j) {
+      var m = pts.reduce(function (s, p) { return s + p.f[j]; }, 0) / pts.length;
+      var v = pts.reduce(function (s, p) { return s + (p.f[j] - m) * (p.f[j] - m); }, 0) / pts.length;
+      return Math.sqrt(v);
+    }
+    function model(base) { return { base: base, s: [0, 1, 2].map(function (j) { return stdOf(base, j); }) }; }
+    var FULL = model(train);   // для test
+    var SMALL = model(tr);     // для validation
+
+    // ======================= KNN: сколько из 10 соседей — Chinstrap =======================
+    function chinVotes(M, q) {
+      var d = M.base.map(function (p, i) {
+        var s = 0;
+        for (var j = 0; j < 3; j++) { var dj = (p.f[j] - q.f[j]) / M.s[j]; s += dj * dj; }
+        return { i: i, d: s };
+      });
+      d.sort(function (a, b) { return a.d - b.d; });
+      var c = 0;
+      for (var j = 0; j < K; j++) if (M.base[d[j].i].yes) c++;
+      return c;
+    }
+    test.forEach(function (p) { p.v = chinVotes(FULL, p); });
+    va.forEach(function (p) { p.v = chinVotes(SMALL, p); });
+
+    // Клетка матрицы для пингвина; lazy — модель «всегда нет»
+    function cellOf(p, t, lazy) {
+      var alarm = !lazy && p.v >= t;
+      return p.yes ? (alarm ? 'tp' : 'fn') : (alarm ? 'fp' : 'tn');
+    }
+    function matrix(set, t, lazy) {
+      var m = { tn: 0, fp: 0, fn: 0, tp: 0 };
+      set.forEach(function (p) { m[cellOf(p, t, lazy)]++; });
+      return m;
+    }
+    var CM = { test: [], val: [] };
+    for (var tt = 1; tt <= K; tt++) { CM.test[tt] = matrix(test, tt, false); CM.val[tt] = matrix(va, tt, false); }
+    var LAZY = matrix(test, 1, true);
+    var P_TEST = LAZY.fn, P_VAL = CM.val[1].tp + CM.val[1].fn;   // сколько Chinstrap в test и validation
+
+    // ======================= Игра: задания и лучший порог на validation =======================
+    var NEED = Math.ceil(0.9 * P_VAL), MAX_FP = 5;
+    var TASKS = [
+      { text: 'task1', status: 'status1', result: 'result1',
+        ok: function (m) { return m.tp >= NEED; },
+        better: function (a, b) { return a.fp < b.fp; } },        // меньше ложных тревог
+      { text: 'task2', status: 'status2', result: 'result2',
+        ok: function (m) { return m.fp <= MAX_FP; },
+        better: function (a, b) { return a.tp > b.tp; } }         // больше найденных
+    ];
+    TASKS.forEach(function (task) {
+      var best = null;   // при равенстве — меньший порог
+      for (var t = 1; t <= K; t++) {
+        var m = CM.val[t];
+        if (task.ok(m) && (best === null || task.better(m, CM.val[best]))) best = t;
+      }
+      task.best = best;
+    });
+
+    // ======================= Состояние =======================
+    var state = { t: 6, model: 'knn', mode: 'explore', cell: null, game: null };
+
+    // Что сейчас показываем: validation (игра до экзамена) или test
+    function view() {
+      var g = state.game;
+      if (g && g.phase === 'choose') return { set: va, key: 'val', lazy: false, t: state.t };
+      if (g) return { set: test, key: 'test', lazy: false, t: g.t };
+      return { set: test, key: 'test', lazy: state.model === 'lazy', t: state.t };
+    }
+    function curMatrix(v) { return v.lazy ? LAZY : CM[v.key][v.t]; }
+
+    // ======================= Рисование: пингвины по столбцам «соседей-Chinstrap» =======================
+    // Столбец = сколько из 10 соседей Chinstrap. Вверху настоящие Chinstrap, внизу остальные.
+    var cv = document.getElementById('cv');
+    var g, L;   // L — разметка: границы, ширина столбца, размер точки
+
+    function layout(set) {
+      var fs = MLViz.fontPx(g.w);
+      var lab = Math.round(fs * 1.5);   // строка под подписи «на самом деле …»
+      var pad = { l: 10, r: 10, t: Math.round(fs * 1.8), b: Math.round(fs * 3.4) };
+      var colW = (g.w - pad.l - pad.r) / (K + 1);
+      var up = new Array(K + 1).fill(0), down = new Array(K + 1).fill(0);
+      set.forEach(function (p) { if (p.yes) up[p.v]++; else down[p.v]++; });
+      var maxUp = Math.max.apply(null, up), maxDown = Math.max.apply(null, down);
+      var H = g.h - pad.t - pad.b - 2 * lab - 10;
+      // Перебираем, сколько точек ставить в ряд, и берём вариант с самыми крупными точками
+      var best = { d: 0, perRow: 1 };
+      for (var per = 1; per <= 6; per++) {
+        var rows = Math.ceil(maxUp / per) + Math.ceil(maxDown / per);
+        var d = Math.min(26, (colW - 6) / per, H / rows);
+        if (d > best.d + 0.5) best = { d: d, perRow: per };
+      }
+      var base = pad.t + lab + 4 + Math.ceil(maxUp / best.perRow) * best.d + 3;   // линия между «Chinstrap» и остальными
+      return { pad: pad, colW: colW, d: best.d, perRow: best.perRow, base: base, fs: fs };
+    }
+
+    function resize() {
+      // На узком экране столбцы узкие, поэтому картинку делаем выше — иначе точки станут крошечными
+      g = MLViz.fitCanvas(cv, cv.parentElement.clientWidth < 600 ? 0.85 : 0.6);
+      resizeChart();
+      draw();
+      drawChart();
+    }
+
+    function colX(c) { return L.pad.l + (c + 0.5) * L.colW; }
+    function edgeX(t) { return L.pad.l + t * L.colW; }   // граница перед столбцом t
+
+    function cross(ctx, x, y, r) {
+      ctx.strokeStyle = C_ERR; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
+      ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
+    }
+
+    function draw() {
+      var ctx = g.ctx, v = view();
+      L = layout(v.set);
+      ctx.clearRect(0, 0, g.w, g.h);
+      var top = L.pad.t, bottom = g.h - L.pad.b;
+      ctx.font = L.fs + 'px ' + MLViz.cssVar('--font');
+
+      // Зона тревоги справа от порога
+      var tx = v.lazy ? g.w - L.pad.r : edgeX(v.t);
+      ctx.fillStyle = 'rgba(34, 211, 238, .14)';
+      ctx.fillRect(tx, top, g.w - L.pad.r - tx, bottom - top);
+
+      // Линия между «Chinstrap» (вверху) и остальными (внизу)
+      ctx.strokeStyle = 'rgba(169,162,204,.45)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(L.pad.l, L.base); ctx.lineTo(g.w - L.pad.r, L.base); ctx.stroke();
+      ctx.fillStyle = C_MUTED; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(T('cvYes'), L.pad.l + 4, top + 2);
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(T('cvNo'), L.pad.l + 4, bottom - 2);
+
+      // Подписи столбцов
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      for (var c = 0; c <= K; c++) ctx.fillText(String(c), colX(c), bottom + 6);
+      ctx.fillText(T('cvAxis'), (L.pad.l + g.w - L.pad.r) / 2, bottom + 8 + L.fs * 1.3);
+
+      // Пингвины: в каждом столбце Chinstrap растут вверх, остальные — вниз
+      var stackUp = new Array(K + 1).fill(0), stackDown = new Array(K + 1).fill(0);
+      var order = v.set.slice().sort(function (a, b) { return a.si - b.si || a.pos - b.pos; });
+      var r = Math.max(2.5, L.d / 2 - 1.5);
+      order.forEach(function (p) {
+        var c = p.v, k = p.yes ? stackUp[c]++ : stackDown[c]++;
+        var row = Math.floor(k / L.perRow), col = k % L.perRow;
+        var x = colX(c) + (col - (L.perRow - 1) / 2) * L.d;
+        var y = p.yes ? L.base - 4 - (row + 0.5) * L.d : L.base + 4 + (row + 0.5) * L.d;
+        var cell = cellOf(p, v.t, v.lazy);
+        ctx.globalAlpha = state.cell && state.cell !== cell ? 0.15 : 1;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+        if (v.key === 'test') {
+          ctx.fillStyle = 'rgba(23,19,46,.75)'; ctx.fill();
+          ctx.strokeStyle = COLORS[p.si]; ctx.lineWidth = Math.max(1.5, r / 2.5); ctx.stroke();
+        } else {
+          ctx.fillStyle = COLORS[p.si]; ctx.fill();
+          ctx.strokeStyle = C_VAL; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+        if (cell === 'fp' || cell === 'fn') cross(ctx, x, y, r * 0.7);
+      });
+      ctx.globalAlpha = 1;
+
+      // Линия порога с «ручкой» и подписи зон
+      ctx.strokeStyle = C_TEXT; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(tx, top - 4); ctx.lineTo(tx, bottom); ctx.stroke();
+      if (!v.lazy) {
+        ctx.beginPath(); ctx.arc(tx, top - 4, 7, 0, Math.PI * 2); ctx.fillStyle = C_TEXT; ctx.fill();
+      }
+      ctx.textBaseline = 'bottom'; ctx.fillStyle = C_TEXT;
+      ctx.textAlign = 'right'; ctx.fillText('◀ ' + T('cvSilent'), tx - 12, top - 2);
+      if (!v.lazy) { ctx.textAlign = 'left'; ctx.fillText(T('cvAlarm') + ' ▶', tx + 12, top - 2); }
+    }
+
+    // ======================= График: метрики от порога =======================
+    var ch = document.getElementById('chart');
+    var CP, cg, cx, cy;
+
+    function resizeChart() {
+      cg = MLViz.fitCanvas(ch, 0.42);
+      CP = MLViz.plotPad(cg.w, 3);
+      cx = MLViz.scale(1, K, CP.l, cg.w - CP.r);
+      cy = MLViz.scale(0, 100, cg.h - CP.b, CP.t);
+    }
+
+    function metrics(m) {
+      var n = m.tn + m.fp + m.fn + m.tp;
+      return {
+        acc: (m.tp + m.tn) / n,
+        prec: m.tp + m.fp ? m.tp / (m.tp + m.fp) : null,   // нет тревог — precision не определена
+        rec: m.tp + m.fn ? m.tp / (m.tp + m.fn) : null
+      };
+    }
+
+    function curve(ctx, key, field, color, dash) {
+      ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+      ctx.setLineDash(dash ? [7, 5] : []);
+      ctx.beginPath();
+      var started = false;
+      for (var t = 1; t <= K; t++) {
+        var val = metrics(CM[key][t])[field];
+        if (val === null) { started = false; continue; }   // разрыв там, где метрики нет
+        var X = cx(t), Y = cy(100 * val);
+        if (started) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
+        started = true;
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function drawChart() {
+      var ctx = cg.ctx, v = view();
+      ctx.clearRect(0, 0, cg.w, cg.h);
+      MLViz.drawAxes(ctx, {
+        w: cg.w, h: cg.h, pad: CP, sx: cx, sy: cy, xGrid: false,
+        xTicks: MLViz.range(1, K, 1), yTicks: MLViz.range(0, 100, 20),
+        xLabel: T('chartX'), yLabel: T('chartY')
+      });
+      curve(ctx, v.key, 'acc', C_MUTED, false);
+      curve(ctx, v.key, 'prec', C_TEXT, true);
+      curve(ctx, v.key, 'rec', C_TEXT, false);
+
+      if (v.lazy) return;                 // у ленивой модели порога нет
+      var X = cx(v.t), mt = metrics(CM[v.key][v.t]);
+      ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(X, CP.t); ctx.lineTo(X, cg.h - CP.b); ctx.stroke();
+      [[mt.acc, C_MUTED], [mt.prec, C_TEXT], [mt.rec, C_TEXT]].forEach(function (p) {
+        if (p[0] === null) return;
+        ctx.beginPath(); ctx.arc(X, cy(100 * p[0]), 5.5, 0, Math.PI * 2);
+        ctx.fillStyle = p[1]; ctx.fill();
+        ctx.strokeStyle = '#17132E'; ctx.lineWidth = 2; ctx.stroke();
+      });
+    }
+
+    // ======================= Панель =======================
+    function pct(x) { return Math.round(100 * x) + '%'; }
+    function el(id) { return document.getElementById(id); }
+
+    function updatePanel() {
+      var v = view(), m = curMatrix(v), mt = metrics(m), n = v.set.length;
+      var gm = state.game, locked = gm && gm.phase !== 'choose';
+
+      el('tVal').textContent = v.lazy ? T('none') : T('tValue', { t: v.t });
+      el('t').value = v.t;
+      el('t').disabled = v.lazy || locked;
+      el('tNote').textContent = v.lazy ? T('tNoteLazy') : T('tNote');
+      MLViz.setPressed(el('modelBtns'), function (b) { return b.dataset.model === state.model; });
+      el('modelBox').hidden = !!gm;
+
+      el('cmTitle').textContent = T(v.key === 'test' ? 'cmTitleTest' : 'cmTitleVal', { n: n });
+      ['tn', 'fp', 'fn', 'tp'].forEach(function (c) { el('c' + c.toUpperCase()).textContent = m[c]; });
+      document.querySelectorAll('#cm button').forEach(function (b) {
+        var c = b.dataset.cell;
+        b.setAttribute('aria-label', T('cellAria', { name: T('cell' + c.toUpperCase()).replace(/^[✓✕] /, ''), c: m[c] }));
+      });
+      MLViz.setPressed(el('cm'), function (b) { return b.dataset.cell === state.cell; });
+
+      el('mAcc').textContent = pct(mt.acc);
+      el('mAccNote').textContent = T('accNote', { c: m.tp + m.tn, n: n });
+      el('mPrec').textContent = mt.prec === null ? T('none') : pct(mt.prec);
+      el('mPrecNote').textContent = mt.prec === null ? T('precNone') : T('precNote', { c: m.tp, n: m.tp + m.fp });
+      el('mRec').textContent = pct(mt.rec);
+      el('mRecNote').textContent = T('recNote', { c: m.tp, n: m.tp + m.fn });
+      el('baseline').textContent = T('baseline', { c: LAZY.tn, n: test.length, p: Math.round(100 * LAZY.tn / test.length) });
+
+      el('legSetText').textContent = T(v.key === 'test' ? 'legTest' : 'legVal');
+      var icon = el('legSetIcon');
+      icon.className = v.key === 'test' ? 'ring' : '';
+      icon.style.cssText = v.key === 'test' ? '' : 'background:var(--muted); box-shadow:0 0 0 2px var(--c-val)';
+      el('chartHint').textContent = T('chartHint', { set: T(v.key === 'test' ? 'setTest' : 'setVal') });
+
+      if (gm && gm.phase === 'choose') {
+        var task = TASKS[gm.i];
+        el('gameStatus').innerHTML = T(task.status, {
+          tp: m.tp, p: P_VAL, fp: m.fp, ok: task.ok(m) ? T('okYes') : T('okNo')
+        });
+        el('examBtn').textContent = T('exam', { t: state.t });
+      }
+    }
+
+    function refresh() { updatePanel(); draw(); drawChart(); }
+
+    // ======================= Игра «Настрой тревогу» (общий компонент MLViz.quiz) =======================
+    // Раунд = задание: подобрать порог на validation, потом один раз сдать экзамен на test.
+    // Очко — за лучший порог; сколько раз выполнено условие, считаем в q.data.ok.
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: TASKS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('final', { best: q.score, ok: q.data.ok, n: q.n }); }
+      },
+      start: function (q) { q.data.ok = 0; },
+      round: function (q) {
+        state.game = { i: q.i, phase: 'choose', t: null };
+        state.t = 6;
+        state.cell = null;
+        el('gameTask').innerHTML = T(TASKS[q.i].text, { need: NEED, p: P_VAL, maxFp: MAX_FP });
+        el('gameStatus').hidden = false;
+        el('examBtn').hidden = false;
+        el('hint').textContent = T('hintGame');
+        refresh();
+      },
+      onEnd: function () { el('gameTask').innerHTML = ''; el('gameStatus').hidden = true; el('examBtn').hidden = true; }
+    });
+
+    function takeExam() {
+      var gm = state.game, task = TASKS[gm.i], t = state.t;
+      var mv = CM.val[t], bv = CM.val[task.best], mt = CM.test[t];
+      var verdict, best = 0;
+      if (!task.ok(mv)) verdict = T('verdictNo');
+      else if (!task.better(bv, mv)) { verdict = T('verdictBest'); best = 1; }
+      else verdict = T('verdictOk');
+      if (task.ok(mv)) quiz.data.ok++;
+
+      gm.phase = 'result'; gm.t = t;
+      state.cell = null;
+      el('gameStatus').hidden = true;
+      el('examBtn').hidden = true;
+      el('hint').textContent = T('hintResult');
+      quiz.answer(best, verdict + '<br>' +
+        T(task.result, { bt: task.best, btp: bv.tp, bfp: bv.fp, p: P_VAL }) + '<br><br>' +
+        T('examLine', { t: t, tp: mt.tp, p: P_TEST, fp: mt.fp, step: Math.round(100 / P_TEST) }));
+      refresh();
+    }
+
+    function setMode(m) {
+      state.mode = m;
+      state.cell = null;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('gamePanel').hidden = m !== 'game';
+      if (m === 'game') quiz.start();
+      else {
+        state.game = null;
+        el('hint').textContent = T('hintExplore');
+        refresh();
+      }
+    }
+
+    // ======================= События =======================
+    function setT(t) {
+      var gm = state.game;
+      if (view().lazy || (gm && gm.phase !== 'choose')) return;
+      t = Math.max(1, Math.min(K, Math.round(t)));
+      if (t === state.t) return;
+      state.t = t; refresh();
+    }
+
+    // Порог можно тянуть и на графике метрик, и прямо на картинке с пингвинами
+    function dragOn(canvas, toT) {
+      var dragging = false;
+      canvas.addEventListener('pointerdown', function (e) { dragging = true; canvas.setPointerCapture(e.pointerId); setT(toT(MLViz.pointer(canvas, e).x)); });
+      canvas.addEventListener('pointermove', function (e) { if (dragging) setT(toT(MLViz.pointer(canvas, e).x)); });
+      canvas.addEventListener('pointerup', function () { dragging = false; });
+      canvas.addEventListener('pointercancel', function () { dragging = false; });
+    }
+    dragOn(ch, function (x) { return cx.invert(x); });
+    dragOn(cv, function (x) { return (x - L.pad.l) / L.colW; });
+
+    el('t').addEventListener('input', function (e) { setT(+e.target.value); });
+    document.querySelectorAll('#modelBtns button').forEach(function (b) {
+      b.addEventListener('click', function () { state.model = b.dataset.model; state.cell = null; refresh(); });
+    });
+    document.querySelectorAll('#cm button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        state.cell = state.cell === b.dataset.cell ? null : b.dataset.cell;
+        updatePanel(); draw();
+      });
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    el('examBtn').addEventListener('click', takeExam);
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

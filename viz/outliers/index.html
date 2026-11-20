@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Выбросы и пропуски · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Только для этой страницы */
+    .viz-main > .stage { min-width: 0; }
+    .stab { border-collapse: collapse; width: 100%; font-size: 15px; font-variant-numeric: tabular-nums; margin-top: 6px; }
+    .stab th, .stab td { padding: 5px 6px; border-bottom: 1px solid var(--line-soft); text-align: right; }
+    .stab th:first-child, .stab td:first-child { text-align: left; color: var(--muted); }
+    .stab th { font-size: 13px; color: var(--muted); }
+    .stab td.jump { color: var(--c-odd); font-weight: 700; }
+    .rtab { border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; width: 100%; }
+    .rtab th { background: var(--card-2); padding: 8px; font-size: 13px; text-align: right; white-space: nowrap; }
+    .rtab td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); text-align: right; white-space: nowrap; }
+    .rtab th.txt, .rtab td.txt { text-align: left; }
+    .rtab td.nan { color: var(--c-odd); font-weight: 700; background: rgba(244, 63, 94, .12); }
+    .rtab td.filled { color: var(--c-val); font-weight: 700; background: rgba(74, 222, 128, .12); }
+    .rtab tr.gone td { opacity: .3; text-decoration: line-through; }
+    .bars2 { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .bar2 { display: grid; grid-template-columns: minmax(110px, auto) 1fr 32px; gap: 8px; align-items: center; font-size: 15px; }
+    .bar2 .track { height: 14px; background: rgba(23, 19, 46, .7); border-radius: 6px; overflow: hidden; }
+    .bar2 .fill { height: 100%; background: var(--c-odd); border-radius: 6px; }
+    .gnums { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .gnums button { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage" id="outStage">
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--adelie)"></i>Adelie</span>
+            <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+            <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+            <span><i style="background:transparent; border:2px solid var(--c-odd)"></i><span data-i18n="legGiant"></span></span>
+          </div>
+          <div class="legend" style="padding:4px 4px 0">
+            <span><b>▼</b> <span data-i18n="legMean"></span></span>
+            <span><i class="dash" style="border-color:var(--text); border-radius:0; width:16px; height:0"></i><span data-i18n="legMedian"></span></span>
+            <span><i style="background:transparent; border:1.5px solid var(--muted); border-radius:2px"></i><span data-i18n="legBox"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage" id="missStage" hidden style="padding:12px">
+          <div class="tbl-wrap"><table class="rtab" id="rtab"></table></div>
+          <div class="hint" id="missHint"></div>
+        </div>
+
+        <div class="stage viz-extra" id="countBox" hidden style="padding:14px">
+          <h3 class="sub" data-i18n="countTitle"></h3>
+          <div class="bars2" id="counts"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" data-mode="out" data-i18n="modeOut"></button>
+          <button type="button" data-mode="miss" data-i18n="modeMiss"></button>
+          <button type="button" data-mode="game" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Выбросы -->
+        <div id="outBox">
+          <h3 data-i18n="featLabel"></h3>
+          <div class="seg" id="featBtns" style="margin-top:6px"></div>
+          <h3 style="margin-top:12px" data-i18n="groupLabel"></h3>
+          <div class="seg" id="groupBtns" style="margin-top:6px">
+            <button type="button" data-g="all" data-i18n="groupAll"></button>
+            <button type="button" data-g="ten" data-i18n="groupTen"></button>
+          </div>
+          <label class="toggle" style="margin-top:12px"><input type="checkbox" id="giant" checked> <span data-i18n="giantLabel"></span></label>
+          <h3 style="margin-top:8px"><span data-i18n="giantValue"></span>: <span id="giantVal"></span></h3>
+          <input type="range" id="giantSlider">
+          <p class="note" id="giantNote"></p>
+          <div style="border-top:1px solid var(--line); padding-top:12px; margin-top:10px">
+            <table class="stab" id="stab"></table>
+            <p class="note" id="outNote"></p>
+          </div>
+        </div>
+
+        <!-- Пропуски -->
+        <div id="missBox" hidden>
+          <h3 data-i18n="stratLabel"></h3>
+          <div class="seg" id="stratBtns" style="margin-top:6px"></div>
+          <div class="row" style="justify-content:space-between; margin-top:12px">
+            <div><small style="font-weight:700" data-i18n="rowsLeft"></small><div class="big-number" id="rowsLeft"></div></div>
+            <div><small style="font-weight:700" data-i18n="colsLeft"></small><div class="big-number" id="colsLeft"></div></div>
+          </div>
+          <p style="margin:10px 0 0" id="stratText"></p>
+        </div>
+
+        <!-- Игра «Найди опечатку» -->
+        <div id="gameBox" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameAsk"></p>
+          <div class="gnums" id="gnums"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" style="margin-top:8px" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <!-- TODO: вставить ссылку на ноутбук урока 4 в Colab -->
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script src="../../data/penguins_raw.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 4 · Данные',
+        title: 'Выбросы и пропуски',
+        analogy: '<b>Один «великан» портит среднее.</b> Если в классе 10 учеников весят около 40 кг, а кто-то по ошибке записал 400, средний вес станет 76 кг — и ничего не скажет о классе. Такие странные значения — <b>выбросы</b>. А если в анкете клетка пустая, это <b>пропуск</b>. Модели плохо работают и с тем, и с другим, поэтому данные сначала чистят.',
+        cvLabel: 'Значения признака у всех пингвинов, среднее, медиана и «ящик с усами»',
+        modeOut: 'Выбросы',
+        modeMiss: 'Пропуски',
+        modeGame: 'Игра: найди опечатку',
+        legGiant: '«великан» — опечатка',
+        legMean: 'среднее',
+        legMedian: 'медиана',
+        legBox: 'ящик: средняя половина пингвинов',
+        hintOut: 'Каждая точка — пингвин. Включи «великана» и подвигай его: смотри, как убегает среднее и стоит на месте медиана.',
+        hintGame: 'После ответа здесь появятся эти 10 чисел: видно, как далеко опечатка от остальных и как она тянет за собой среднее.',
+        hintMiss: 'Это 11 строк исходной таблицы, где не хватает данных. NaN — «нет значения» (Not a Number).',
+        featLabel: 'Признак',
+        f_bill_length_mm: 'Длина клюва, мм',
+        f_bill_depth_mm: 'Глубина клюва, мм',
+        f_flipper_length_mm: 'Длина крыла, мм',
+        f_body_mass_g: 'Масса, г',
+        f_short_bill_length_mm: 'Клюв: длина',
+        f_short_bill_depth_mm: 'Клюв: глубина',
+        f_short_flipper_length_mm: 'Крыло',
+        f_short_body_mass_g: 'Масса',
+        groupLabel: 'Сколько пингвинов',
+        groupAll: 'Все 342',
+        groupTen: 'Первые 10',
+        giantLabel: 'Добавить «великана» (опечатку)',
+        giantValue: 'Значение «великана»',
+        giantNote: 'Сначала это значение первого пингвина × 10 — как будто при записи нажали лишний ноль.',
+        colNo: 'без великана',
+        colYes: 'с великаном',
+        rowMean: 'среднее',
+        rowMedian: 'медиана',
+        rowQ: 'ящик (Q1 – Q3)',
+        rowFence: 'граница выбросов',
+        rowOut: 'выбросов',
+        outNote: 'Выброс — точка за границей: дальше 1.5 длины ящика от его края. У настоящих пингвинов выбросов нет — данные чистые.',
+        outNoteTen: 'Выброс — точка за границей: дальше 1.5 длины ящика от его края. В маленькой группе за усы может выйти и обычный пингвин — правило лишь подсказывает, на что посмотреть, а не решает, что удалить.',
+        stratLabel: 'Что делать с пропусками',
+        s_drop: 'Удалить строки',
+        s_dropcol: 'Убрать sex, потом строки',
+        s_fill: 'Заполнить',
+        rowsLeft: 'Строк осталось',
+        colsLeft: 'Столбцов',
+        st_drop: '<b>dropna()</b>: выбросили все 11 строк с пропусками. Просто, но потеряли 9 пингвинов, у которых не хватало только пола.',
+        st_dropcol: '<b>drop(sex) + dropna()</b>: столбец sex для угадывания вида не нужен — убрали его, и выбросить пришлось только 2 пингвина без измерений. Так делаем во всём курсе.',
+        st_fill: '<b>fillna()</b>: пропуски заменили догадкой: числа — средним по столбцу (длина клюва — {m} мм), пол — самым частым значением ({s}). Никого не потеряли, но часть данных теперь придумана. В настоящем проекте среднее для заполнения считают только по train — как StandardScaler (урок 10), чтобы не подсмотреть в test.',
+        countTitle: 'Сколько пропусков в каждом столбце',
+        gameStep: 'Раунд {i} из {n} · счёт {s}',
+        gameAsk: 'Это «{f}» десяти пингвинов. Одно число записано с ошибкой — найди его!',
+        gameRight: '<b style="color:var(--green)">✓ Верно!</b> {why}',
+        gameWrong: '<b style="color:var(--red)">✕ Опечатка — {v}.</b> {why}',
+        why_x10: 'Оно в 10 раз больше остальных — лишний ноль.',
+        why_d10: 'Оно в 10 раз меньше остальных — потерялась цифра.',
+        why_kg: 'Масса записана в килограммах, а не в граммах.',
+        next: 'Следующий раунд',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        final: '<b>Итог: {s} из {n}.</b> Опечатки — самые частые выбросы. Перед обучением модели данные всегда смотрят глазами и графиками.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Среднее чувствительно к выбросам.</b> Среднее — сумма, делённая на количество. Одно огромное число сильно увеличивает сумму, и среднее «убегает».</li>' +
+          '<li><b>Медиана устойчива.</b> Медиана — значение посередине, если всех выстроить по порядку. Великан встаёт в конец очереди, а середина почти не двигается.</li>' +
+          '<li><b>Ящик с усами.</b> Q1 — число, ниже которого четверть пингвинов, Q3 — ниже которого три четверти. Между ними ящик: средняя половина пингвинов. Граница выбросов — на 1.5 длины ящика от его краёв, а усы тянутся до самого дальнего пингвина внутри границы. Всё, что за границей, — подозрительный <b>выброс</b>.</li>' +
+          '<li><b>Что делать с выбросом.</b> Если это опечатка — исправить или удалить. Если это настоящий редкий случай (очень крупный пингвин) — оставить: он часть правды.</li>' +
+          '<li><b>Пропуски (NaN).</b> Пустую клетку модель не понимает. Можно удалить строку (<code>dropna</code>), убрать ненужный столбец или заполнить пропуск догадкой (<code>fillna</code>) — у каждого способа своя цена.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Выбери «Первые 10» и «Масса». Насколько изменилось среднее из-за великана? А медиана?</li>' +
+          '<li>Переключи на «Все 342». Почему великан теперь сдвигает среднее гораздо меньше?</li>' +
+          '<li>Подвинь великана ближе к остальным. С какого значения он перестаёт считаться выбросом?</li>' +
+          '<li>Во вкладке «Пропуски» сравни три способа. Сколько пингвинов теряет каждый?</li>' +
+          '<li>Сыграй «Игра: найди опечатку». Как ты узнаёшь ошибку, не зная правильного ответа?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формулы и код',
+        mathBody:
+          '<p><code>среднее = (x₁ + x₂ + … + xₙ) / n</code>; медиана — значение посередине отсортированного списка (при чётном n — среднее двух серединных).</p>' +
+          '<p>Квартили Q1 и Q3 — значения, ниже которых 25% и 75% данных. <code>IQR = Q3 − Q1</code>, выброс — меньше <code>Q1 − 1.5·IQR</code> или больше <code>Q3 + 1.5·IQR</code>.</p>' +
+          '<p>В Python:</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br><br>' +
+          'raw = load_penguins()<br>' +
+          'print(raw.isna().sum())&nbsp;&nbsp;# сколько пропусков в каждом столбце<br>' +
+          'print(raw.dropna().shape)&nbsp;&nbsp;# (333, 8): удалили строки<br>' +
+          'df = raw.drop(columns=[\'sex\']).dropna()&nbsp;&nbsp;# (342, 7): как в курсе<br><br>' +
+          's = df[\'body_mass_g\']<br>' +
+          'q1, q3 = s.quantile(0.25), s.quantile(0.75)<br>' +
+          'iqr = q3 - q1<br>' +
+          'print(s.mean(), s.median(), q1, q3)<br>' +
+          'print(s[(s &lt; q1 - 1.5 * iqr) | (s &gt; q3 + 1.5 * iqr)])&nbsp;&nbsp;# выбросы</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Выбросы: 342 пингвина (как во всём курсе), «великан» — значение первого пингвина × 10. Пропуски: исходная таблица Palmer Penguins, 344 строки (<code>data/penguins_raw.js</code>, выгружена <code>tools/export_penguins_raw.py</code>): у 2 пингвинов нет измерений, у 11 нет пола. Средние, медианы, квартили, усы, число выбросов и результаты трёх способов обработки пропусков совпадают с <code>tools/check_outliers.py</code> (pandas, квартили — метод по умолчанию).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: класс называет свой рост, считаем среднее и медиану, потом учитель «ошибается» и пишет 1600 см вместо 160. Что изменилось? Затем страница: великан, ящик с усами, пропуски. В конце игра «Найди опечатку».</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Когда выброс нельзя удалять? Что честнее: удалить пингвина без пола или придумать ему пол? Почему зарплаты в новостях часто дают медианой, а не средним?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    document.getElementById('cv').setAttribute('aria-label', T('cvLabel'));
+    document.getElementById('giantSlider').setAttribute('aria-label', T('giantValue'));
+
+    // ======================= Данные и статистика =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    var C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted');
+    var C_ODD = getComputedStyle(document.documentElement).getPropertyValue('--c-odd').trim();
+    var FEATS = ['bill_length_mm', 'bill_depth_mm', 'flipper_length_mm', 'body_mass_g'];
+    var FI = { bill_length_mm: 2, bill_depth_mm: 3, flipper_length_mm: 4, body_mass_g: 5 };
+    var ROWS = PENGUINS.rows;
+
+    // Квартиль как в pandas по умолчанию (линейная интерполяция)
+    function quantile(sorted, q) {
+      var pos = (sorted.length - 1) * q, lo = Math.floor(pos), hi = Math.ceil(pos);
+      return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+    }
+    function stats(vals) {
+      var s = vals.slice().sort(function (a, b) { return a - b; });
+      var mean = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+      var q1 = quantile(s, 0.25), q3 = quantile(s, 0.75), iqr = q3 - q1;
+      var lo = q1 - 1.5 * iqr, hi = q3 + 1.5 * iqr;
+      var inside = s.filter(function (v) { return v >= lo && v <= hi; });
+      return { mean: mean, median: quantile(s, 0.5), q1: q1, q3: q3, lo: lo, hi: hi,
+               wlo: inside[0], whi: inside[inside.length - 1],
+               out: vals.filter(function (v) { return v < lo || v > hi; }).length };
+    }
+    // Число без лишних нулей (как :g в Python)
+    function num(v) { var r = Math.round(v * 10000) / 10000; return String(r).replace('-', '−'); }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'out', feat: 'body_mass_g', group: 'ten', giant: true, giantV: null, strat: 'dropcol', game: null };
+    function base() {
+      if (state.game) return state.game.vals.map(function (v) { return { v: v, si: -1 }; });   // в игре — 10 чисел раунда
+      var rows = state.group === 'ten' ? ROWS.slice(0, 10) : ROWS;
+      return rows.map(function (r) { return { v: r[FI[state.feat]], si: SPECIES.indexOf(r[0]) }; });
+    }
+    function sliderRange() {
+      var vals = ROWS.map(function (r) { return r[FI[state.feat]]; });
+      var mx = Math.max.apply(null, vals);
+      return { min: Math.min.apply(null, vals), max: mx * 10, step: state.feat === 'body_mass_g' ? 50 : state.feat === 'flipper_length_mm' ? 1 : 0.1 };
+    }
+    function resetGiant() { state.giantV = ROWS[0][FI[state.feat]] * 10; }
+    resetGiant();
+
+    // ======================= График: точки, ящик, среднее и медиана =======================
+    var cv = document.getElementById('cv'), g;
+    function resize() { g = MLViz.fitCanvas(cv, cv.parentElement.clientWidth < 600 ? 0.8 : 0.5); draw(); }
+    var rnd = MLViz.rng(4);
+    var JIT = ROWS.map(function () { return rnd() - 0.5; });
+
+    function niceStep(range) { var raw = range / 6, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p; }
+
+    function draw() {
+      var ctx = g.ctx, font = MLViz.cssVar('--font'), fs = MLViz.fontPx(g.w);
+      ctx.clearRect(0, 0, g.w, g.h);
+      var pts = base(), vals = pts.map(function (p) { return p.v; });
+      var giantOn = state.giant && !state.game;
+      if (giantOn) vals = vals.concat([state.giantV]);
+      var st = stats(vals);
+      var x0 = Math.min.apply(null, vals), x1 = Math.max.apply(null, vals), pad = (x1 - x0) * 0.06 || 1;
+      var PAD = { l: 16, r: 20, t: fs * 2, b: fs * 3.2 };
+      var sx = MLViz.scale(x0 - pad, x1 + pad, PAD.l, g.w - PAD.r);
+      var step = niceStep(x1 - x0 + 2 * pad);
+      MLViz.drawAxes(ctx, {
+        w: g.w, h: g.h, pad: PAD, sx: sx, sy: function (y) { return y; },
+        xTicks: MLViz.range(Math.ceil((x0 - pad) / step) * step, x1 + pad, step), yTicks: [],
+        xLabel: T('f_' + state.feat), yLabel: ''
+      });
+      var H = g.h - PAD.t - PAD.b, boxY = PAD.t + H * 0.18, boxH = H * 0.2, dotY = PAD.t + H * 0.68, dotH = H * 0.42;
+
+      // Ящик с усами
+      ctx.strokeStyle = C_MUTED; ctx.lineWidth = 1.5;
+      ctx.strokeRect(sx(st.q1), boxY, sx(st.q3) - sx(st.q1), boxH);
+      ctx.beginPath();
+      ctx.moveTo(sx(st.wlo), boxY + boxH / 2); ctx.lineTo(sx(st.q1), boxY + boxH / 2);
+      ctx.moveTo(sx(st.q3), boxY + boxH / 2); ctx.lineTo(sx(st.whi), boxY + boxH / 2);
+      ctx.moveTo(sx(st.wlo), boxY + boxH * 0.2); ctx.lineTo(sx(st.wlo), boxY + boxH * 0.8);
+      ctx.moveTo(sx(st.whi), boxY + boxH * 0.2); ctx.lineTo(sx(st.whi), boxY + boxH * 0.8);
+      ctx.stroke();
+
+      // Медиана — пунктир через весь график, среднее — треугольник сверху
+      ctx.strokeStyle = C_TEXT; ctx.setLineDash([6, 5]); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx(st.median), PAD.t); ctx.lineTo(sx(st.median), g.h - PAD.b); ctx.stroke(); ctx.setLineDash([]);
+      var mx = sx(st.mean);
+      ctx.fillStyle = C_TEXT; ctx.beginPath(); ctx.moveTo(mx, PAD.t + 2); ctx.lineTo(mx - 9, PAD.t - 12); ctx.lineTo(mx + 9, PAD.t - 12); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(238,234,251,.55)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(mx, PAD.t + 2); ctx.lineTo(mx, g.h - PAD.b); ctx.stroke();
+      ctx.font = fs + 'px ' + font; ctx.textBaseline = 'bottom';
+      var leftSide = mx > g.w * 0.7;
+      ctx.textAlign = leftSide ? 'right' : 'left'; ctx.fillStyle = C_TEXT;
+      ctx.fillText(T('rowMean') + ' ' + st.mean.toFixed(1), mx + (leftSide ? -12 : 12), PAD.t - 1);
+
+      // Пингвины
+      var r = state.group === 'ten' || state.game ? 7 : 4;
+      pts.forEach(function (p, i) {
+        ctx.beginPath(); ctx.arc(sx(p.v), dotY + JIT[i] * dotH * (state.group === 'ten' || state.game ? 0.4 : 1), r, 0, Math.PI * 2);
+        ctx.fillStyle = p.si < 0 ? (i === state.game.bad ? C_ODD : C_TEXT) : COLORS[p.si]; ctx.globalAlpha = 0.85; ctx.fill(); ctx.globalAlpha = 1;
+      });
+      if (giantOn) {
+        ctx.beginPath(); ctx.arc(sx(state.giantV), dotY, r + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = C_ODD; ctx.lineWidth = 3; ctx.stroke();
+        ctx.beginPath(); ctx.arc(sx(state.giantV), dotY, r, 0, Math.PI * 2); ctx.fillStyle = COLORS[0]; ctx.fill();
+      }
+    }
+
+    // ======================= Панель «Выбросы» =======================
+    function el(id) { return document.getElementById(id); }
+    function updateOut() {
+      MLViz.setPressed(el('featBtns'), function (b) { return b.dataset.f === state.feat; });
+      MLViz.setPressed(el('groupBtns'), function (b) { return b.dataset.g === state.group; });
+      var rg = sliderRange(), sl = el('giantSlider');
+      sl.min = rg.min; sl.max = rg.max; sl.step = rg.step; sl.value = state.giantV; sl.disabled = !state.giant;
+      el('giantVal').textContent = num(state.giantV);
+      el('giant').checked = state.giant;
+      var vals = base().map(function (p) { return p.v; });
+      var a = stats(vals), b = stats(vals.concat([state.giantV]));
+      function row(name, fa, fb) {
+        var va = fa(a), vb = fb(b), jump = state.giant && va !== vb;
+        return '<tr><td>' + name + '</td><td>' + va + '</td><td class="' + (jump && name === T('rowMean') ? 'jump' : '') + '">' + (state.giant ? vb : '—') + '</td></tr>';
+      }
+      el('stab').innerHTML = '<tr><th></th><th>' + T('colNo') + '</th><th>' + T('colYes') + '</th></tr>' +
+        row(T('rowMean'), function (s) { return s.mean.toFixed(1); }, function (s) { return s.mean.toFixed(1); }) +
+        row(T('rowMedian'), function (s) { return num(s.median); }, function (s) { return num(s.median); }) +
+        row(T('rowQ'), function (s) { return num(s.q1) + ' – ' + num(s.q3); }, function (s) { return num(s.q1) + ' – ' + num(s.q3); }) +
+        row(T('rowFence'), function (s) { return num(s.lo) + ' … ' + num(s.hi); }, function (s) { return num(s.lo) + ' … ' + num(s.hi); }) +
+        row(T('rowOut'), function (s) { return s.out; }, function (s) { return s.out; });
+      el('outNote').textContent = T(state.group === 'ten' ? 'outNoteTen' : 'outNote');
+    }
+
+    // ======================= Пропуски =======================
+    var RAW = PENGUINS_RAW.rows, RCOLS = PENGUINS_RAW.columns;
+    var NUMC = [2, 3, 4, 5];
+    var MISS_ROWS = RAW.map(function (r, i) { return { r: r, i: i }; }).filter(function (o) { return o.r.some(function (v) { return v === null; }); });
+    var FILL = (function () {
+      var means = {}, cnt = {};
+      NUMC.forEach(function (c) {
+        var v = RAW.map(function (r) { return r[c]; }).filter(function (x) { return x !== null; });
+        means[c] = v.reduce(function (a, b) { return a + b; }, 0) / v.length;
+      });
+      RAW.forEach(function (r) { if (r[6] !== null) cnt[r[6]] = (cnt[r[6]] || 0) + 1; });
+      var mode = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a] || (a < b ? -1 : 1); })[0];
+      return { means: means, mode: mode };
+    })();
+    var MISS_NAMES = { 0: 'species', 1: 'island', 2: 'bill_length_mm', 3: 'bill_depth_mm', 4: 'flipper_length_mm', 5: 'body_mass_g', 6: 'sex' };
+
+    function renderMiss() {
+      var s = state.strat;
+      var head = '<tr><th>№</th>' + RCOLS.map(function (c, k) { return '<th class="' + (k < 2 || k === 6 ? 'txt' : '') + '">' + c + '</th>'; }).join('') + '</tr>';
+      var body = MISS_ROWS.map(function (o) {
+        var gone = s === 'drop' || (s === 'dropcol' && o.r.slice(0, 6).some(function (v) { return v === null; }));
+        return '<tr class="' + (gone ? 'gone' : '') + '"><td>' + o.i + '</td>' + o.r.map(function (v, k) {
+          var cls = k < 2 || k === 6 ? 'txt' : '';
+          if (k === 6 && s === 'dropcol') return '<td class="txt" style="opacity:.3">—</td>';
+          if (v === null) {
+            if (s === 'fill') return '<td class="' + cls + ' filled">' + (k === 6 ? FILL.mode : num(Math.round(FILL.means[k] * 100) / 100)) + '</td>';
+            return '<td class="' + cls + ' nan">NaN</td>';
+          }
+          return '<td class="' + cls + '">' + v + '</td>';
+        }).join('') + '</tr>';
+      }).join('');
+      el('rtab').innerHTML = head + body;
+
+      var rows = s === 'drop' ? RAW.length - MISS_ROWS.length
+        : s === 'dropcol' ? RAW.filter(function (r) { return r.slice(0, 6).every(function (v) { return v !== null; }); }).length
+        : RAW.length;
+      el('rowsLeft').textContent = rows + ' / ' + RAW.length;
+      el('colsLeft').textContent = s === 'dropcol' ? RCOLS.length - 1 : RCOLS.length;
+      el('stratText').innerHTML = T('st_' + s, { m: num(Math.round(FILL.means[2] * 100) / 100), s: FILL.mode });
+      MLViz.setPressed(el('stratBtns'), function (b) { return b.dataset.s === s; });
+
+      var maxc = 0, counts = RCOLS.map(function (c, k) { var n = RAW.filter(function (r) { return r[k] === null; }).length; maxc = Math.max(maxc, n); return n; });
+      el('counts').innerHTML = RCOLS.map(function (c, k) {
+        return '<div class="bar2"><span>' + c + '</span><span class="track"><span class="fill" style="display:block; width:' + (100 * counts[k] / maxc) + '%"></span></span><b>' + counts[k] + '</b></div>';
+      }).join('');
+    }
+
+    // ======================= Режимы =======================
+    function updatePanel() {
+      var m = state.mode;
+      MLViz.setPressed(el('modes'), function (b) { return b.dataset.mode === m; });
+      el('outBox').hidden = m !== 'out';
+      el('missBox').hidden = m !== 'miss';
+      el('gameBox').hidden = m !== 'game';
+      el('outStage').hidden = m === 'miss';
+      el('missStage').hidden = m !== 'miss';
+      el('countBox').hidden = m !== 'miss';
+      el('hint').textContent = T(m === 'out' ? 'hintOut' : 'hintGame');
+      // В игре картинку показываем только после ответа — иначе она подскажет
+      cv.style.visibility = m === 'game' && state.game && !state.game.answered ? 'hidden' : '';
+      el('missHint').textContent = T('hintMiss');
+      if (m === 'out') updateOut();
+      if (m === 'miss') renderMiss();
+    }
+    function refresh() { updatePanel(); if (state.mode !== 'miss') draw(); }
+
+    FEATS.forEach(function (f) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.f = f; b.textContent = T('f_short_' + f);
+      b.addEventListener('click', function () { state.feat = f; resetGiant(); refresh(); });
+      el('featBtns').appendChild(b);
+    });
+    el('groupBtns').querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () { state.group = b.dataset.g; refresh(); });
+    });
+    ['drop', 'dropcol', 'fill'].forEach(function (s) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.s = s; b.textContent = T('s_' + s);
+      b.addEventListener('click', function () { state.strat = s; refresh(); });
+      el('stratBtns').appendChild(b);
+    });
+    el('giant').addEventListener('change', function (e) { state.giant = e.target.checked; refresh(); });
+    el('giantSlider').addEventListener('input', function (e) { state.giantV = +e.target.value; refresh(); });
+
+    // ======================= Игра «Найди опечатку» (общий компонент MLViz.quiz) =======================
+    var rand = MLViz.rng(Date.now() % 100000);
+    var quiz = MLViz.quiz({
+      box: el('gameBox'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n, s: q.score }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('final', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        // 10 настоящих чисел, одно испорчено; state.game нужен картинке слева
+        var feat = ['body_mass_g', 'flipper_length_mm', 'bill_length_mm'][Math.floor(rand() * 3)];
+        var idx = MLViz.shuffle(ROWS.map(function (_, i) { return i; }), rand).slice(0, 10);
+        var vals = idx.map(function (i) { return ROWS[i][FI[feat]]; });
+        var kinds = feat === 'body_mass_g' ? ['x10', 'd10', 'kg'] : ['x10', 'd10'];
+        var kind = kinds[Math.floor(rand() * kinds.length)], bad = Math.floor(rand() * 10);
+        var v = vals[bad];
+        vals[bad] = kind === 'x10' ? v * 10 : kind === 'd10' ? Math.round(v * 10) / 100 : v / 1000;
+        state.game = { vals: vals, bad: bad, kind: kind, answered: false };
+        el('gameAsk').textContent = T('gameAsk', { f: T('f_' + feat) });
+        var labels = vals.map(function (x) { return num(Math.round(x * 1000) / 1000); });
+        q.choices(el('gnums'), labels, function (j) { return j === bad; }, function (j, ok) {
+          state.game.answered = true;
+          q.answer(ok ? 1 : 0, ok ? T('gameRight', { why: T('why_' + kind) })
+            : T('gameWrong', { v: labels[bad], why: T('why_' + kind) }));
+          refresh();
+        });
+        refresh();
+      },
+      onEnd: function () { el('gameAsk').textContent = ''; el('gnums').innerHTML = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      if (m === 'game') quiz.start();
+      else { state.game = null; refresh(); }
+    }
+    el('modes').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('out');
+  })();
+  </script>
+</body>
+</html>
