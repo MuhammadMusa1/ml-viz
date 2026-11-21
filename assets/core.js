@@ -47,7 +47,9 @@
           mythsTitle: 'Типичные ошибки новичка', mythSeems: 'Кажется:', mythTruth: 'На самом деле:',
           nextTitle: 'Что дальше', nextGo: 'Дальше: {l} · {t} ›', toHome: 'На главную ›',
           doneYes: '✓ Урок пройден: ты доиграл игру до конца. Отметка видна на главной.',
-          doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.' },
+          doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.',
+          book: 'Учебник', readChapter: '📖 Глава {n} учебника', colab: 'Открыть ноутбук в Colab',
+          bookLinksTitle: 'К этой главе', vizLink: '🧪 Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓' },
     tg: { all: 'Ҳамаи дарсҳо', brand: 'Лабораторияи <b>ML</b>', lesson: 'Дарси {n}', lessonShort: 'Дарси {n} ({k}/{m})',
           lessonPart: 'Дарси {n} · қисми {k} аз {m}', prev: 'Дарси пешина: {t}', next: 'Дарси оянда: {t}', home: 'Лабораторияи ML — ба саҳифаи асосӣ' }
   };
@@ -99,6 +101,43 @@
     if (n && id) n.textContent = t(UI, doneList().indexOf(id) !== -1 ? 'doneYes' : 'doneNo');
   }
 
+  // ---------- Учебник и Colab ----------
+  // Глава N книги «Машинное обучение для начинающих» = урок N курса; ноутбук главы — notebooks/chNN.ipynb.
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function chapterUrl(root, n) { return root + 'book/ml/ch' + pad2(n) + '.html'; }
+  function colabUrl(n) { return window.COURSE && window.COURSE.colab ? window.COURSE.colab + 'ch' + pad2(n) + '.ipynb' : ''; }
+
+  // На странице главы: какие интерактивы к ней есть и кнопка Colab
+  function renderBook() {
+    var main = document.querySelector('main[data-chapter]'), box = document.getElementById('bookLinks');
+    if (main && box && main.dataset.book === 'ml') {
+      var n = +main.dataset.chapter, links = [];
+      readyItems().forEach(function (it) {
+        if (it.lesson === n) links.push('<a class="btn" href="../../viz/' + it.id + '/index.html">' + t(UI, 'vizLink', { l: lessonLabel(it), t: tx(it.title) }) + '</a>');
+      });
+      var c = colabUrl(n);
+      if (c) links.push('<a class="btn" href="' + c + '" target="_blank" rel="noopener">' + t(UI, 'colab') + ' ↗</a>');
+      if (links.length) box.innerHTML = '<div class="book-links"><span class="sub">' + t(UI, 'bookLinksTitle') + '</span><div class="row">' + links.join('') + '</div></div>';
+    }
+    // Кнопка «Скопировать» у каждого блока кода: код из книги вставляют в Colab
+    document.querySelectorAll('.book-text pre').forEach(function (pre) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'copy-code'; b.textContent = t(UI, 'copy');
+      b.addEventListener('click', function () {
+        var code = pre.querySelector('code').textContent;
+        var done = function () { b.textContent = t(UI, 'copied'); setTimeout(function () { b.textContent = t(UI, 'copy'); }, 1500); };
+        if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(code).then(done, function () {});
+        else {   // file:// — буфер обмена через выделение текста
+          var r = document.createRange(); r.selectNodeContents(pre.querySelector('code'));
+          var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+          try { document.execCommand('copy'); done(); } catch (e) {}
+          sel.removeAllRanges();
+        }
+      });
+      pre.appendChild(b);
+    });
+  }
+
   // ---------- «Типичные ошибки новичка» и «Что дальше» ----------
   // Тексты лежат в catalog.js (myths, bridge), а не в каждой странице: так их удобно писать и переводить одним списком.
   // Ошибки встают перед «Для любопытных», «Что дальше» — в самый конец страницы.
@@ -122,12 +161,16 @@
     br.className = 'section bridge';
     br.innerHTML = '<h2>' + t(UI, 'nextTitle') + '</h2>' +
       (it.bridge ? '<p>' + tx(it.bridge) + '</p>' : '') +
+      '<p class="row" style="margin:10px 0 0"><a class="btn" href="' + chapterUrl(root, it.lesson) + '">' + t(UI, 'readChapter', { n: it.lesson }) + '</a>' +
+        (colabUrl(it.lesson) ? '<a class="btn" href="' + colabUrl(it.lesson) + '" target="_blank" rel="noopener">' + t(UI, 'colab') + ' ↗</a>' : '') + '</p>' +
       '<p class="note" id="doneNote"></p>' +
       '<p style="margin:12px 0 0">' + (next
         ? '<a class="btn" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
         : '<a class="btn" href="' + root + 'index.html">' + t(UI, 'toHome') + '</a>') + '</p>';
     main.appendChild(br);
     updateDoneNote();
+    var cl = document.getElementById('colabLink');
+    if (cl && colabUrl(it.lesson)) { cl.href = colabUrl(it.lesson); cl.hidden = false; }
   }
 
   // ---------- Словарь терминов ----------
@@ -241,11 +284,12 @@
       : '';
     setFavicon();
     // На странице урока в шапке ещё кнопки «‹ Урок N · Урок N ›»: на телефоне там остаётся только пингвин
-    h.className = 'site-header' + (root ? ' in-lesson' : '');
+    h.className = 'site-header' + (root ? ' sub-page' : '') + (pageId() ? ' in-lesson' : '');
     h.innerHTML =
       '<div class="wrap">' +
         '<a class="brand" href="' + root + 'index.html" aria-label="' + t(UI, 'home') + '">' + LOGO + '<span>' + t(UI, 'brand') + '</span></a>' +
-        '<nav>' + (root ? '<a class="all-link" href="' + root + 'index.html">' + t(UI, 'all') + '</a>' + lessonNav(root) : '') + '</nav>' +
+        '<nav><a class="book-link" href="' + root + 'book/index.html">' + t(UI, 'book') + '</a>' +
+          (root ? '<a class="all-link" href="' + root + 'index.html">' + t(UI, 'all') + '</a>' + lessonNav(root) : '') + '</nav>' +
         langBtns +
       '</div>';
     h.querySelectorAll('[data-lang]').forEach(function (b) {
@@ -443,7 +487,7 @@
   }
 
   window.MLViz = {
-    lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, doneList: doneList, resetDone: resetDone,
+    lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
     fontPx: fontPx, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, quiz: quiz
   };

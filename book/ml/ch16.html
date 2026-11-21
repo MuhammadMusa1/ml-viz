@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 16. Проект «Классификатор моих фото» · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml" data-chapter="16">
+    <p class="eyebrow">Учебник · Фаза 3 · Глубокое обучение</p>
+    <h1>Глава 16. Проект «Классификатор моих фото»</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь обучить классификатор изображений на собственных данных, применить аугментацию и обернуть модель в веб-интерфейс через Gradio, получив публичную ссылку.</p></aside>
+      <p>Соберём всё из третьей фазы в настоящий продукт: обучим сеть узнавать категории на твоих собственных фотографиях и завернём её в веб-приложение, ссылку на которое можно отправить родителям. Это первый проект курса, который живёт в интернете и работает на реальных, твоих данных.</p>
+      <h2>Шаг 1. Собери свои данные</h2>
+      <p>Выбери 2–3 категории, которые тебе интересно различать: например, «кошки / собаки», «кроссовки / ботинки», твои любимые игрушки или марки машин. Сними или скачай по 20–30 фотографий каждой категории и разложи по папкам с названиями категорий. Данные — половина успеха: чем разнообразнее и чётче фото, тем лучше обучится сеть.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: личный датасет  💡</p><p>До сих пор ты работал с чужими, готовыми датасетами. Теперь ты создаёшь свой — с нуля, своими руками, своей камерой. Это ровно то, чем занимаются инженеры машинного обучения в реальных задачах: качество и продуманность данных решают больше, чем выбор модели. Хорошие данные с простой моделью почти всегда бьют плохие данные со сложной.</p></aside>
+      <h2>Шаг 2. Аугментация данных</h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: одно фото — много ракурсов  💡</p><p>30 фотографий для сети — маловато, она может просто запомнить их (переобучение). Аугментация (augmentation) искусственно расширяет датасет: слегка поворачивает, отражает, меняет яркость каждой картинки. Из одного фото получается несколько разных вариантов. Сеть видит объект под разными углами и учится узнавать его надёжнее — как если бы ты рассмотрел предмет со всех сторон, а не только строго спереди.</p></aside>
+      <pre><code>from tensorflow.keras.layers import RandomFlip, RandomRotation
+from tensorflow.keras.models import Sequential
+
+# Слой аугментации: случайный поворот и отражение
+augment = Sequential([
+    RandomFlip("horizontal"),   # случайное зеркальное отражение
+    RandomRotation(0.1),        # случайный поворот на небольшой угол
+])</code></pre>
+      <h2>Шаг 3. Дообучаем MobileNetV2</h2>
+      <p>Берём готовую сеть MobileNetV2 (наш «готовый эксперт» из главы 15), «замораживаем» её накопленные знания и добавляем сверху свой маленький классификатор под наши категории. Это transfer learning в действии — сеть уже умеет видеть формы, нам остаётся научить её различать именно наши классы.</p>
+      <pre><code>import tensorflow as tf
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.layers import GlobalAveragePooling2D, Dense
+from tensorflow.keras.models import Model
+
+# Готовый "эксперт", обученный на миллионах картинок ImageNet
+base = MobileNetV2(input_shape=(160, 160, 3),
+                   include_top=False, weights="imagenet")
+base.trainable = False    # ЗАМОРАЖИВАЕМ — не переучиваем с нуля
+
+# Добавляем свою "голову" под наши категории
+x = GlobalAveragePooling2D()(base.output)
+out = Dense(2, activation="softmax")(x)   # 2 = число твоих категорий
+model = Model(base.input, out)
+
+model.compile(optimizer="adam",
+              loss="sparse_categorical_crossentropy",
+              metrics=["accuracy"])</code></pre>
+      <aside class="callout warn"><p class="callout-title">Внимание  ⚠️</p><p>Загрузка готовой модели (weights="imagenet") и работа Gradio требуют доступа в интернет — запускай эти ячейки именно в Google Colab, а не в среде без сети. В Colab всё работает из коробки. Параметр base.trainable = False и есть «заморозка»: без неё мы бы стёрли ценные знания эксперта и потеряли весь смысл transfer learning.</p></aside>
+      <h2>Шаг 4. Веб-интерфейс через Gradio</h2>
+      <p>Модель обучена — но как её показать другим? <b>Gradio</b> создаёт веб-страницу с загрузкой картинки и ответом модели буквально из нескольких строк Python. И сразу даёт публичную ссылку, которую можно открыть с любого телефона.</p>
+      <pre><code>import gradio as gr
+import numpy as np
+from PIL import Image
+
+labels = ["категория_1", "категория_2"]   # твои названия
+
+def classify(img):
+    img = Image.fromarray(img).resize((160, 160))
+    arr = np.expand_dims(np.array(img) / 255.0, axis=0)
+    pred = model.predict(arr)[0]
+    # Возвращаем словарь {метка: вероятность}
+    return {labels[i]: float(pred[i]) for i in range(len(labels))}
+
+# Собираем интерфейс: вход — картинка, выход — метки с вероятностями
+demo = gr.Interface(fn=classify,
+                    inputs=gr.Image(),
+                    outputs=gr.Label(),
+                    title="Мой классификатор фото")
+
+# share=True даёт публичную ссылку, которой можно поделиться
+demo.launch(share=True)</code></pre>
+      <p><i>Ожидаемый результат: ссылка вида https://xxxxx.gradio.live — работающее приложение в браузере.</i></p>
+      <h2>Отправь ссылку родителям</h2>
+      <aside class="callout goal"><p class="callout-title">Главная мысль фазы 3  🎯</p><p>Ты прошёл путь от «нейрон — это взвешенная сумма» до собственного веб-приложения, которое узнаёт объекты на фотографиях. Ты понял, как сети видят через матрицы чисел, обучил модель на MNIST, построил CNN и применил transfer learning на своих данных. И, главное, у тебя есть публичная ссылка на живой продукт. Отправь её родителям — это то, что можно показать, чем можно гордиться и что уже похоже на настоящий проект из фазы 6.</p></aside>
+      <h2>Задания</h2>
+      <aside class="callout note"><p class="callout-title">Базовый уровень</p><p>Собери свой датасет из 2 категорий (по 20–30 фото), дообучи MobileNetV2 и запусти Gradio-приложение. Проверь его на новых фото, которых не было в обучении. Отправь ссылку другу.</p></aside>
+      <aside class="callout star"><p class="callout-title">Со звёздочкой  ⭐</p><p>Сделай классификатор из 3 категорий и добавь аугментацию. Сравни точность с аугментацией и без неё на маленьком датасете. Помогла ли аугментация? Затем найди фото, на котором модель ошибается, и подумай почему.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему на маленьком датасете аугментация особенно важна?</li><li>Что было бы, если бы мы НЕ заморозили базовую модель (base.trainable = True) при 30 фотографиях?</li><li>Чем твой классификатор фото уже похож на настоящий продукт, а чего ему не хватает до «взрослого» приложения?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Зачем нужна аугментация данных на маленьком датасете?</p><p>2. Что значит «заморозить» базовую модель при transfer learning?</p><p>3. Что делает параметр share=True в Gradio?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch15.html">‹ Глава 15</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch17.html">Глава 17 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

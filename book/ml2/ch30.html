@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 30. Когда pandas не тянет: polars и dask · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="30">
+    <p class="eyebrow">Учебник · Фаза 5 · Настоящие данные</p>
+    <h1>Глава 30. Когда pandas не тянет: polars и dask</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь объяснить, почему pandas не справляется с очень большими данными, и знать, когда брать polars (быстрее) или dask (данные больше памяти).</p></aside>
+      <p>Pandas прекрасен, но у него есть предел: он загружает все данные в оперативную память и работает в один поток. Когда данных десятки гигабайт, он либо падает с нехваткой памяти, либо еле ползёт. Разберём, чем его заменить и когда.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: один грузчик, бригада, склад с доставкой  💡</p><p>Pandas — один грузчик, который таскает коробки по одной и должен уместить все на своём столе (в памяти). Polars — бригада грузчиков, работающих параллельно (использует все ядра процессора): те же коробки, но в разы быстрее. Dask — служба, которая не тащит весь склад к тебе, а обрабатывает коробки прямо на складе по частям (данные, которые не влезают в память, читаются кусками с диска). Разные инструменты под разный масштаб задачи.</p></aside>
+      <h2><b>Три инструмента под три масштаба</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Инструмент</b></th><th><b>Когда брать</b></th><th><b>Ключевое отличие</b></th></tr><tr><td>pandas</td><td>Данные влезают в память (до ~1–2 ГБ)</td><td>Просто, привычно, огромная экосистема</td></tr><tr><td>polars</td><td>Влезают, но pandas медленный (гигабайты)</td><td>В разы быстрее: параллелизм + оптимизация</td></tr><tr><td>dask</td><td>Не влезают в память (десятки ГБ+)</td><td>Обрабатывает данные кусками, не загружая всё</td></tr></table></div>
+      <h2><b>Polars: тот же смысл, другой синтаксис</b></h2>
+      <p>Polars намеренно похож на pandas, но быстрее в разы за счёт использования всех ядер процессора и умной оптимизации запросов. Переучиваться почти не нужно.</p>
+      <pre><code># pip install polars
+import polars as pl
+
+df = pl.read_csv("big_data.csv")   # читается быстрее pandas
+
+# Знакомые операции — фильтр, группировка
+result = (df
+    .filter(pl.col("price") &gt; 100)
+    .group_by("city")
+    .agg(pl.col("price").mean().alias("avg_price"))
+    .sort("avg_price", descending=True)
+)
+print(result)</code></pre>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>Синтаксис polars чуть отличается от pandas (методы через точку цепочкой), но логика та же: фильтр, группировка, агрегат. На данных в несколько гигабайт polars часто в 5–10 раз быстрее pandas на той же машине — просто потому, что задействует все ядра, а pandas работает в одно. Если pandas «задумался» надолго — попробуй polars.</p></aside>
+      <h2><b>Dask: данные больше памяти</b></h2>
+      <p>Когда данные физически не влезают в оперативную память, ни pandas, ни polars не помогут — нужен dask. Он делит данные на куски, обрабатывает их по очереди и собирает результат, поэтому может работать с данными больше объёма памяти. Синтаксис почти как у pandas.</p>
+      <pre><code># pip install dask
+import dask.dataframe as dd
+
+# Читает по кускам, не загружая всё в память сразу
+df = dd.read_csv("huge_data_*.csv")   # даже много файлов разом
+
+# Операции как в pandas, но выполняются "лениво"
+result = df[df["price"] &gt; 100].groupby("city")["price"].mean()
+
+# Вычисление запускается только по .compute()
+print(result.compute())</code></pre>
+      <aside class="callout warn"><p class="callout-title">Внимание: не усложняй раньше времени  ⚠️</p><p>Начинай с pandas — он покрывает подавляющее большинство учебных и реальных задач. Переходи на polars, только когда pandas реально тормозит на твоих данных, и на dask — только когда данные не влезают в память. Тащить dask на датасет в 10 МБ — это стрелять из пушки по воробьям: сложнее код, больше багов, ноль выгоды. Инструмент должен соответствовать масштабу задачи.</p></aside>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Возьми датасет побольше (или продублируй строки, чтобы стало 1М+). Сделай одну и ту же группировку в pandas и в polars, замерь время каждой (time). Во сколько раз polars быстрее на твоей машине?</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Смоделируй ситуацию «данные больше памяти»: разбей большой CSV на несколько файлов и обработай их через dask (read_csv с маской *, ленивые операции, .compute()). Объясни, почему dask справился бы даже с данными, которые не влезают в оперативную память.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему pandas не справляется с очень большими данными?</li><li>В чём разница подходов polars (быстрее) и dask (по кускам)?</li><li>Почему не стоит сразу брать dask для любой задачи?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Каковы два ограничения pandas на больших данных?</p><p>2. Когда брать polars, а когда dask?</p><p>3. Почему выбор инструмента должен соответствовать масштабу?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch29.html">‹ Глава 29</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch31.html">Глава 31 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

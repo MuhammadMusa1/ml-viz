@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 9. Случайный лес: сила ансамбля · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml" data-chapter="9">
+    <p class="eyebrow">Учебник · Фаза 2 · Классический ML</p>
+    <h1>Глава 9. Случайный лес: сила ансамбля</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь объяснить, почему ансамбль точнее одной модели, построить RandomForestClassifier и настроить n_estimators, а также интерпретировать важность признаков.</p></aside>
+      <p>Одно дерево решений легко переобучается и капризно: измени немного данные — и дерево получится совсем другим. А что, если взять много разных деревьев и устроить голосование между ними? Так рождается случайный лес (Random Forest) — один из самых надёжных и популярных алгоритмов классического ML, который часто работает «из коробки» лучше всего.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: голосование класса  💡</p><p>Спроси одного ученика — он может ошибиться. Спроси весь класс и возьми ответ большинства — коллективный ответ почти всегда точнее любого отдельного. Это «мудрость толпы». Случайный лес строит сотни деревьев, каждое немного по-своему, и объединяет их голоса. Ошибки отдельных деревьев случайны и потому взаимно гасятся, а верные закономерности, которые видят все, — усиливаются.</p></aside>
+      <h2>Почему деревья должны быть разными</h2>
+      <p>Если бы все деревья в лесу были одинаковыми, голосование ничего не дало бы — они ошибались бы хором, как один человек, повторённый сто раз. Поэтому лес специально делает деревья разнообразными: каждое обучается на случайной части данных и рассматривает случайный набор признаков. Разнообразие — источник силы ансамбля. Именно слово «случайный» в названии отражает эту намеренную непохожесть деревьев.</p>
+      <h2>Эксперимент-викторина</h2>
+      <p>Задайте классу вопрос с числовым ответом («сколько окон в школе?» или «сколько весит этот арбуз?»). Пусть каждый запишет свою догадку, затем посчитайте среднее по классу. Почти наверняка среднее окажется ближе к правде, чем большинство отдельных ответов. Вы наглядно показали принцип ансамбля: коллективная оценка точнее индивидуальной, потому что случайные завышения и занижения гасят друг друга.</p>
+      <h2>Случайный лес в коде</h2>
+      <pre><code># === Подготовка: выполни первой, если открыл новый блокнот ===
+import pandas as pd
+from sklearn.model_selection import train_test_split
+url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/penguins.csv"
+df = pd.read_csv(url).dropna(subset=["bill_length_mm", "body_mass_g", "species"])
+X = df[["bill_length_mm", "body_mass_g"]]
+y = df["species"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+from sklearn.ensemble import RandomForestClassifier
+
+# n_estimators — сколько деревьев в лесу
+forest = RandomForestClassifier(n_estimators=100, random_state=42)
+forest.fit(X_train, y_train)
+
+print("Лес, accuracy:", forest.score(X_test, y_test))</code></pre>
+      <p>Параметр <code>n_estimators</code> — число деревьев. Больше деревьев обычно чуть точнее, но и медленнее; после некоторого значения (часто 100–300) прирост почти незаметен. Это классический компромисс «точность против скорости».</p>
+      <h2>Важность признаков</h2>
+      <p>Лес умеет сказать, какие признаки оказались важнее всего для предсказания, — это <b>feature importance</b>. Мощнейший инструмент: он не только улучшает модель (можно убрать бесполезные признаки), но и помогает понять сами данные — что реально влияет на результат.</p>
+      <pre><code>import pandas as pd
+
+# Насколько каждый признак важен для леса
+importances = pd.Series(forest.feature_importances_, index=X.columns)
+print(importances.sort_values(ascending=False))</code></pre>
+      <p>Например, на пингвинах лес обычно показывает, что длина клюва важнее массы тела. Это ценный инсайт о том, что сильнее всего отличает виды, полученный из модели, а не только из ручного анализа.</p>
+      <h2>Турнир алгоритмов</h2>
+      <p>Мы изучили три классификатора. Устроим честный турнир: обучим все три на одних и тех же train/test и сравним результаты напрямую.</p>
+      <pre><code>from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+models = {
+    "KNN":    KNeighborsClassifier(n_neighbors=5),
+    "Дерево": DecisionTreeClassifier(max_depth=3, random_state=42),
+    "Лес":    RandomForestClassifier(n_estimators=100, random_state=42),
+}
+for name, m in models.items():
+    m.fit(X_train, y_train)
+    print(f"{name:7}: {m.score(X_test, y_test):.3f}")</code></pre>
+      <p>Чаще всего лес выигрывает — но не всегда, и не намного. Это важнейший урок фазы 2: сложнее не значит лучше. Иногда простое дерево работает не хуже леса, зато его можно нарисовать и объяснить. Выбор модели — это всегда компромисс между точностью, скоростью и понятностью.</p>
+      <h2>Задания</h2>
+      <aside class="callout note"><p class="callout-title">Базовый уровень</p><p>Запусти турнир трёх моделей на пингвинах. Какая победила? Затем добавь признак flipper_length_mm ко всем моделям и повтори — изменился ли расклад?</p></aside>
+      <aside class="callout star"><p class="callout-title">Со звёздочкой  ⭐</p><p>Построй feature_importances_ для леса на нескольких признаках (bill_length_mm, body_mass_g, flipper_length_mm). Какой признак важнее всех? Убери самый бесполезный признак и проверь: упала ли точность? Иногда меньше признаков = лучше модель.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему сто одинаковых деревьев были бы бесполезны, а сто разных — полезны?</li><li>В каком случае ты выберешь одно дерево вместо леса, хотя лес точнее?</li><li>Как feature importance может помочь не только модели, но и пониманию задачи?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Почему ансамбль деревьев точнее одного дерева?</p><p>2. За что отвечает параметр n_estimators?</p><p>3. Что показывает feature importance?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch08.html">‹ Глава 8</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch10.html">Глава 10 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 12. Мини-проект №2: «Предсказатель» · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml" data-chapter="12">
+    <p class="eyebrow">Учебник · Фаза 2 · Классический ML</p>
+    <h1>Глава 12. Мини-проект №2: «Предсказатель»</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь самостоятельно пройти полный цикл (данные → Pipeline → оценка → вывод), честно оценить модель и сравнить её с baseline, представить результат в понятном формате.</p></aside>
+      <p>Вторая фаза завершается настоящим проектом. Здесь ты один раз проходишь весь путь, который специалисты по данным проходят каждый день: от сырых данных до обоснованного вывода — с обязательным Pipeline. Это второй оцениваемый проект курса, и он объединяет всё, чему ты научился в фазе 2.</p>
+      <h2>Полный цикл проекта</h2>
+      <p>Твой проект должен пройти пять шагов. Это скелет любого ML-проекта, и мы будем повторять его до автоматизма — вплоть до финального проекта в фазе 6.</p>
+      <ol><li>Постановка задачи. Что предсказываем и зачем? Классификация или регрессия?</li><li>Данные. Выбрать датасет, изучить (EDA из фазы 1), почистить пропуски и выбросы.</li><li>Baseline. Построить простейшую модель как обязательную точку отсчёта.</li><li>Модель в Pipeline. Собрать конвейер и честно оценить по кросс-валидации.</li><li>Вывод. Сравнить с baseline, выбрать правильную метрику, объяснить результат словами.</li></ol>
+      <h2>Шаблон проекта</h2>
+      <p>Вот готовый каркас, который остаётся заполнить своими данными. Он объединяет всё из фазы 2: split, baseline, Pipeline с обработкой числовых и категориальных признаков, кросс-валидацию.</p>
+      <pre><code>import pandas as pd
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.dummy import DummyClassifier
+
+# 1. Данные (пример на пингвинах; подставь свой датасет)
+df = pd.read_csv("https://raw.githubusercontent.com/mwaskom/seaborn-data/master/penguins.csv")
+X = df.drop(columns=["species", "sex"])
+y = df["species"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42)
+
+# 2. Baseline
+base = DummyClassifier(strategy="most_frequent").fit(X_train, y_train)
+print("Baseline:", base.score(X_test, y_test))
+
+# 3. Pipeline (укажи свои числовые и текстовые столбцы)
+num = ["bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g"]
+cat = ["island"]
+prep = ColumnTransformer([
+    ("num", Pipeline([("imp", SimpleImputer(strategy="median")),
+                      ("sc", StandardScaler())]), num),
+    ("cat", OneHotEncoder(handle_unknown="ignore"), cat),
+])
+model = Pipeline([("prep", prep),
+                  ("clf", RandomForestClassifier(random_state=42))])
+
+# 4. Честная оценка
+scores = cross_val_score(model, X, y, cv=5)
+print("Модель (кросс-валидация):", scores.mean().round(3))</code></pre>
+      <h2>Три слайда для защиты</h2>
+      <p>Оформи результат как мини-презентацию по схеме: задача → данные и результат → вывод. Обязательно сравни свою модель с baseline — это показывает, что ты понимаешь, чего стоит твой результат, а не просто получил число. Хороший вывод звучит так: «Модель даёт F1 = 0,78 против baseline 0,55 — то есть реально улавливает закономерность, а не угадывает большинство».</p>
+      <h2>Как оценивается</h2>
+      <p>Проект оценивается по рубрике. Максимум 13 баллов, успешно — от 8. Ниже 8 — преподаватель даёт индивидуальную обратную связь и возможность доработки.</p>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Критерий</b></th><th><b>Баллы</b></th><th><b>Что оценивается</b></th></tr><tr><td>Постановка задачи</td><td>0–2</td><td>Чётко, что предсказываем</td></tr><tr><td>Данные и Pipeline</td><td>0–3</td><td>Чистка, корректный split, использование Pipeline</td></tr><tr><td>ML и сравнение с baseline</td><td>0–3</td><td>Модель обучена и сравнена с базовой линией</td></tr><tr><td>Визуализация и метрики</td><td>0–2</td><td>Графики и правильно выбранная метрика</td></tr><tr><td>Объяснение результата</td><td>0–3</td><td>Вывод словами, понимание ошибок модели</td></tr></table></div>
+      <h2>Задания</h2>
+      <aside class="callout note"><p class="callout-title">Базовый уровень</p><p>Проведи полный мини-проект на своём датасете по пяти шагам и шаблону. Обязательно сравни модель с baseline и выбери метрику под задачу. Подготовь три слайда.</p></aside>
+      <aside class="callout star"><p class="callout-title">Со звёздочкой  ⭐</p><p>Сравни в проекте две-три модели (KNN, дерево, лес) по кросс-валидации и обоснуй выбор победителя. Добавь feature importance: какие признаки оказались решающими? Включи этот анализ в презентацию.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему сравнение с baseline обязательно в каждом проекте?</li><li>Какой шаг из пяти чаще всего пропускают новички — и к чему это приводит?</li><li>Что важнее в проекте: высокая метрика или понимание, почему модель работает?</li></ol>
+      <aside class="callout goal"><p class="callout-title">Главная мысль фазы 2  🎯</p><p>Ты умеешь строить модели KNN, деревья, регрессию и случайный лес, собирать их в Pipeline, честно проверять через train/test и кросс-валидацию, сравнивать с baseline и выбирать правильную метрику. Это полный набор навыков классического ML — фундамент, на котором держится всё остальное. Дальше мы шагнём в мир нейросетей.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch11.html">‹ Глава 11</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch13.html">Глава 13 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

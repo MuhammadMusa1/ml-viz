@@ -44,6 +44,8 @@ data/penguins_raw.js  исходные 344 строки с пропусками 
 data/*.js             учебные данные страниц: картинки, тексты, слова, предложения
 viz/<тема>/index.html страницы визуализаций
 tools/                Python-скрипты: пересборка данных и сверка с sklearn
+book/                 учебники: book/ml, book/ml2 собираются из Word командой python tools/build_book.py
+notebooks/            ноутбуки Colab к главам 1–33 (кнопки «Открыть в Colab» на сайте)
 CLAUDE.md             правила проекта для Claude Code
 PROMPTS.md            готовые промпты для следующих страниц
 ```

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение B. Шпаргалка по LangChain и RAG · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение B. Шпаргалка по LangChain и RAG</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Сборка RAG из фазы 4: индексация → поиск → генерация. Имена импортов в LangChain меняются между версиями — сверяйся с документацией, держись за смысл шагов.</p>
+      <h2><b>Части RAG</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Часть</b></th><th><b>Инструмент</b></th><th><b>Что делает</b></th></tr><tr><td>Нарезка</td><td>TextSplitter</td><td>Режет документы на куски (chunks)</td></tr><tr><td>Эмбеддинги</td><td>HuggingFaceEmbeddings</td><td>Куски → векторы смысла</td></tr><tr><td>Хранилище</td><td>Chroma / FAISS</td><td>Векторная база, быстрый поиск</td></tr><tr><td>Поиск</td><td>retriever</td><td>Находит релевантные куски по вопросу</td></tr><tr><td>Генерация</td><td>LLM (Ollama/облако)</td><td>Пишет ответ по найденному</td></tr><tr><td>Оркестрация</td><td>RetrievalQA / chain</td><td>Связывает всё вместе</td></tr></table></div>
+      <h2><b>Минимальный RAG</b></h2>
+      <pre><code>from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain.chains import RetrievalQA
+from langchain_community.llms import Ollama
+
+# 1. Нарезка
+chunks = RecursiveCharacterTextSplitter(
+    chunk_size=500, chunk_overlap=50).split_text(text)
+# 2. Индексация в векторную базу
+emb = HuggingFaceEmbeddings(
+    model_name="paraphrase-multilingual-MiniLM-L12-v2")
+db = Chroma.from_texts(chunks, emb)
+# 3. RAG-конвейер
+qa = RetrievalQA.from_chain_type(
+    llm=Ollama(model="llama3"),
+    retriever=db.as_retriever(search_kwargs={"k": 3}))
+print(qa.invoke("вопрос по документам"))</code></pre>
+      <h2><b>Параметры, которые крутят</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>chunk_size</td><td>Размер куска (200–1000). Мелко — нет контекста</td></tr><tr><td>chunk_overlap</td><td>Перекрытие (~10%). Чтобы мысль не рвалась</td></tr><tr><td>k (в retriever)</td><td>Сколько кусков достать (обычно 3–5)</td></tr><tr><td>embedding model</td><td>Многоязычная — для русского</td></tr><tr><td>stream=True</td><td>Потоковая выдача ответа</td></tr></table></div>
+      <aside class="callout warn"><p class="callout-title">Если RAG отвечает плохо  ⚠️</p><p>Сначала проверь retrieval: находятся ли нужные куски? (виноват часто он, а не LLM).</p><p>Покрути chunking: открой куски глазами — законченные ли это мысли?</p><p>Проверь эмбеддинг-модель: многоязычная ли для русских текстов?</p><p>Оцени faithfulness: опирается ли ответ на найденное или выдумывает?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-a.html">‹ Приложение A</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-c.html">Приложение C ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

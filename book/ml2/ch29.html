@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 29. Добываем данные: парсинг из интернета · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="29">
+    <p class="eyebrow">Учебник · Фаза 5 · Настоящие данные</p>
+    <h1>Глава 29. Добываем данные: парсинг из интернета</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь извлекать данные с веб-страниц (парсинг) базовыми инструментами и, главное, делать это этично и по правилам — уважая сайты и закон.</p></aside>
+      <p>Часто нужных данных нет ни в одном датасете — но они есть на веб-страницах. Парсинг (web scraping) — это автоматический сбор данных с сайтов. Мощный навык, но с ним приходит ответственность: собирать данные нужно этично и легально. Об этом — в первую очередь.</p>
+      <aside class="callout warn"><p class="callout-title">Сначала об этике и правилах  ⚠️</p><p>Проверь robots.txt сайта (адрес/robots.txt) — там сказано, что парсить можно, а что нельзя. Уважай это.</p><p>Читай условия использования сайта — некоторые прямо запрещают автоматический сбор.</p><p>Не перегружай сайт: делай паузы между запросами (time.sleep), не шли сотни запросов в секунду — это как DDoS.</p><p>Не собирай персональные данные людей без согласия — это нарушение приватности и часто закона.</p><p>Если есть официальный API — используй его вместо парсинга. Это правильнее и надёжнее.</p></aside>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: гость в чужом доме  💡</p><p>Парсинг — это как прийти в гости. Вежливый гость смотрит, куда его пускают (robots.txt), не хватает лишнего, не приходит толпой и по сто раз (паузы между запросами) и не роется в личных вещах хозяев (персональные данные). Невежливый гость, который выносит всё подряд и ломится без спроса, быстро получает бан по IP, а иногда и иск. Собирай данные так, как хотел бы, чтобы собирали с твоего сайта.</p></aside>
+      <h2><b>Как устроен парсинг</b></h2>
+      <p>Два шага: (1) скачать HTML страницы (библиотека requests), (2) вытащить из HTML нужные данные (библиотека BeautifulSoup). HTML — это дерево тегов, и мы находим в нём элементы по названию тега или классу.</p>
+      <pre><code># pip install requests beautifulsoup4
+import requests
+from bs4 import BeautifulSoup
+import time
+
+# 1. Скачиваем страницу (с вежливым User-Agent)
+url = "https://example.com/products"
+html = requests.get(url, headers={"User-Agent": "MyLearningBot"}).text
+
+# 2. Разбираем HTML и достаём данные
+soup = BeautifulSoup(html, "html.parser")
+
+# Например, все заголовки товаров с классом "title"
+for item in soup.find_all("h2", class_="title"):
+    print(item.get_text(strip=True))
+
+time.sleep(1)   # пауза перед следующим запросом — уважаем сайт</code></pre>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>find_all("тег", class_="класс") находит все элементы нужного типа. Чтобы понять, какие теги и классы искать, открой страницу в браузере, нажми правой кнопкой на нужный элемент → «Просмотреть код» — увидишь структуру HTML. Для сложных сайтов, где данные подгружаются скриптами, requests не хватит — там нужны инструменты вроде Selenium/Playwright (это уже продвинутая тема).</p></aside>
+      <h2><b>От страницы к датасету</b></h2>
+      <p>Собранные данные складывают в список словарей и превращают в DataFrame — получается твой собственный датасет, готовый для анализа и обучения модели (как в томе 1).</p>
+      <pre><code>import pandas as pd
+
+data = []
+for item in soup.find_all("div", class_="product"):
+    data.append({
+        "name": item.find("h2").get_text(strip=True),
+        "price": item.find("span", class_="price").get_text(strip=True),
+    })
+
+df = pd.DataFrame(data)     # твой собственный датасет!
+df.to_csv("my_scraped_data.csv", index=False)</code></pre>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Найди простую разрешённую для парсинга страницу (например, учебные сайты вроде books.toscrape.com, созданные специально для практики). Проверь её robots.txt. Скачай страницу и извлеки список элементов (названия, цены). Сложи в DataFrame.</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Собери датасет с нескольких страниц (с паузами!): пройди по 3–5 страницам каталога, извлеки данные, объедини в один DataFrame и сохрани в CSV. Опиши, какие этические правила ты соблюдал и почему. Проверь, нет ли официального API, который стоило бы использовать вместо парсинга.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Какие этические и правовые правила обязательно соблюдать при парсинге?</li><li>Почему официальный API предпочтительнее парсинга, если он есть?</li><li>Что значит «не перегружать сайт» и почему это важно?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Из каких двух шагов состоит парсинг?</p><p>2. Назови три правила этичного парсинга.</p><p>3. Что проверить на сайте ПЕРЕД тем, как его парсить?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch28.html">‹ Глава 28</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch30.html">Глава 30 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

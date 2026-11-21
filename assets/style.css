@@ -265,7 +265,7 @@ details.box > div { color: #DCD6F5; }
   body { font-size: 16px; }
   .wrap { padding: 0 16px; }
   .brand { font-size: 16px; }
-  .in-lesson .brand > span { display: none; }   /* на странице урока — только пингвин, чтобы влезли «‹ Урок N · Урок N ›» */
+  .sub-page .brand > span { display: none; }   /* на странице урока — только пингвин, чтобы влезли «‹ Урок N · Урок N ›» */
   .in-lesson .all-link { display: none; }        /* на главную ведёт пингвин — место отдаём кнопкам уроков */
   .site-header nav { gap: 6px; }
   .site-header nav a { padding: 8px 9px; font-size: 14px; }
@@ -308,3 +308,39 @@ button.term:active:not(:disabled) { transform: none; }
 .myths li { margin: 12px 0; }
 .bridge { background: rgba(38, 31, 74, .55); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 20px 18px; }
 .bridge h2 { margin-top: 16px; }
+
+/* ---------- Учебник (страницы book/*, собираются tools/build_book.py) ---------- */
+.book-page h1 { max-width: 900px; }
+.book-text { max-width: 820px; margin-top: 18px; }
+.book-text h2 { font-size: 25px; margin: 36px 0 12px; }
+.book-text h3 { font-size: 20px; margin: 26px 0 8px; }
+.book-text p, .book-text li { line-height: 1.65; }
+.book-text ul, .book-text ol { padding-left: 24px; }
+.book-text li { margin: 6px 0; }
+.book-text li::marker { color: var(--violet); }
+.book-text pre {
+  position: relative; background: #0F0C22; border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; overflow-x: auto; font-size: 15px; line-height: 1.5; margin: 14px 0;
+}
+.book-text pre code { background: none; border: 0; padding: 0; font-size: inherit; white-space: pre; }
+.book-text pre .copy-code { position: absolute; top: 8px; right: 8px; font-size: 13px; padding: 4px 10px; min-height: 0; opacity: .85; }
+.callout { border: 1px solid var(--line); border-left: 4px solid var(--muted); background: rgba(38, 31, 74, .55); border-radius: 12px; padding: 12px 16px; margin: 16px 0; }
+.callout p { margin: 6px 0; }
+.callout .callout-title { font-weight: 700; margin-top: 0; }
+.callout.analogy { border-left-color: var(--violet); }
+.callout.goal { border-left-color: var(--teal); }
+.callout.warn { border-left-color: var(--c-neg); }
+.callout.info { border-left-color: var(--cyan); }
+.callout.star { border-left-color: var(--amber); }
+.book-table { border-collapse: collapse; width: 100%; font-size: 15px; }
+.book-table th, .book-table td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.book-table th { background: var(--card-2); }
+.book-links { margin: 6px 0 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(38, 31, 74, .55); max-width: 820px; }
+.book-links .row { margin-top: 6px; }
+.book-nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; max-width: 820px; margin-top: 40px; }
+.book-toc ol { padding-left: 24px; }
+.book-toc li { margin: 6px 0; }
+@media (max-width: 520px) {
+  .in-lesson .book-link { display: none; }   /* в шапке урока на телефоне место для «‹ Урок N · Урок N ›» */
+  .book-text pre { font-size: 13.5px; }
+}

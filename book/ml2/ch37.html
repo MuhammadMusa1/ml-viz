@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 37. Надёжность: тестирование и CI/CD · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="37">
+    <p class="eyebrow">Учебник · Фаза 6 · Инженерия: доводим до взрослого продукта</p>
+    <h1>Глава 37. Надёжность: тестирование и CI/CD</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь писать простые тесты для ML-кода через pytest и объяснить, как CI/CD (GitHub Actions) автоматически проверяет код при каждом изменении.</p></aside>
+      <p>Как убедиться, что твоё изменение не сломало то, что работало вчера? Вручную перепроверять всё — нереально. Ответ индустрии: автоматические тесты (pytest) и автоматическая их проверка при каждом изменении (CI/CD). Это то, что делает командную разработку надёжной.</p>
+      <h2><b>pytest: автоматическая проверка кода</b></h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: контрольные точки  💡</p><p>Тесты — как контрольные точки в игре: если что-то сломалось, ты сразу видишь, где именно, и не проходишь весь уровень заново вслепую. Тест — это код, который проверяет другой код: «если подать вот это, должно получиться вот то». Изменил что-то — прогнал тесты — если все зелёные, ничего не сломал; если красный, сразу знаешь, что и где. Без тестов каждое изменение — риск втихую сломать то, что работало.</p></aside>
+      <pre><code># pip install pytest
+# файл test_model.py
+
+def test_prediction_shape():
+    # модель должна вернуть один ответ на один пример
+    pred = model.predict([[25, 50000]])
+    assert len(pred) == 1
+
+def test_prediction_range():
+    # для классификации ответ — из известных классов
+    pred = model.predict([[25, 50000]])[0]
+    assert pred in [0, 1]
+
+def test_pipeline_no_crash_on_missing():
+    # Pipeline должен пережить пропуск (у нас есть SimpleImputer)
+    import numpy as np
+    pred = pipeline.predict([[np.nan, 50000]])
+    assert pred is not None
+
+# Запуск всех тестов: pytest в терминале</code></pre>
+      <h2><b>Что тестируют в ML</b></h2>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>ML-код тестируют иначе, чем обычный. Проверяют: форму выхода (модель вернула сколько ожидали), диапазон (предсказания в разумных пределах), устойчивость (Pipeline не падает на пропусках/новых категориях), качество (точность на контрольном наборе не ниже порога). Тестируют не «правильность» каждого предсказания (модель имеет право ошибаться), а то, что система в целом ведёт себя ожидаемо и не деградировала.</p></aside>
+      <h2><b>CI/CD: робот-проверяющий</b></h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: строгий, но неутомимый вахтёр  💡</p><p>CI/CD — это робот, который стоит на входе в main и проверяет каждое изменение. CI (Continuous Integration) — при каждом pull request автоматически прогоняет все тесты: не прошли — код не пустят в main. CD (Continuous Delivery) — если тесты прошли, автоматически выкатывает новую версию (например, пересобирает Docker и деплоит). Это неутомимый вахтёр, который никогда не забудет проверить и не пропустит сломанный код. Работает круглосуточно, без усталости.</p></aside>
+      <p>На GitHub это делает GitHub Actions — ты кладёшь файл-инструкцию, и при каждом push/PR облако само прогоняет тесты. Файл простой: описываешь «на каждый push установи зависимости и запусти pytest».</p>
+      <pre><code># .github/workflows/tests.yml
+name: Тесты
+on: [push, pull_request]        # запускать при push и PR
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4          # взять код
+      - uses: actions/setup-python@v5      # поставить Python
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: pytest                        # прогнать тесты</code></pre>
+      <aside class="callout warn"><p class="callout-title">Внимание  ⚠️</p><p>CI/CD и GitHub Actions работают на GitHub, а тесты pytest можно писать и запускать где угодно, включая Colab. Для школ без глубокой инфраструктуры достаточно освоить pytest (писать тесты — универсальный навык), а CI/CD пройти на понимание: осознать, что робот прогоняет тесты автоматически при каждом изменении. Даже базовый набор тестов резко повышает надёжность командного проекта.</p></aside>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Напиши 3 теста pytest для своей модели: проверь форму выхода, диапазон предсказаний и что Pipeline переживает пропуск. Запусти pytest. Затем специально «сломай» модель/код и убедись, что тест краснеет и показывает, что не так.</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Настрой GitHub Actions для своего репозитория: добавь workflow, который на каждый push ставит зависимости и гоняет pytest. Сделай PR со сломанным кодом и убедись, что CI не даёт его влить (тесты красные), а с исправленным — пропускает.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему в ML тестируют поведение системы, а не «правильность» каждого предсказания?</li><li>Как тесты защищают командную разработку от случайных поломок?</li><li>Что делают CI и CD и чем они полезны команде?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Что проверяют тесты в ML-коде?</p><p>2. Что делает CI при каждом pull request?</p><p>3. Чем CD отличается от CI?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch36.html">‹ Глава 36</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch38.html">Глава 38 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

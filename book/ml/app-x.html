@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение X. Kaggle-соревнование шаг за шагом · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение X. Kaggle-соревнование шаг за шагом</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Kaggle — лучшая площадка, чтобы применить навыки на реальных данных и учиться у сильнейших. Разберём полное участие в учебном соревновании от начала до отправки решения — на примере вечной классики «Титаник».</p>
+      <h2>Шаг 1. Регистрация и выбор соревнования</h2>
+      <ul><li>Заведи аккаунт на kaggle.com (бесплатно).</li><li>Начни с раздела Getting Started — там учебные соревнования без давления.</li><li>«Titanic - Machine Learning from Disaster» — идеальный первый вызов, ты уже знаешь эти данные.</li></ul>
+      <h2>Шаг 2. Пойми задачу и данные</h2>
+      <p>На странице соревнования всегда есть: описание задачи, метрика (по чему оценивают), файлы данных. Для «Титаника»: обучающий файл train.csv (с ответами) и тестовый test.csv (без ответов — их предсказываешь ты). Метрика — accuracy.</p>
+      <pre><code>import pandas as pd
+
+# Kaggle даёт два файла: с ответами и без
+train = pd.read_csv("train.csv")   # есть колонка Survived
+test = pd.read_csv("test.csv")     # Survived нужно предсказать
+
+print(train.shape, test.shape)</code></pre>
+      <h2>Шаг 3. Обучи модель (весь курс в действии)</h2>
+      <p>Здесь применяется всё из фаз 1–2: EDA, обработка пропусков, Pipeline, baseline, честная оценка по кросс-валидации. Соревнование — идеальная практика полного цикла.</p>
+      <pre><code>from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
+
+features = ["Pclass", "Sex", "Age", "Fare"]
+X = train[features]; y = train["Survived"]
+
+prep = ColumnTransformer([
+    ("num", Pipeline([("i", SimpleImputer(strategy="median")),
+                      ("s", StandardScaler())]), ["Pclass","Age","Fare"]),
+    ("cat", OneHotEncoder(handle_unknown="ignore"), ["Sex"]),
+])
+model = Pipeline([("prep", prep),
+                  ("clf", RandomForestClassifier(random_state=42))])
+
+# Честная оценка ДО отправки
+print("CV:", cross_val_score(model, X, y, cv=5).mean().round(3))
+model.fit(X, y)</code></pre>
+      <h2>Шаг 4. Сделай предсказание и отправь</h2>
+      <p>Kaggle требует ответ в определённом формате — обычно файл с id и предсказанием. Формируем и отправляем.</p>
+      <pre><code># Предсказываем для тестовых данных (которых модель не видела)
+test_pred = model.predict(test[features])
+
+# Формируем файл ответа в формате соревнования
+submission = pd.DataFrame({
+    "PassengerId": test["PassengerId"],
+    "Survived": test_pred
+})
+submission.to_csv("submission.csv", index=False)
+# Загрузи submission.csv на страницу соревнования -&gt; увидишь свой результат</code></pre>
+      <h2>Шаг 5. Улучшай и учись у других</h2>
+      <p>После первой отправки ты увидишь свой результат в таблице лидеров. Дальше — самое ценное обучение:</p>
+      <ul><li>Улучшай через feature engineering (глава 26) — на Kaggle это решает больше всего.</li><li>Подбери гиперпараметры (глава 31) для последних процентов.</li><li>Читай раздел Code — там участники выкладывают свои решения с объяснениями. Учись у лучших.</li><li>Читай Discussion — там обсуждают приёмы и идеи.</li></ul>
+      <aside class="callout warn"><p class="callout-title">Внимание: осторожно с таблицей лидеров  ⚠️</p><p>Не гонись слепо за верхними строчками — там иногда переобучаются под конкретный тест соревнования. Твоя цель как ученика — научиться, а не выжать сотую долю процента. Честная кросс-валидация важнее места в таблице. И помни про этику: не копируй чужие решения молча, учись на них и делай своё.</p></aside>
+      <aside class="callout goal"><p class="callout-title">Почему Kaggle бесценен  🎯</p><p>Kaggle даёт то, чего не даёт ни один учебник: реальные грязные данные, честное сравнение с тысячами людей и открытые решения сильнейших специалистов мира. Одно доведённое до конца соревнование учит больше, чем десять прочитанных глав. Начни с «Титаника» — ты к нему полностью готов.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-w.html">‹ Приложение W</a><a class="btn" href="index.html">Оглавление</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 27. Несбалансированные данные · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml" data-chapter="27">
+    <p class="eyebrow">Учебник · Часть 7 · Продвинутые темы</p>
+    <h1>Глава 27. Несбалансированные данные</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь распознать проблему дисбаланса классов, объяснить, почему accuracy тут вводит в заблуждение, и применить class_weight и балансировку для её решения.</p></aside>
+      <p>В учебных датасетах классы часто примерно равны. В реальности — почти никогда. Мошеннических операций — доли процента, редких болезней — единицы на тысячу, спама — меньшинство. Такие данные называют несбалансированными, и обычные подходы на них ломаются. Это один из самых частых реальных сценариев.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: иголка в стоге сена  💡</p><p>Найти мошенническую операцию среди миллиона честных — как иголку в стоге сена. Модель, которая просто говорит «всё честное», будет права в 99,9% случаев (высокая accuracy!), но не найдёт ни одной иголки — ради которой всё и затевалось. Дисбаланс — это когда важное встречается редко, и именно его нельзя пропустить.</p></aside>
+      <h2>Ловушка accuracy</h2>
+      <p>Мы уже касались этого в главе 11, теперь разберём вплотную. При дисбалансе 99% на 1% модель «всегда предсказывай большинство» даёт accuracy 99% — и полностью бесполезна. Поэтому на несбалансированных данных accuracy запрещена как главная метрика.</p>
+      <pre><code>import numpy as np
+from sklearn.dummy import DummyClassifier
+from sklearn.metrics import accuracy_score, recall_score
+
+# Представим сильный дисбаланс: 990 честных, 10 мошенников
+y_true = np.array([0]*990 + [1]*10)
+y_pred = np.array([0]*1000)   # модель "всё честное"
+
+print("Accuracy:", accuracy_score(y_true, y_pred))   # 0.99 — обман!
+print("Recall:", recall_score(y_true, y_pred))       # 0.0 — правда</code></pre>
+      <p>Accuracy = 0,99 выглядит прекрасно, но recall = 0,0 говорит правду: модель не поймала ни одного мошенника. Recall (полнота) — вот честная метрика для дисбаланса: какую долю редкого класса модель реально нашла.</p>
+      <h2>Решение 1: веса классов (class_weight)</h2>
+      <p>Самый простой и часто лучший приём — сказать модели, что ошибка на редком классе «дороже». Параметр <code>class_weight="balanced"</code> автоматически повышает важность редкого класса при обучении. Модель начинает внимательнее относиться к меньшинству.</p>
+      <pre><code># === Подготовка: искусственный несбалансированный набор (95% / 5%) ===
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+X, y = make_classification(n_samples=2000, weights=[0.95, 0.05], random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+from sklearn.ensemble import RandomForestClassifier
+
+# class_weight="balanced" — редкий класс становится "важнее"
+model = RandomForestClassifier(class_weight="balanced", random_state=42)
+model.fit(X_train, y_train)</code></pre>
+      <h2>Решение 2: балансировка данных</h2>
+      <p>Можно выровнять сами данные. <b>Undersampling</b> — выбросить часть большого класса. <b>Oversampling</b> — размножить редкий класс. Умный вариант oversampling — <b>SMOTE</b>: он не копирует редкие примеры, а создаёт новые похожие «синтетические» между существующими.</p>
+      <pre><code># SMOTE из библиотеки imbalanced-learn
+# Запускать в Colab: !pip install imbalanced-learn -q
+from imblearn.over_sampling import SMOTE
+
+sm = SMOTE(random_state=42)
+X_bal, y_bal = sm.fit_resample(X_train, y_train)
+# Теперь классы в X_bal примерно равны</code></pre>
+      <aside class="callout warn"><p class="callout-title">Внимание: балансируй только train  ⚠️</p><p>Применяй SMOTE и любую балансировку ТОЛЬКО к обучающим данным, никогда к тесту. Тест должен отражать реальное соотношение классов, иначе оценка будет ложной. Балансировка теста — это разновидность утечки данных из главы 6.</p></aside>
+      <h2>Локальный пример: обнаружение мошенничества</h2>
+      <p>Банк в Таджикистане ищет мошеннические переводы среди миллионов честных. Их доля — сотые доли процента. Здесь дороже всего пропустить мошенника (recall важнее precision), а accuracy бесполезна. Правильный подход: class_weight или SMOTE на train, метрика recall (или F1), проверка на реальном несбалансированном тесте.</p>
+      <h2>Задания</h2>
+      <aside class="callout note"><p class="callout-title">Базовый уровень</p><p>Создай искусственный несбалансированный набор (например, 95% на 5%). Обучи модель без class_weight и с class_weight="balanced". Сравни recall для редкого класса — насколько вырос?</p></aside>
+      <aside class="callout star"><p class="callout-title">Со звёздочкой  ⭐</p><p>На несбалансированном датасете (найди на Kaggle "credit card fraud" или сделай сам) сравни три подхода: обычная модель, class_weight, SMOTE. Сравнивай по recall и F1, НЕ по accuracy. Какой подход поймал больше редкого класса? Балансировку применяй только к train.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему на несбалансированных данных accuracy запрещена как главная метрика?</li><li>Чем SMOTE лучше простого копирования редких примеров?</li><li>Почему балансировать можно только train, но не test?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Почему модель с accuracy 99% может быть бесполезной?</p><p>2. Что делает class_weight="balanced"?</p><p>3. Почему нельзя применять SMOTE к тестовым данным?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch26.html">‹ Глава 26</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch28.html">Глава 28 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

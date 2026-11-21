@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение C. Шпаргалка по SQL и DuckDB · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение C. Шпаргалка по SQL и DuckDB</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>SQL из фазы 5 через DuckDB — SQL прямо в Python. Четыре кита покрывают большинство задач.</p>
+      <h2><b>DuckDB: запуск</b></h2>
+      <pre><code>import duckdb
+# SQL прямо по DataFrame df или по CSV
+result = duckdb.sql("SELECT * FROM df WHERE age &gt; 30").df()
+# По файлу без загрузки в pandas:
+duckdb.sql("SELECT * FROM 'data.csv' LIMIT 5").df()</code></pre>
+      <h2><b>Четыре кита SQL</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>SELECT col1, col2 FROM t</td><td>Выбрать столбцы</td></tr><tr><td>WHERE age &gt; 18 AND city = 'X'</td><td>Отобрать строки по условию</td></tr><tr><td>GROUP BY city</td><td>Сгруппировать</td></tr><tr><td>ORDER BY price DESC</td><td>Сортировка (DESC — убывание)</td></tr><tr><td>LIMIT 10</td><td>Первые 10 строк</td></tr></table></div>
+      <h2><b>Агрегаты (с GROUP BY)</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>COUNT(*)</td><td>Сколько строк</td></tr><tr><td>AVG(price)</td><td>Среднее</td></tr><tr><td>SUM(amount)</td><td>Сумма</td></tr><tr><td>MIN(x) / MAX(x)</td><td>Минимум / максимум</td></tr></table></div>
+      <h2><b>JOIN: соединение таблиц</b></h2>
+      <pre><code>SELECT c.name, SUM(o.amount) AS total
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+GROUP BY c.name
+ORDER BY total DESC</code></pre>
+      <aside class="callout info"><p class="callout-title">Связь с pandas (том 1)  ℹ️</p><p>SELECT+WHERE = фильтрация df[df["x"]&gt;5]. GROUP BY = df.groupby(). JOIN = pd.merge(). AVG/SUM/COUNT = .mean()/.sum()/.count(). Та же логика, другой синтаксис.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-b.html">‹ Приложение B</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-d.html">Приложение D ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

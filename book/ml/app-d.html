@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение D. Шпаргалка по scikit-learn · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение D. Шпаргалка по scikit-learn</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>scikit-learn (sklearn) — главная библиотека классического ML. Красота в том, что у всех моделей одинаковый интерфейс: .fit() обучает, .predict() предсказывает, .score() оценивает. Освоив его один раз, ты меняешь модели одной строкой.</p>
+      <h2>Единый рабочий цикл</h2>
+      <pre><code>from sklearn.model_selection import train_test_split
+
+# 1. Разделить данные
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42)
+
+# 2. Создать модель
+from sklearn.ensemble import RandomForestClassifier
+model = RandomForestClassifier(random_state=42)
+
+# 3. Обучить (только на train!)
+model.fit(X_train, y_train)
+
+# 4. Предсказать и оценить (на test)
+model.predict(X_test)
+print(model.score(X_test, y_test))</code></pre>
+      <h2>Модели классификации</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>KNeighborsClassifier(n_neighbors=5)</td><td>KNN — ближайшие соседи</td></tr><tr><td>DecisionTreeClassifier(max_depth=3)</td><td>Дерево решений</td></tr><tr><td>RandomForestClassifier(n_estimators=100)</td><td>Случайный лес</td></tr><tr><td>DummyClassifier(strategy="most_frequent")</td><td>Baseline — точка отсчёта</td></tr></table></div>
+      <h2>Модели регрессии</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>LinearRegression()</td><td>Линейная регрессия</td></tr><tr><td>DecisionTreeRegressor(max_depth=5)</td><td>Дерево для чисел</td></tr><tr><td>RandomForestRegressor()</td><td>Лес для чисел</td></tr></table></div>
+      <h2>Оценка качества</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>accuracy_score(y_test, pred)</td><td>Доля правильных (классификация)</td></tr><tr><td>classification_report(y_test, pred)</td><td>Precision, recall, F1 сразу</td></tr><tr><td>confusion_matrix(y_test, pred)</td><td>Матрица ошибок</td></tr><tr><td>mean_absolute_error(y_test, pred)</td><td>MAE (регрессия)</td></tr><tr><td>cross_val_score(model, X, y, cv=5)</td><td>Кросс-валидация</td></tr></table></div>
+      <h2>Pipeline (обязателен с главы 10)</h2>
+      <pre><code>from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+
+# Обработка числовых и категориальных столбцов
+prep = ColumnTransformer([
+    ("num", Pipeline([("imp", SimpleImputer(strategy="median")),
+                      ("sc", StandardScaler())]), ["Age", "Fare"]),
+    ("cat", OneHotEncoder(handle_unknown="ignore"), ["Sex"]),
+])
+
+model = Pipeline([("prep", prep),
+                  ("clf", RandomForestClassifier(random_state=42))])
+model.fit(X_train, y_train)</code></pre>
+      <aside class="callout goal"><p class="callout-title">Золотые правила sklearn  🎯</p><p>Всегда ставь random_state для повторяемости.</p><p>Обучай только на train, проверяй на test.</p><p>Всегда сравнивай с baseline (DummyClassifier).</p><p>Держи предобработку в Pipeline — защита от утечки данных.</p><p>Для надёжной оценки используй cross_val_score, а не один split.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-c.html">‹ Приложение C</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-e.html">Приложение E ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

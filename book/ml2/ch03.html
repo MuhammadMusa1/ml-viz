@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 3. Своя нейросеть руками · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="3">
+    <p class="eyebrow">Учебник · Фаза 1 · PyTorch: берём управление в свои руки</p>
+    <h1>Глава 3. Своя нейросеть руками</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь описать модель через nn.Module, написать полный цикл обучения (пять шагов из «моста») и обучить свою первую сеть на PyTorch от начала до конца.</p></aside>
+      <p>Пришёл главный момент фазы: соберём и обучим нейросеть на чистом PyTorch. Здесь сойдётся всё — тензоры, автоград, DataLoader и тот самый цикл обучения из «моста». После этой главы PyTorch перестанет казаться сложным.</p>
+      <h2><b>Модель как класс: nn.Module</b></h2>
+      <p>В Keras сеть была «стопкой слоёв» (Sequential). В PyTorch модель — это класс с двумя частями: __init__ (какие слои есть) и forward (как данные проходят через них). Это чуть больше кода, зато полный контроль над тем, что происходит внутри.</p>
+      <pre><code>import torch
+import torch.nn as nn
+
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.flatten = nn.Flatten()          # картинка -&gt; ряд чисел
+        self.fc1 = nn.Linear(28*28, 128)     # полносвязный слой
+        self.fc2 = nn.Linear(128, 10)        # выход: 10 классов
+        self.relu = nn.ReLU()                # активация
+
+    def forward(self, x):
+        x = self.flatten(x)
+        x = self.relu(self.fc1(x))           # слой + активация
+        x = self.fc2(x)                      # выходной слой
+        return x
+
+model = Net()
+print(model)</code></pre>
+      <p>Сравни с томом 1: <code>nn.Linear</code> — это тот же Dense-слой, <code>nn.ReLU</code> — та же активation relu. Метод <code>forward</code> описывает путь данных через сеть — то, что в Keras задавалось порядком слоёв в Sequential. Больше свободы: здесь можно ветвить, объединять, делать что угодно.</p>
+      <h2><b>Полный цикл обучения</b></h2>
+      <p>А вот и сердце PyTorch — цикл обучения, который мы видели в «мосте». Теперь разберём каждую строку. Это тот самый паттерн, который ты будешь писать в каждом проекте тома 2, поэтому стоит понять его один раз навсегда.</p>
+      <pre><code>import torch.optim as optim
+
+model = Net()
+loss_fn = nn.CrossEntropyLoss()                 # ошибка для классификации
+optimizer = optim.Adam(model.parameters(), lr=0.001)  # оптимизатор
+
+for epoch in range(5):                          # 5 эпох
+    for images, labels in train_loader:         # по батчам
+        optimizer.zero_grad()                   # 1. обнулить градиенты
+        outputs = model(images)                 # 2. прогноз (forward)
+        loss = loss_fn(outputs, labels)         # 3. посчитать ошибку
+        loss.backward()                         # 4. градиенты (backward)
+        optimizer.step()                        # 5. подкрутить веса
+    print(f"Эпоха {epoch+1}, ошибка: {loss.item():.4f}")</code></pre>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Шаг</b></th><th><b>Строка</b></th><th><b>Что делает</b></th></tr><tr><td>1</td><td>zero_grad()</td><td>Обнулить градиенты с прошлого шага</td></tr><tr><td>2</td><td>model(images)</td><td>Прогнать данные вперёд, получить прогноз</td></tr><tr><td>3</td><td>loss_fn(...)</td><td>Измерить, насколько прогноз ошибочен</td></tr><tr><td>4</td><td>loss.backward()</td><td>Автоград считает градиенты (куда крутить веса)</td></tr><tr><td>5</td><td>optimizer.step()</td><td>Оптимизатор делает шаг: подкручивает веса</td></tr></table></div>
+      <p>Вот и всё «страшное» обучение. Пять шагов, повторённых по всем батчам и эпохам. Keras прятал их в fit() — а теперь ты видишь и контролируешь каждый. Это тот же спуск с горы: измерили уклон (backward) и сделали шаг вниз (step).</p>
+      <aside class="callout warn"><p class="callout-title">Внимание, частая ошибка  ⚠️</p><p>Порядок шагов важен и он всегда один и тот же: zero_grad → forward → loss → backward → step. Частые ошибки новичков: забыть zero_grad (градиенты накопятся), забыть optimizer.step (веса не обновятся — сеть не учится), перепутать порядок backward и step. Держи этот порядок как молитву, пока он не станет автоматическим.</p></aside>
+      <h2><b>Проверка на тесте</b></h2>
+      <p>После обучения оцениваем модель — и здесь есть важный нюанс PyTorch: на проверке нужно отключить расчёт градиентов (они не нужны, только замедляют) и перевести модель в режим оценки.</p>
+      <pre><code>model.eval()                        # режим оценки
+correct = 0
+with torch.no_grad():               # не считать градиенты на тесте
+    for images, labels in test_loader:
+        outputs = model(images)
+        pred = outputs.argmax(dim=1)   # класс с макс. значением
+        correct += (pred == labels).sum().item()
+
+print("Точность:", correct / len(test_loader.dataset))</code></pre>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>model.train() и model.eval() переключают режимы: на обучении нужны Dropout и BatchNorm (глава 4), на оценке — нет. torch.no_grad() отключает автоград на тесте — быстрее и экономит память. Забыть переключить режим — тонкая ошибка: сеть вроде работает, но метрики врут. Возьми в привычку: обучаешь — train(), проверяешь — eval() + no_grad().</p></aside>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Собери сеть Net и обучи её на MNIST 5 эпох по готовому циклу. Посчитай точность на тесте. Должно получиться выше 0,95 — как в томе 1, но теперь ты написал обучение сам.</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Добавь в сеть второй скрытый слой и поэкспериментируй с lr (0,01 / 0,001 / 0,0001). Как learning rate влияет на скорость и стабильность обучения? Построй, как падает ошибка по эпохам, для разных lr.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Чем описание модели через nn.Module гибче, чем Sequential в Keras?</li><li>Объясни каждый из пяти шагов цикла обучения своими словами.</li><li>Зачем на тесте вызывают model.eval() и torch.no_grad()?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Из каких двух методов состоит модель nn.Module?</p><p>2. Назови пять шагов цикла обучения по порядку.</p><p>3. Что делает torch.no_grad() и когда его используют?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch02.html">‹ Глава 2</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch04.html">Глава 4 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

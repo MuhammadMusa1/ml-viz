@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 19. AutoML: ускоряем работу · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml" data-chapter="19">
+    <p class="eyebrow">Учебник · Фаза 5 · AutoML и AI-инструменты</p>
+    <h1>Глава 19. AutoML: ускоряем работу</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь объяснить, что автоматизирует AutoML, запустить AutoML на табличной задаче и сравнить с ручной моделью, а также взять готовую модель с Hugging Face Hub.</p></aside>
+      <p>Во второй фазе ты вручную собирал Pipeline, выбирал модель, подбирал параметры. Это важнейший навык — без него ты не поймёшь, что происходит. Но что, если нужно получить хороший результат быстро, а времени в обрез? На помощь приходит AutoML (Automated Machine Learning): инструменты, которые сами перебирают модели и настройки за тебя.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: автопилот в машине  💡</p><p>AutoML — это автопилот. Ты по-прежнему должен знать, куда едешь и как в целом устроена машина (иначе не заметишь, если автопилот везёт не туда, и не сможешь вмешаться). Но рутину — держать полосу, подстраивать скорость — берёт на себя система. AutoML сам пробует десятки моделей и комбинаций параметров и выдаёт лучшую. Твоя задача — грамотно поставить цель, подготовить данные и проверить результат. Автопилот не отменяет водителя.</p></aside>
+      <h2>Что AutoML делает за тебя</h2>
+      <p>AutoML автоматизирует самую трудоёмкую и рутинную часть работы. Он сам пробует разные алгоритмы (лес, градиентный бустинг, KNN и другие), сам подбирает их параметры, сам сравнивает результаты по кросс-валидации и выбирает победителя. То, на что вручную уходят часы перебора, он делает за минуты.</p>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Этап</b></th><th><b>Вручную (фаза 2)</b></th><th><b>С AutoML</b></th></tr><tr><td>Выбор модели</td><td>Пробуешь по одной сам</td><td>Перебирает десятки автоматически</td></tr><tr><td>Настройка параметров</td><td>GridSearchCV вручную</td><td>Подбирает сам</td></tr><tr><td>Сравнение моделей</td><td>Считаешь и сравниваешь сам</td><td>Строит готовый рейтинг</td></tr></table></div>
+      <h2>AutoML в коде</h2>
+      <p>Популярные инструменты — <b>AutoGluon</b> и <b>H2O</b>. Возьмём AutoGluon: он решает табличную задачу буквально в несколько строк, а под капотом делает всё то, чему мы учились целую фазу.</p>
+      <pre><code># Запускать в Google Colab (нужен интернет для установки)
+!pip install autogluon.tabular -q
+
+import pandas as pd
+from autogluon.tabular import TabularPredictor
+
+# Данные о пингвинах — та же задача, что решали вручную в фазе 2
+url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/penguins.csv"
+df = pd.read_csv(url).drop(columns=["sex"])
+train = df.sample(frac=0.8, random_state=42)
+test = df.drop(train.index)
+
+# AutoML: одна команда — и он сам перебирает модели
+predictor = TabularPredictor(label="species").fit(train)
+
+# Рейтинг всех опробованных моделей
+predictor.leaderboard(test)</code></pre>
+      <p><i>Ожидаемый результат: таблица-рейтинг моделей, отсортированная по точности на тесте.</i></p>
+      <p>Посмотри на leaderboard — AutoGluon показывает десятки моделей, которые он попробовал, с их точностью. Ты за одну команду получил то, на что в фазе 2 ушло бы много ручной работы.</p>
+      <h2>Главное сравнение: вручную против AutoML</h2>
+      <p>Возьми точность своей ручной модели из фазы 2 на пингвинах и сравни с лучшим результатом AutoML на тех же данных. Обычно AutoML немного выигрывает — но не в разы, а на считанные проценты. И это важнейший вывод главы, а не разочарование.</p>
+      <aside class="callout warn"><p class="callout-title">Внимание: AutoML — не волшебство  ⚠️</p><p>AutoML не заменяет понимание. Он не поставит задачу за тебя, не заметит утечку данных, не выберет правильную метрику под задачу и не объяснит, почему модель ошибается. Если данные плохие или есть утечка — AutoML выдаст плохой (или обманчиво хороший) результат быстро и уверенно. Инструмент экономит время эксперту, но не превращает новичка в эксперта. Именно поэтому мы сначала прошли фазу 2 руками — чтобы уметь проверить и понять то, что делает автопилот.</p></aside>
+      <h2>Hugging Face Hub: библиотека готовых моделей</h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: магазин приложений для ИИ  💡</p><p>Hugging Face Hub — это как магазин приложений, только для моделей машинного обучения. Тысячи готовых, уже обученных моделей: перевод, распознавание речи, анализ тональности, генерация картинок, ответы на вопросы. Многие можно запустить в пару строк, не обучая вообще ничего. Прежде чем строить модель самому, загляни туда — очень возможно, что кто-то уже сделал именно то, что тебе нужно, и выложил бесплатно.</p></aside>
+      <pre><code># Запускать в Google Colab
+!pip install transformers -q
+from transformers import pipeline
+
+# Берём готовую модель анализа тональности одной строкой
+classifier = pipeline("sentiment-analysis")
+
+print(classifier("I love this course!"))
+print(classifier("This is terrible."))</code></pre>
+      <p><i>Ожидаемый результат: метка POSITIVE/NEGATIVE и уверенность для каждой фразы.</i></p>
+      <p>Слово <code>pipeline</code> здесь — из библиотеки Hugging Face, и это НЕ тот же самый sklearn Pipeline из фазы 2 (одинаковое слово, разные вещи — частая путаница). Здесь pipeline скачивает готовую модель и сразу применяет её к тексту. Никакого обучения — модель уже умеет.</p>
+      <h2>Мини-AutoML своими руками</h2>
+      <p>Чтобы прочувствовать, что AutoML не магия, можно собрать его крошечную версию самому — просто перебрать несколько моделей в цикле и сравнить по кросс-валидации. Это ровно то, что делает AutoGluon, только у него моделей и настроек больше.</p>
+      <pre><code># === Данные для мини-рейтинга (выполни, если открыл новый блокнот) ===
+import pandas as pd
+url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/penguins.csv"
+df = pd.read_csv(url).dropna(subset=["bill_length_mm", "body_mass_g", "species"])
+X = df[["bill_length_mm", "body_mass_g"]]
+y = df["species"]
+
+from sklearn.model_selection import cross_val_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+candidates = {
+    "KNN": KNeighborsClassifier(),
+    "Дерево": DecisionTreeClassifier(random_state=42),
+    "Лес": RandomForestClassifier(random_state=42),
+}
+# Перебираем модели и строим свой мини-рейтинг
+for name, model in candidates.items():
+    score = cross_val_score(model, X, y, cv=5).mean()
+    print(f"{name:7}: {score:.3f}")</code></pre>
+      <h2>Задания</h2>
+      <aside class="callout note"><p class="callout-title">Базовый уровень</p><p>Запусти AutoGluon на пингвинах и посмотри leaderboard. Сравни лучший результат с точностью своей ручной модели из фазы 2. Насколько AutoML лучше — на проценты или в разы?</p></aside>
+      <aside class="callout star"><p class="callout-title">Со звёздочкой  ⭐</p><p>Возьми готовую модель перевода или ответов на вопросы с Hugging Face (transformers pipeline) и примени к своему тексту. Затем реши: для какой задачи выгоднее взять готовую модель, а для какой — обучать свою? Обоснуй.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Если AutoML почти всегда не хуже ручной работы, зачем вообще учиться делать модели руками?</li><li>Что AutoML НЕ сделает за тебя? Перечисли хотя бы три вещи.</li><li>В каких случаях лучше взять готовую модель с Hugging Face, а не обучать свою?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Что именно автоматизирует AutoML?</p><p>2. Почему AutoML не заменяет знание основ ML?</p><p>3. Чем pipeline из Hugging Face отличается от Pipeline из sklearn?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch18.html">‹ Глава 18</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch20.html">Глава 20 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

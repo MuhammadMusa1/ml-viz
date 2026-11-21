@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение C. Шпаргалка по визуализации · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение C. Шпаргалка по визуализации</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Графики через Matplotlib и Seaborn. Правило из главы 3: под каждым графиком — вывод словами.</p>
+      <h2>Matplotlib — базовые графики</h2>
+      <pre><code>import matplotlib.pyplot as plt
+
+# Гистограмма (распределение одного признака)
+df["Age"].hist(bins=20)
+plt.xlabel("Возраст"); plt.ylabel("Количество")
+plt.title("Распределение возрастов")
+plt.show()
+
+# Линейный график
+plt.plot([1,2,3], [10,20,15])
+plt.show()
+
+# Диаграмма рассеяния (связь двух признаков)
+df.plot.scatter(x="Age", y="Fare")
+plt.show()
+
+# Столбчатая диаграмма
+df["Sex"].value_counts().plot.bar()
+plt.show()</code></pre>
+      <h2>Seaborn — красивые графики</h2>
+      <pre><code>import seaborn as sns
+
+# Тепловая карта корреляций
+corr = df.corr(numeric_only=True)
+sns.heatmap(corr, annot=True, cmap="coolwarm")
+plt.show()
+
+# Ящик с усами (поиск выбросов)
+sns.boxplot(x=df["Fare"])
+plt.show()
+
+# Распределение с разбивкой по категории
+sns.histplot(data=df, x="Age", hue="Survived")
+plt.show()</code></pre>
+      <h2>Какой график когда выбирать</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Вопрос</b></th><th><b>График</b></th></tr><tr><td>Как распределён один признак?</td><td>Гистограмма (hist)</td></tr><tr><td>Связаны ли два числовых признака?</td><td>Диаграмма рассеяния (scatter)</td></tr><tr><td>Что с чем коррелирует?</td><td>Тепловая карта (heatmap)</td></tr><tr><td>Есть ли выбросы?</td><td>Ящик с усами (boxplot)</td></tr><tr><td>Сколько объектов в категориях?</td><td>Столбчатая (bar)</td></tr></table></div>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-b.html">‹ Приложение B</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-d.html">Приложение D ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

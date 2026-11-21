@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение M. Разбор проекта от начала до конца · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение M. Разбор проекта от начала до конца</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Здесь мы шаг за шагом пройдём один полный проект — предсказание выживания на «Титанике» — чтобы ты увидел все этапы вместе, как единое целое. Это образец, по которому строится любой твой проект. Каждый блок кода можно запускать по очереди в Colab.</p>
+      <h2>Шаг 1. Загрузка и первый взгляд</h2>
+      <p>Начинаем всегда одинаково: загружаем данные и смотрим на них глазами. Нельзя предсказывать то, чего не понимаешь.</p>
+      <pre><code>import pandas as pd
+
+url = "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv"
+df = pd.read_csv(url)
+
+print(df.shape)          # (891, 12) — 891 пассажир, 12 признаков
+df.head()                # смотрим на первые строки
+df.info()                # где пропуски: Age заполнен не весь</code></pre>
+      <p>Вывод шага: у нас 891 пассажир, есть пропуски в возрасте. Цель — столбец Survived (0 или 1). Задача — классификация.</p>
+      <h2>Шаг 2. Разведка (EDA)</h2>
+      <p>Ищем закономерности — что влияет на выживание. Группировка отвечает на вопросы за секунды.</p>
+      <pre><code># Кто выживал чаще — мужчины или женщины?
+print(df.groupby("Sex")["Survived"].mean())
+# female: ~0.74, male: ~0.19 — пол сильно влияет!
+
+# А класс каюты?
+print(df.groupby("Pclass")["Survived"].mean())
+# 1 класс: ~0.63, 3 класс: ~0.24 — класс тоже важен</code></pre>
+      <p>Вывод шага: пол и класс — сильные признаки. Это подсказывает, что модель сможет неплохо предсказывать. Инсайт словами: «женщины и пассажиры первого класса выживали заметно чаще».</p>
+      <h2>Шаг 3. Baseline</h2>
+      <p>Прежде чем строить умную модель, узнаём, что даёт «тупое» угадывание большинства. Это наша планка.</p>
+      <pre><code>from sklearn.model_selection import train_test_split
+from sklearn.dummy import DummyClassifier
+
+# Берём простые признаки; Age заполним медианой позже в Pipeline
+X = df[["Pclass", "Sex", "Age", "Fare"]]
+y = df["Survived"]
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
+
+base = DummyClassifier(strategy="most_frequent").fit(X_tr, y_tr)
+print("Baseline:", round(base.score(X_te, y_te), 3))   # ~0.62</code></pre>
+      <p>Вывод шага: baseline ≈ 0,62. Любая наша модель должна быть заметно выше этого, иначе она бесполезна.</p>
+      <h2>Шаг 4. Модель в Pipeline</h2>
+      <p>Собираем честный конвейер: заполнение пропусков, масштабирование чисел, кодирование текста и модель. Всё внутри Pipeline — значит, без утечки данных.</p>
+      <pre><code>from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestClassifier
+
+num = ["Pclass", "Age", "Fare"]
+cat = ["Sex"]
+
+prep = ColumnTransformer([
+    ("num", Pipeline([("imp", SimpleImputer(strategy="median")),
+                      ("sc", StandardScaler())]), num),
+    ("cat", OneHotEncoder(handle_unknown="ignore"), cat),
+])
+
+model = Pipeline([("prep", prep),
+                  ("clf", RandomForestClassifier(random_state=42))])
+model.fit(X_tr, y_tr)
+print("Модель:", round(model.score(X_te, y_te), 3))   # ~0.80</code></pre>
+      <p>Вывод шага: модель ≈ 0,80 против baseline 0,62 — это +18 пунктов, модель реально работает.</p>
+      <h2>Шаг 5. Честная оценка и метрики</h2>
+      <pre><code>from sklearn.model_selection import cross_val_score
+from sklearn.metrics import classification_report
+
+# Устойчивость по кросс-валидации
+scores = cross_val_score(model, X, y, cv=5)
+print("CV среднее:", round(scores.mean(), 3), "| разброс:", scores.round(2))
+
+# Детальные метрики
+pred = model.predict(X_te)
+print(classification_report(y_te, pred))</code></pre>
+      <p>Вывод шага: кросс-валидация подтверждает устойчивость (оценки близки). Смотрим precision/recall — если задача требует не пропустить погибших, важен recall.</p>
+      <h2>Шаг 6. Вывод и следующий шаг</h2>
+      <p>Итог проекта словами: «Модель предсказывает вид пингвина с точностью ~99% против ~46% у baseline. Главные признаки — длина клюва и масса тела. Дальше можно обернуть модель в Gradio (глава 16) и выложить на Spaces (глава 20)». Вот и весь скелет любого ML-проекта — от сырых данных до обоснованного вывода.</p>
+      <aside class="callout goal"><p class="callout-title">Что здесь важно заметить  🎯</p><p>Мы ни разу не подсмотрели в test при обучении, всегда сравнивали с baseline, держали обработку в Pipeline и в конце сказали результат словами. Именно эти привычки, а не конкретный алгоритм, делают проект правильным. Повтори этот путь на своих данных — и получится хороший финальный проект.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-l.html">‹ Приложение L</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-n.html">Приложение N ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

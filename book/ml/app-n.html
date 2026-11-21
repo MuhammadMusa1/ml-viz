@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение N. Гид по Google Colab · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение N. Гид по Google Colab</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Google Colab — бесплатная среда для запуска Python прямо в браузере, наш главный инструмент. Ничего устанавливать не нужно, всё считается на серверах Google. Здесь — всё, что нужно знать для комфортной работы.</p>
+      <h2>Начало работы</h2>
+      <ul><li>Зайди на colab.research.google.com (нужен аккаунт Google).</li><li>Нажми «Создать блокнот» — откроется чистый блокнот с ячейками.</li><li>Код пишется в ячейках; запуск — кнопкой ▶ или сочетанием Shift+Enter.</li><li>Блокноты сохраняются на твой Google Диск автоматически.</li></ul>
+      <h2>Горячие клавиши</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Клавиши</b></th><th><b>Действие</b></th></tr><tr><td>Shift + Enter</td><td>Запустить ячейку и перейти к следующей</td></tr><tr><td>Ctrl + Enter</td><td>Запустить ячейку и остаться на ней</td></tr><tr><td>Esc, затем A</td><td>Добавить ячейку выше</td></tr><tr><td>Esc, затем B</td><td>Добавить ячейку ниже</td></tr><tr><td>Esc, затем D, D</td><td>Удалить ячейку</td></tr></table></div>
+      <h2>Полезные приёмы</h2>
+      <pre><code># Установить библиотеку (! означает команду системе)
+!pip install gradio -q
+
+# Загрузить файл со своего компьютера
+from google.colab import files
+uploaded = files.upload()
+
+# Безопасно хранить API-ключ (значок ключа слева -&gt; "Секреты")
+from google.colab import userdata
+key = userdata.get("MY_API_KEY")</code></pre>
+      <h2>Бесплатный видеоускоритель (GPU)</h2>
+      <p>Для нейросетей (фаза 3) обучение идёт в разы быстрее на GPU. В Colab он бесплатный: меню «Среда выполнения» → «Сменить среду выполнения» → выбрать «T4 GPU». Для таблиц (фаза 2) GPU не нужен.</p>
+      <aside class="callout info"><p class="callout-title">Частые вопросы по Colab  ℹ️</p><p>Сессия сбросилась — Colab отключает неактивные блокноты; просто запусти ячейки заново сверху вниз.</p><p>Переменная не найдена — забыл запустить ячейку выше, где она создаётся. Запускай по порядку.</p><p>Библиотека пропала после перезапуска — переустанови через !pip install; в Colab окружение сбрасывается.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-m.html">‹ Приложение M</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-o.html">Приложение O ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

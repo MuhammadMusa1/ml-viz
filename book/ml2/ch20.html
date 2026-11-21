@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 20. RAG в деле: ИИ-ассистент по своим документам · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="20">
+    <p class="eyebrow">Учебник · Фаза 4 · LLM всерьёз: RAG и агенты</p>
+    <h1>Глава 20. RAG в деле: ИИ-ассистент по своим документам</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь объяснить, из каких частей состоит настоящий RAG, и собрать рабочий RAG-конвейер на LangChain: векторная база из фазы 3 плюс языковая модель.</p></aside>
+      <p>В томе 1 мы делали RAG вручную: находили кусок текста по ключевому слову и вставляли в промпт. Это объясняло идею. Теперь соберём настоящий RAG — с семантическим поиском по векторной базе (фаза 3) и связкой всех частей через LangChain, библиотеку-конструктор для приложений с LLM.</p>
+      <aside class="callout info"><p class="callout-title">Напоминание: зачем нужен RAG  ℹ️</p><p>LLM может уверенно выдумывать факты (галлюцинации из тома 1) и не знает твоих личных документов. RAG (Retrieval-Augmented Generation) решает оба: сначала находит нужные фрагменты в ТВОИХ данных (retrieval), затем даёт их модели как «шпаргалку» для ответа (generation). Модель отвечает по реальному тексту, а не по памяти. Это как экзамен с открытой книгой.</p></aside>
+      <h2><b>Четыре части настоящего RAG</b></h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: работа референта  💡</p><p>Представь референта, которому дали задание ответить на вопрос по архиву. Он: (1) режет документы на карточки и раскладывает по смыслу — это индексация (chunking + эмбеддинги в векторную базу); (2) по вопросу достаёт нужные карточки — retrieval (семантический поиск из фазы 3); (3) читает найденное и формулирует ответ — generation (работа LLM); (4) всё это склеено в единый рабочий процесс — это и делает LangChain. RAG — это оркестр из знакомых тебе инструментов.</p></aside>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Часть</b></th><th><b>Что делает</b></th><th><b>Откуда навык</b></th></tr><tr><td>Индексация</td><td>Режет документы и кладёт в векторную базу</td><td>Фаза 3, глава 16</td></tr><tr><td>Retrieval</td><td>Находит релевантные фрагменты по смыслу</td><td>Фаза 3, семантический поиск</td></tr><tr><td>Generation</td><td>LLM пишет ответ по найденному</td><td>Том 1, работа с LLM</td></tr><tr><td>Оркестрация</td><td>Связывает всё в конвейер</td><td>LangChain (новое)</td></tr></table></div>
+      <h2><b>RAG на LangChain</b></h2>
+      <p>LangChain соединяет части в несколько шагов. Ниже — минимальный рабочий RAG: загрузили документы, проиндексировали, задали вопрос, получили ответ по своим данным.</p>
+      <pre><code># pip install langchain langchain-community chromadb sentence-transformers
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains import RetrievalQA
+from langchain_community.llms import Ollama   # локальная LLM
+
+# 1. ИНДЕКСАЦИЯ: режем документ на куски и кладём в векторную базу
+text = open("my_docs.txt", encoding="utf-8").read()
+chunks = RecursiveCharacterTextSplitter(
+    chunk_size=500, chunk_overlap=50).split_text(text)
+
+emb = HuggingFaceEmbeddings(
+    model_name="paraphrase-multilingual-MiniLM-L12-v2")
+db = Chroma.from_texts(chunks, emb)
+
+# 2+3. RETRIEVAL + GENERATION в одном конвейере
+qa = RetrievalQA.from_chain_type(
+    llm=Ollama(model="llama3"),          # или облачная LLM
+    retriever=db.as_retriever(search_kwargs={"k": 3}))
+
+# Задаём вопрос по СВОИМ документам
+print(qa.invoke("Что сказано про сроки?"))</code></pre>
+      <p><i>Ожидаемый результат: ответ модели, опирающийся на найденные фрагменты твоих документов.</i></p>
+      <p>Разбери код по частям RAG: <code>text_splitter</code> режет текст (индексация), <code>Chroma</code> хранит и ищет (retrieval — прямо из фазы 3), <code>Ollama</code> пишет ответ (generation), а <code>RetrievalQA</code> связывает всё (оркестрация). Каждая часть тебе уже знакома — LangChain лишь соединил их.</p>
+      <aside class="callout warn"><p class="callout-title">Внимание  ⚠️</p><p>LangChain быстро развивается, и названия импортов иногда меняются между версиями. Если импорт не работает — проверь актуальную документацию под свою версию. Суть при этом остаётся: splitter → embeddings → vectorstore → retriever → LLM → chain. Держись за смысл частей, а не за точные имена.</p></aside>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Собери RAG по своему тексту (конспект, статья, правила) на LangChain + Chroma. Задай 3 вопроса, ответы на которые есть только в документе. Отвечает ли модель по тексту, а не «из головы»? Задай вопрос НЕ по теме — признаётся ли, что ответа нет?</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Сравни ответы RAG и «голой» LLM (без документов) на одни вопросы по твоим данным. Где голая модель галлюцинирует, а RAG отвечает точно? Замерь: сколько фрагментов (k=1,3,5) даёт лучшие ответы на твоих данных?</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Из каких четырёх частей состоит настоящий RAG и какую ты уже знал из прошлых фаз?</li><li>Что именно берёт на себя LangChain?</li><li>Почему RAG уменьшает галлюцинации, но не гарантирует идеальных ответов?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Назови четыре части RAG-конвейера.</p><p>2. Какая часть RAG — это семантический поиск из фазы 3?</p><p>3. Зачем в RAG нужна оркестрация (LangChain)?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch19.html">‹ Глава 19</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch21.html">Глава 21 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

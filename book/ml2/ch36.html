@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 36. Порядок в экспериментах: MLflow · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="36">
+    <p class="eyebrow">Учебник · Фаза 6 · Инженерия: доводим до взрослого продукта</p>
+    <h1>Глава 36. Порядок в экспериментах: MLflow</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь объяснить, зачем нужно отслеживать эксперименты, и использовать MLflow, чтобы логировать параметры, метрики и модели и сравнивать запуски между собой.</p></aside>
+      <p>При обучении моделей ты пробуешь десятки вариантов: разные параметры, признаки, модели. Очень быстро возникает хаос — «а какая версия дала точность 0,87? с каким lr? где эта модель лежит?». MLflow наводит порядок: он запоминает каждый эксперимент. Это стандарт в реальных ML-командах.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: лабораторный журнал учёного  💡</p><p>Учёный не держит опыты в голове — он ведёт лабораторный журнал: что смешал, в каких пропорциях, что получилось. Иначе удачный опыт не повторить, а неудачный — повторить случайно. MLflow — это лабораторный журнал для ML: он автоматически записывает каждый запуск (какие параметры, какие метрики, какая модель получилась). Потом ты открываешь удобную таблицу и видишь: вот этот набор параметров дал лучший результат, вот эта модель — победитель.</p></aside>
+      <h2><b>Что логирует MLflow</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Что</b></th><th><b>Пример</b></th><th><b>Зачем</b></th></tr><tr><td>Параметры (params)</td><td>lr=0.001, n_estimators=100</td><td>Знать, при каких настройках получен результат</td></tr><tr><td>Метрики (metrics)</td><td>accuracy=0.87, f1=0.82</td><td>Сравнивать качество запусков</td></tr><tr><td>Модель (artifact)</td><td>сам файл обученной модели</td><td>Не потерять и легко достать лучшую</td></tr></table></div>
+      <h2><b>MLflow в паре строк</b></h2>
+      <pre><code># --- Данные (пингвины Палмера) и модель, чтобы глава запускалась сама ---
+import seaborn as sns, pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+peng = sns.load_dataset("penguins").dropna()          # нужен интернет (в Colab есть)
+X = pd.get_dummies(peng.drop(columns=["species"]))    # признаки -&gt; числа
+y = peng["species"]                                   # что предсказываем
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42)             # random_state -&gt; воспроизводимо
+# --- конец подготовки ---
+# pip install mlflow
+import mlflow
+import mlflow.sklearn
+
+mlflow.set_experiment("penguins")     # название серии экспериментов
+
+with mlflow.start_run():             # один запуск = один эксперимент
+    n = 100
+    model = RandomForestClassifier(n_estimators=n).fit(X_train, y_train)
+    acc = model.score(X_test, y_test)
+
+    # Записываем в "журнал"
+    mlflow.log_param("n_estimators", n)     # параметр
+    mlflow.log_metric("accuracy", acc)      # метрика
+    mlflow.sklearn.log_model(model, "model")  # сама модель
+
+# Запусти "mlflow ui" в терминале — откроется таблица всех запусков</code></pre>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>Команда mlflow ui открывает веб-страницу, где все твои запуски видны таблицей: параметры, метрики, время. Можно сортировать по точности, сравнивать запуски, скачивать любую сохранённую модель. Это бесценно, когда экспериментов десятки: вместо «где-то был хороший вариант» ты точно знаешь, какой запуск лучший и как его повторить. Особенно важно в команде — все видят общий журнал экспериментов.</p></aside>
+      <h2><b>Воспроизводимость: святой Грааль ML</b></h2>
+      <p>Главная ценность MLflow — воспроизводимость. Записаны все параметры и данные — значит, любой результат можно повторить и проверить. Это отличает науку от гадания и профессиональную разработку от кустарной. Вместе с random_state (том 1), Git (глава 33) и Docker (глава 34) MLflow даёт полную воспроизводимость: тот же код, то же окружение, те же параметры — тот же результат, у кого угодно и когда угодно.</p>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Оберни обучение своей модели в MLflow: логируй хотя бы 2 параметра, метрику и саму модель. Сделай 3 запуска с разными параметрами. Открой mlflow ui и найди лучший запуск. Удобнее ли это, чем держать результаты в голове?</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Проведи через MLflow полноценный подбор: 8–10 запусков с разными моделями и параметрами (можно в цикле). Сравни их в mlflow ui, выбери лучший по метрике, скачай сохранённую модель победителя. Объясни, как MLflow + Git + Docker вместе дают полную воспроизводимость.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Какой хаос возникает при обучении моделей без отслеживания экспериментов?</li><li>Что именно логирует MLflow и зачем каждая из трёх вещей?</li><li>Как MLflow, Git и Docker вместе обеспечивают воспроизводимость?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Зачем отслеживать эксперименты?</p><p>2. Три вещи, которые логирует MLflow?</p><p>3. Почему воспроизводимость так важна в ML?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch35.html">‹ Глава 35</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch37.html">Глава 37 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

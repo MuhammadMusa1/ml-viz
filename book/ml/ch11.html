@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 11. Метрики и матрица ошибок · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml" data-chapter="11">
+    <p class="eyebrow">Учебник · Фаза 2 · Классический ML</p>
+    <h1>Глава 11. Метрики и матрица ошибок</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь построить и прочитать матрицу ошибок, рассчитать precision, recall и F1, объяснить их смысл и выбрать метрику, подходящую конкретной задаче.</p></aside>
+      <p>Мы всё время мерили качество через accuracy — долю правильных ответов. Пора узнать важную и неприятную правду: одной accuracy категорически недостаточно, а иногда она откровенно врёт. И научиться понимать, какие именно ошибки делает модель, — потому что не все ошибки одинаково опасны.</p>
+      <h2>Провокация: 99% и полностью бесполезно</h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: детектор редкой болезни  💡</p><p>Болезнь встречается у 1 человека из 100. Сделаем «модель», которая ВСЕМ говорит «здоров», не глядя ни на что. Её accuracy — 99%! Звучит прекрасно. Но она не нашла ни одного больного и абсолютно бесполезна — более того, опасна. Вот почему на несбалансированных данных (где одного класса намного больше) accuracy врёт: большой класс перекрывает всё, и высокая точность маскирует полную бесполезность.</p></aside>
+      <h2>Матрица ошибок (confusion matrix)</h2>
+      <p>Чтобы увидеть, где именно модель ошибается, строят матрицу ошибок — таблицу, которая раскладывает все ответы модели на четыре типа. Она отвечает не на вопрос «сколько правильно», а на вопрос «какие именно ошибки и как часто».</p>
+      <div class="tbl-wrap"><table class="book-table"><tr><th></th><th><b>Модель сказала «да»</b></th><th><b>Модель сказала «нет»</b></th></tr><tr><td>На самом деле «да»</td><td>Верное попадание (TP)</td><td>Пропуск (FN)</td></tr><tr><td>На самом деле «нет»</td><td>Ложная тревога (FP)</td><td>Верный отказ (TN)</td></tr></table></div>
+      <p>Два типа правильных ответов (по диагонали) и два типа ошибок. Пропуск (FN) — проглядели то, что было. Ложная тревога (FP) — забили тревогу зря. Ключевая идея: цена этих двух ошибок в разных задачах разная.</p>
+      <pre><code># === Подготовка: выполни первой, если открыл новый блокнот ===
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestClassifier
+url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/penguins.csv"
+df = pd.read_csv(url).dropna(subset=["bill_length_mm", "body_mass_g", "island", "species"])
+X = df[["bill_length_mm", "body_mass_g", "island"]]
+y = df["species"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+prep = ColumnTransformer([
+    ("num", Pipeline([("imp", SimpleImputer(strategy="median")), ("sc", StandardScaler())]),
+     ["bill_length_mm", "body_mass_g"]),
+    ("cat", OneHotEncoder(handle_unknown="ignore"), ["island"]),
+])
+full = Pipeline([("prep", prep), ("model", RandomForestClassifier(random_state=42))]).fit(X_train, y_train)
+
+# Запускать в том же блокноте, где создан Pipeline "full" (глава 10),
+# иначе будет ошибка NameError: имя 'full' не определено
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+
+pred = full.predict(X_test)   # full — наш Pipeline из главы 10
+cm = confusion_matrix(y_test, pred)
+ConfusionMatrixDisplay(cm).plot()
+plt.show()</code></pre>
+      <h2>Precision, Recall и F1</h2>
+      <p>Из матрицы выводятся три метрики, которые говорят гораздо больше, чем accuracy.</p>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Метрика</b></th><th><b>Отвечает на вопрос</b></th><th><b>Когда важна</b></th></tr><tr><td>Precision</td><td>Из тех, кого модель назвала «да», сколько реально «да»?</td><td>Когда дорога ложная тревога</td></tr><tr><td>Recall</td><td>Из всех реальных «да» сколько модель нашла?</td><td>Когда дорого пропустить</td></tr><tr><td>F1</td><td>Баланс между precision и recall (их среднее)</td><td>Когда важно и то, и другое</td></tr></table></div>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: спам-фильтр против детектора болезни  💡</p><p>В спам-фильтре важнее precision: лучше пропустить пару спам-писем во «Входящие», чем отправить важное письмо от учителя в спам (ложная тревога очень дорога). В детекторе болезни важнее recall: лучше лишний раз перепроверить здорового, чем пропустить больного (пропуск смертельно опасен). Одна и та же метрика accuracy не различает эти ситуации — а precision и recall различают.</p></aside>
+      <pre><code>from sklearn.metrics import classification_report
+
+# Сразу все метрики по каждому классу одной командой
+print(classification_report(y_test, pred))</code></pre>
+      <h2>Как выбрать главную метрику</h2>
+      <p>Универсального ответа нет — всё зависит от задачи и цены ошибки. Прежде чем оценивать модель, задай себе главный вопрос: что дороже — ложная тревога или пропуск? Ответ и подскажет метрику. Если дороже пропустить (болезнь, мошенничество) — оптимизируй recall. Если дороже ложная тревога (спам, блокировка) — precision. Если важно и то и другое — F1. Умение осознанно выбрать метрику — это, пожалуй, главный признак зрелого специалиста по ML.</p>
+      <h2>Задания</h2>
+      <aside class="callout note"><p class="callout-title">Базовый уровень</p><p>Построй confusion matrix и classification_report для своего Pipeline на пингвинах. Сколько пропусков (FN) и сколько ложных тревог (FP)? Каких ошибок больше?</p></aside>
+      <aside class="callout star"><p class="callout-title">Со звёздочкой  ⭐</p><p>Для трёх задач — фильтр спама, детектор болезни, рекомендация фильма — реши, какая метрика (precision, recall или F1) главная и почему. Обоснуй через цену ошибки в каждой задаче.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему accuracy 99% может означать полностью бесполезную модель?</li><li>Приведи задачу, где один пропуск (FN) страшнее сотни ложных тревог (FP).</li><li>Можно ли одновременно максимизировать и precision, и recall? Что обычно происходит, когда улучшаешь одно?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Почему accuracy врёт на несбалансированных данных?</p><p>2. Чем precision отличается от recall?</p><p>3. Для детектора мошеннических операций какая метрика важнее и почему?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch10.html">‹ Глава 10</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch12.html">Глава 12 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

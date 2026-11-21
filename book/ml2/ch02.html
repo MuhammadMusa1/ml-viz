@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 2. Данные правильно: Dataset и DataLoader · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="2">
+    <p class="eyebrow">Учебник · Фаза 1 · PyTorch: берём управление в свои руки</p>
+    <h1>Глава 2. Данные правильно: Dataset и DataLoader</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь объяснить, зачем данные подают модели пачками (батчами), использовать готовый DataLoader и написать свой класс Dataset для собственных данных.</p></aside>
+      <p>Прежде чем обучать сеть, данные нужно правильно подать. В томе 1 Keras делал это за нас. В PyTorch есть два инструмента, которые стоит понять один раз и пользоваться всегда: Dataset (как достать один пример) и DataLoader (как выдавать примеры пачками и перемешивать).</p>
+      <h2><b>Зачем батчи: не всё сразу</b></h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: есть слона по кусочкам  💡</p><p>Нельзя запихнуть в модель миллион картинок разом — не хватит памяти (особенно на GPU). Данные подают пачками (батчами) по 32–128 штук: модель смотрит пачку, чуть подкручивает веса, берёт следующую. Это как есть слона по кусочкам, а не целиком. Бонус: обучение по батчам ещё и стабильнее, чем по одному примеру, и быстрее, чем по всем данным сразу.</p></aside>
+      <h2><b>DataLoader на готовом датасете</b></h2>
+      <p>Начнём с готового датасета (знакомый MNIST из тома 1) — PyTorch умеет грузить его сам. DataLoader оборачивает данные и выдаёт их батчами, перемешивая на каждой эпохе.</p>
+      <pre><code>import torch
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+
+# Превращаем картинки в тензоры и нормируем (как /255 в томе 1)
+transform = transforms.ToTensor()
+
+# Готовый датасет MNIST (скачается автоматически)
+train_ds = datasets.MNIST(root="data", train=True,
+                          download=True, transform=transform)
+
+# DataLoader: батчи по 64, перемешивание на train
+train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
+
+# Посмотрим на один батч
+images, labels = next(iter(train_loader))
+print(images.shape)   # torch.Size([64, 1, 28, 28]) — 64 картинки</code></pre>
+      <p>Форма батча <code>[64, 1, 28, 28]</code> читается так: 64 картинки, 1 канал (чёрно-белые), 28×28 пикселей. Параметр <code>shuffle=True</code> перемешивает данные каждую эпоху — это важно, чтобы модель не запоминала порядок примеров.</p>
+      <h2><b>Свой Dataset для своих данных</b></h2>
+      <p>Готовые датасеты — хорошо, но реальная сила в том, чтобы подать свои данные. Для этого пишут класс Dataset с тремя методами. Это выглядит сложнее, чем есть: по сути ты отвечаешь на два вопроса — «сколько у меня примеров?» и «как достать пример номер i?».</p>
+      <pre><code># --- Мини-данные, чтобы пример запускался сам ---
+import numpy as np
+X_train = np.random.rand(200, 4).astype("float32")  # 200 примеров, 4 признака
+y_train = np.random.randint(0, 3, size=200)          # 3 класса
+
+from torch.utils.data import Dataset
+
+class MyDataset(Dataset):
+    def __init__(self, X, y):
+        # сохраняем данные как тензоры
+        self.X = torch.tensor(X, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.long)
+
+    def __len__(self):
+        return len(self.X)          # сколько всего примеров
+
+    def __getitem__(self, i):
+        return self.X[i], self.y[i]  # как достать пример номер i
+
+# Использование — как с готовым датасетом:
+ds = MyDataset(X_train, y_train)
+loader = DataLoader(ds, batch_size=32, shuffle=True)</code></pre>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>Три метода Dataset — это контракт с PyTorch: __init__ (подготовить данные), __len__ (сколько их) и __getitem__ (выдать один по индексу). Понял эти три метода — сможешь подать в PyTorch что угодно: таблицы, картинки из папок, тексты. Это ключевой навык для работы со своими данными в томе 2.</p></aside>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Загрузи MNIST через torchvision и оберни в DataLoader с батчем 64. Достань один батч и выведи форму картинок и меток. Поменяй batch_size на 128 — как изменилась форма?</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Напиши свой класс Dataset для табличных данных из тома 1 (например, Titanic: X — признаки, y — Survived). Оберни в DataLoader и достань батч. Убедись, что формы и типы (float32 для X, long для y) правильные.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему данные подают батчами, а не все сразу и не по одному?</li><li>Зачем перемешивать данные (shuffle) на обучении, но не на тесте?</li><li>Какие три метода должен иметь класс Dataset и за что каждый отвечает?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Что такое батч и зачем он нужен?</p><p>2. За что отвечает DataLoader, а за что Dataset?</p><p>3. Какие три метода реализуют в своём Dataset?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch01.html">‹ Глава 1</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch03.html">Глава 3 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

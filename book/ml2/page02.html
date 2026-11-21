@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Мост из тома 1: от Keras к PyTorch · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2">
+    <p class="eyebrow">Учебник</p>
+    <h1>Мост из тома 1: от Keras к PyTorch</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>В томе 1 мы обучали нейросети на <b>Keras</b>, и это было просто: собрал слои, вызвал model.fit() — готово. В томе 2 мы переходим на <b>PyTorch</b>. Многих это слово пугает, но пугаться нечего: идея та же самая, просто часть работы, которую Keras делал за кулисами, мы теперь видим и контролируем сами.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: автомат и механика  💡</p><p>Keras — это машина на автомате: газ, тормоз, поехали. PyTorch — механика: добавляется сцепление и переключение передач. Сложнее? Чуть-чуть, и только вначале. Зато механика даёт полный контроль над машиной — а именно он нужен, когда дороги становятся сложнее (свои архитектуры, нестандартное обучение, исследования). Научившись водить механику, ты сможешь водить что угодно.</p></aside>
+      <h2><b>Главное отличие: цикл обучения</b></h2>
+      <p>В Keras обучение спрятано в одну строку model.fit(). В PyTorch ты пишешь цикл обучения сам — и именно это поначалу кажется «сложным». Но в этом цикле нет магии: это ровно те шаги, которые Keras делал незаметно. Сравни один и тот же смысл на двух библиотеках.</p>
+      <pre><code># --- KERAS (том 1): обучение спрятано ---
+model.compile(optimizer="adam", loss="...", metrics=["accuracy"])
+model.fit(X_train, y_train, epochs=10)   # вся магия внутри одной строки
+
+# --- PYTORCH (том 2): те же шаги, но видимые ---
+for epoch in range(10):              # повторяем 10 эпох
+    for X, y in loader:              # идём по данным пачками
+        optimizer.zero_grad()        # 1. обнулить старые градиенты
+        pred = model(X)              # 2. прогноз (forward)
+        loss = loss_fn(pred, y)      # 3. насколько ошиблись
+        loss.backward()             # 4. посчитать градиенты (backward)
+        optimizer.step()             # 5. подкрутить веса</code></pre>
+      <p>Пять строк цикла — это и есть то, что Keras прятал в fit(). Прочитай их как рецепт: обнули → предскажи → измерь ошибку → посчитай, куда крутить веса → подкрути. Каждую из этих строк мы подробно разберём в Фазе 1. Пока просто увидь: никакой чёрной магии, всё логично и повторяемо.</p>
+      <h2><b>Что мы получаем взамен сложности</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Возможность</b></th><th><b>Что это даёт</b></th></tr><tr><td>Свой цикл обучения</td><td>Полный контроль: логировать, вмешиваться, экспериментировать</td></tr><tr><td>Гибкие архитектуры</td><td>Строить нестандартные сети, а не только «стопку слоёв»</td></tr><tr><td>Экосистема исследований</td><td>Почти все новые модели и статьи — на PyTorch</td></tr><tr><td>Hugging Face, LLM, диффузия</td><td>Современные модели работают на PyTorch «из коробки»</td></tr></table></div>
+      <aside class="callout info"><p class="callout-title">Не бойся и не спеши  ℹ️</p><p>Первые дни с PyTorch кода будет чуть больше, и это нормально — так у всех. Через несколько глав цикл обучения станет привычным, как когда-то стал привычным model.fit(). Keras никуда не делся и остаётся отличным инструментом; PyTorch просто открывает следующий уровень контроля. Мы не «забываем» том 1 — мы на нём стоим.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="page01.html">‹ Как читать том 2</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="page03.html">Для учителя: как вести том… ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

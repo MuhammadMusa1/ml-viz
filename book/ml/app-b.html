@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение B. Шпаргалка по Pandas · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение B. Шпаргалка по Pandas</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Pandas — «Excel внутри Python». Ниже собраны команды, которые покрывают 90% работы с таблицами в этой книге. Держи под рукой во время фазы 1 и любого проекта.</p>
+      <h2>Загрузка и первый взгляд</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>pd.read_csv("file.csv")</td><td>Загрузить таблицу из CSV-файла</td></tr><tr><td>df.head(5)</td><td>Первые 5 строк</td></tr><tr><td>df.tail(5)</td><td>Последние 5 строк</td></tr><tr><td>df.shape</td><td>Размер: (строки, столбцы)</td></tr><tr><td>df.info()</td><td>Типы колонок и число заполненных значений</td></tr><tr><td>df.describe()</td><td>Статистика по числовым колонкам</td></tr><tr><td>df.columns</td><td>Список названий колонок</td></tr></table></div>
+      <h2>Выбор данных</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>df["Age"]</td><td>Один столбец</td></tr><tr><td>df[["Age", "Sex"]]</td><td>Несколько столбцов</td></tr><tr><td>df.iloc[0]</td><td>Первая строка по номеру</td></tr><tr><td>df[df["Age"] &gt; 18]</td><td>Фильтр: строки по условию</td></tr><tr><td>df[(df["Age"] &gt; 18) &amp; (df["Sex"] == "male")]</td><td>Фильтр по двум условиям (И)</td></tr></table></div>
+      <h2>Группировка и сортировка</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>df.groupby("Sex")["Survived"].mean()</td><td>Среднее по группам</td></tr><tr><td>df.groupby("Pclass").size()</td><td>Число объектов в каждой группе</td></tr><tr><td>df.sort_values("Fare")</td><td>Сортировка по столбцу (по возрастанию)</td></tr><tr><td>df.sort_values("Fare", ascending=False)</td><td>Сортировка по убыванию</td></tr><tr><td>df["Sex"].value_counts()</td><td>Сколько раз встречается каждое значение</td></tr></table></div>
+      <h2>Пропуски и очистка</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>df.isnull().sum()</td><td>Сколько пропусков в каждом столбце</td></tr><tr><td>df.dropna()</td><td>Удалить строки с пропусками</td></tr><tr><td>df["Age"].fillna(df["Age"].median())</td><td>Заполнить пропуски медианой</td></tr><tr><td>df.drop(columns=["Name"])</td><td>Удалить столбец</td></tr><tr><td>df.duplicated().sum()</td><td>Сколько дубликатов строк</td></tr></table></div>
+      <aside class="callout warn"><p class="callout-title">Частая ошибка  ⚠️</p><p>В фильтрах используй двойное == для сравнения (df["Sex"] == "male"), а не одиночное =. При комбинировании условий каждое оборачивай в скобки и соединяй через &amp; (И) или | (ИЛИ).</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-a.html">‹ Приложение A</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-c.html">Приложение C ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

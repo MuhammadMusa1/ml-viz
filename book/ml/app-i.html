@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение I. Сводные чек-листы · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение I. Сводные чек-листы</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Распечатай эту страницу и держи рядом во время работы над проектом. Пройди по каждому списку перед сдачей.</p>
+      <h2>Чек-лист любого ML-проекта</h2>
+      <aside class="callout goal"><p class="callout-title">Полный цикл  🎯</p><p>1. Задача сформулирована: что предсказываю, классификация или регрессия.</p><p>2. Данные изучены (EDA): размер, признаки, пропуски, выбросы.</p><p>3. Данные почищены: пропуски обработаны, выбросы проверены.</p><p>4. Baseline построен (DummyClassifier) — точка отсчёта.</p><p>5. Данные разделены на train/test с random_state.</p><p>6. Модель собрана в Pipeline (предобработка + алгоритм).</p><p>7. Оценка честная: кросс-валидация, правильная метрика.</p><p>8. Результат сравнён с baseline.</p><p>9. Вывод сформулирован словами.</p></aside>
+      <h2>Чек-лист «не обмануть себя»</h2>
+      <aside class="callout warn"><p class="callout-title">Проверка на честность  ⚠️</p><p>Проверяю модель на test, а не на train?</p><p>Стоит ли random_state везде, где есть случайность?</p><p>Нет ли утечки: все ли признаки доступны в реальный момент предсказания?</p><p>Вся ли предобработка внутри Pipeline (не на всех данных сразу)?</p><p>Не слишком ли хорош результат (0,99)? — возможна утечка.</p><p>Метрика выбрана осознанно, а не accuracy по привычке?</p></aside>
+      <h2>Чек-лист готовности к защите</h2>
+      <aside class="callout info"><p class="callout-title">Перед Demo Day  ℹ️</p><p>Приложение развёрнуто и открывается по ссылке.</p><p>Есть README с задачей, данными и инструкцией.</p><p>Защита отрепетирована и укладывается в 5 минут.</p><p>Готово живое демо (и запасные скриншоты на случай сбоя).</p><p>Могу объяснить проект простым языком («бабушке»).</p><p>Готов ответить, почему выбрал эту метрику и модель.</p></aside>
+      <h2>Частые ошибки — быстрая проверка</h2>
+      <aside class="callout warn"><p class="callout-title">Если что-то идёт не так  ⚠️</p><p>Модель идеальна на train, плоха на test — переобучение (упростить модель).</p><p>Модель едва лучше baseline — слабые признаки или задача трудная.</p><p>Подозрительно высокая точность — искать утечку данных.</p><p>KNN работает плохо — забыл масштабирование (StandardScaler).</p><p>Ошибка про = в фильтре — нужно двойное ==.</p><p>Сеть не учится — забыл activation="relu" или масштабирование.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-h.html">‹ Приложение H</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-j.html">Приложение J ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 14. Sentence Transformers: эмбеддинги за одну строку · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="14">
+    <p class="eyebrow">Учебник · Фаза 3 · Современный NLP и эмбеддинги</p>
+    <h1>Глава 14. Sentence Transformers: эмбеддинги за одну строку</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь получать эмбеддинги предложений готовой моделью Sentence Transformers, измерять близость реальных текстов и объяснить, почему эмбеддинг предложения — не то же самое, что эмбеддинги отдельных слов.</p></aside>
+      <p>Хватит выдумывать векторы — получим настоящие. Библиотека Sentence Transformers — сегодняшний стандарт для эмбеддингов текста: одна строка, и предложение превращается в вектор смысла. Это рабочая лошадка всего современного NLP.</p>
+      <h2><b>Слово, предложение, документ</b></h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: смысл фразы — не сумма слов  💡</p><p>Ранние эмбеддинги (word2vec из тома 1) кодировали отдельные слова. Но смысл предложения — не просто сумма слов: «собака укусила человека» и «человек укусил собаку» состоят из одних слов, а смысл противоположный. Sentence Transformers кодируют предложение целиком, с учётом порядка и контекста, в один вектор. Поэтому они называются sentence (предложенческими) — работают на уровне мысли, а не слова.</p></aside>
+      <h2><b>Эмбеддинги на практике</b></h2>
+      <pre><code># pip install sentence-transformers
+from sentence_transformers import SentenceTransformer
+
+# Лёгкая быстрая модель — хороший выбор по умолчанию
+model = SentenceTransformer("all-MiniLM-L6-v2")
+
+sentences = [
+    "Как обучить нейросеть?",
+    "Каким образом тренируют модель ИИ?",   # тот же смысл
+    "Какая погода в Душанбе завтра?",       # другой смысл
+]
+
+# Одна строка — и каждое предложение стало вектором
+embeddings = model.encode(sentences)
+print(embeddings.shape)   # (3, 384) — 3 вектора по 384 числа</code></pre>
+      <p>Метод <code>.encode()</code> — вся магия. Модель уже обучена компанией на огромных данных; ты просто пользуешься. Каждое предложение стало вектором из 384 чисел (у этой модели). Теперь сравним их по смыслу косинусной близостью из прошлой главы.</p>
+      <pre><code>from sentence_transformers import util
+
+# Косинусная близость между всеми парами
+sim = util.cos_sim(embeddings, embeddings)
+print(sim)
+# Ожидаем: предложения 0 и 1 близки (тот же смысл),
+# а 2 далеко от обоих (про погоду)</code></pre>
+      <p><i>Первые два предложения окажутся близки по смыслу, третье — далеко, хотя слова везде разные.</i></p>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>util.cos_sim из библиотеки делает то же, что твоя функция cosine из главы 13, но сразу для всех пар и быстро. Размер вектора (384, 768, 1024…) зависит от модели: больше — обычно точнее, но медленнее и «тяжелее» хранить. all-MiniLM-L6-v2 (384) — золотая середина для старта: быстрая, лёгкая, достаточно точная.</p></aside>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Установи sentence-transformers, возьми all-MiniLM-L6-v2 и получи эмбеддинги 5 своих фраз (2–3 близких по смыслу, остальные разные). Посчитай попарную близость через util.cos_sim. Нашла ли модель смысловые пары, несмотря на разные слова?</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Проверь пример «собака укусила человека» vs «человек укусил собаку» vs «пёс атаковал прохожего». Как модель оценивает их близость? Улавливает ли она разницу в порядке слов и синонимию одновременно? Опиши, что удивило.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему смысл предложения — не просто сумма смыслов его слов?</li><li>Что делает метод .encode() и почему нам не нужно обучать модель?</li><li>Как размер вектора эмбеддинга влияет на скорость и качество?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Чем sentence-эмбеддинги лучше эмбеддингов отдельных слов?</p><p>2. Что возвращает model.encode()?</p><p>3. Почему all-MiniLM-L6-v2 — хороший выбор по умолчанию?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch13.html">‹ Глава 13</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch15.html">Глава 15 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

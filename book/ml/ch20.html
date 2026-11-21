@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 20. Gradio и деплой: приложение за урок · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml" data-chapter="20">
+    <p class="eyebrow">Учебник · Фаза 5 · AutoML и AI-инструменты</p>
+    <h1>Глава 20. Gradio и деплой: приложение за урок</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь создать веб-интерфейс к модели через Gradio, объяснить разницу между временной ссылкой и хостингом, а также выложить приложение на Hugging Face Spaces по постоянному адресу.</p></aside>
+      <p>У тебя есть обученная модель. Но модель в блокноте Colab не покажешь друзьям и не добавишь в портфолио — она живёт только у тебя на экране. В этой главе мы превратим модель в настоящее веб-приложение и выложим его в интернет так, чтобы им можно было пользоваться по ссылке из любой точки мира, с любого телефона.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: от кухни к ресторану  💡</p><p>Пока твоя модель живёт в блокноте — это блюдо, которое ты готовишь только для себя на домашней кухне. Деплой (deploy) — это открыть ресторан: любой может зайти по адресу и заказать. Gradio делает «зал и меню» (удобный интерфейс с кнопками), а Hugging Face Spaces — «здание с постоянным адресом» (хостинг, который работает круглосуточно). Вместе они превращают твой код в продукт.</p></aside>
+      <h2>Шаг 1. Интерфейс средствами Gradio</h2>
+      <p>С Gradio мы уже встречались в главе 16. Напомним суть: ты пишешь обычную Python-функцию, а Gradio строит вокруг неё веб-страницу с полями ввода и вывода. Тебе не нужно знать HTML, CSS или веб-программирование — Gradio берёт это на себя. Соберём простое приложение-калькулятор на модели регрессии «часы → баллы» из главы 8.</p>
+      <pre><code># Запускать в Google Colab
+!pip install gradio -q
+
+import gradio as gr
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+# Обучаем ту же модель "часы учёбы -&gt; баллы" из главы 8
+hours = np.array([1,2,3,4,5,6,7,8]).reshape(-1,1)
+scores = np.array([20,35,40,55,60,72,80,88])
+model = LinearRegression().fit(hours, scores)
+
+def predict(h):
+    return round(float(model.predict([[h]])[0]), 1)
+
+# Интерфейс: ползунок на вход, число на выход
+demo = gr.Interface(
+    fn=predict,
+    inputs=gr.Slider(0, 12, label="Часов учёбы"),
+    outputs=gr.Number(label="Прогноз баллов"),
+    title="Предсказатель оценок",
+)
+demo.launch(share=True)   # share=True — временная публичная ссылка</code></pre>
+      <p><i>Ожидаемый результат: рабочее приложение с ползунком + ссылка *.gradio.live на 72 часа.</i></p>
+      <p>Обрати внимание, как просто устроен Gradio: у функции <code>predict</code> есть вход (число часов) и выход (баллы), а Gradio сам делает под них ползунок и поле результата. Меняешь тип ввода на gr.Image() — и получаешь загрузчик картинок, как в проекте главы 16.</p>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>Ссылка от share=True временная — она живёт около 72 часов и работает, только пока запущен твой блокнот Colab. Закрыл блокнот — ссылка умерла. Для постоянного приложения, которое доступно всегда и не зависит от твоего компьютера, нужен настоящий хостинг. Им и займёмся дальше.</p></aside>
+      <h2>Шаг 2. Постоянный дом — Hugging Face Spaces</h2>
+      <p><b>Hugging Face Spaces</b> — бесплатный хостинг для ML-приложений. Ты загружаешь туда код, а Spaces сам запускает его на своём сервере и даёт постоянный адрес. Приложение работает круглосуточно, даже когда твой компьютер выключен, а ноутбук лежит в рюкзаке. Именно так выкладывают демо настоящие ML-инженеры и исследователи.</p>
+      <h3>Как выложить приложение — по шагам</h3>
+      <ol><li>Зарегистрируйся на huggingface.co (бесплатно, нужна только почта).</li><li>Нажми «New Space», выбери SDK «Gradio» и придумай название своему приложению.</li><li>Положи код приложения в файл app.py.</li><li>Перечисли нужные библиотеки в файле requirements.txt (например, gradio, scikit-learn).</li><li>Загрузи оба файла в Space — он сам всё соберёт, установит библиотеки и запустит.</li></ol>
+      <h2>Что положить в app.py</h2>
+      <p>Файл app.py — это тот же код Gradio, но без share=True: на Spaces публичный адрес даётся автоматически, временная ссылка не нужна. Вот минимальный рабочий пример.</p>
+      <pre><code># app.py — файл для Hugging Face Spaces
+import gradio as gr
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+hours = np.array([1,2,3,4,5,6,7,8]).reshape(-1,1)
+scores = np.array([20,35,40,55,60,72,80,88])
+model = LinearRegression().fit(hours, scores)
+
+def predict(h):
+    return round(float(model.predict([[h]])[0]), 1)
+
+demo = gr.Interface(fn=predict,
+                    inputs=gr.Slider(0, 12, label="Часов учёбы"),
+                    outputs=gr.Number(label="Прогноз баллов"))
+demo.launch()   # на Spaces адрес выдаётся сам, share не нужен
+# requirements.txt — список библиотек, которые Spaces установит сам
+gradio
+scikit-learn
+numpy</code></pre>
+      <p><i>Два файла — и приложение живёт по постоянному адресу вида huggingface.co/spaces/твоё-имя/название.</i></p>
+      <aside class="callout warn"><p class="callout-title">Внимание  ⚠️</p><p>Регистрация, загрузка файлов и работа Spaces происходят на сайте huggingface.co и требуют интернета — это делается не в среде без сети. Код app.py удобно сначала написать и проверить в Colab (там всё работает), а затем перенести на Spaces. Если приложение на Spaces не запускается — почти всегда дело в забытой библиотеке в requirements.txt.</p></aside>
+      <h2>Отправь ссылку родителям — прямо с урока</h2>
+      <aside class="callout goal"><p class="callout-title">Главная мысль фазы 5  🎯</p><p>Ты научился ускорять работу с AutoML, брать готовые модели с Hugging Face Hub и — самое главное — выкладывать своё приложение в интернет по постоянному адресу. Теперь у тебя есть не просто модель в блокноте, а живой продукт, ссылку на который можно отправить кому угодно прямо сейчас. Это и есть то, что отличает законченный проект от учебного упражнения. Впереди — финальный проект, где ты соберёшь всё вместе и защитишь.</p></aside>
+      <h2>Задания</h2>
+      <aside class="callout note"><p class="callout-title">Базовый уровень</p><p>Собери Gradio-приложение на любой своей модели (из фазы 2 или 3) и запусти с share=True в Colab. Открой ссылку с телефона и проверь, что всё работает. Отправь другу.</p></aside>
+      <aside class="callout star"><p class="callout-title">Со звёздочкой  ⭐</p><p>Выложи своё приложение на Hugging Face Spaces по инструкции (app.py + requirements.txt). Добейся, чтобы оно запустилось по постоянному адресу. С какими трудностями столкнулся? Чаще всего проблема — забытая библиотека; проверь requirements.txt.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>В чём разница между ссылкой share=True и хостингом на Spaces? Когда какой вариант выбрать?</li><li>Почему приложение, а не просто модель, важно для портфолио и демонстрации?</li><li>Что нужно продумать, прежде чем показывать своё ML-приложение чужим людям (удобство, ошибки ввода, объяснение)?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. В чём разница между ссылкой share=True и хостингом на Spaces?</p><p>2. Какие два файла нужны, чтобы выложить приложение на Hugging Face Spaces?</p><p>3. Зачем в app.py убирают share=True?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch19.html">‹ Глава 19</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch21.html">Глава 21 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 4. GPU, кривые обучения, Dropout и BatchNorm · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="4">
+    <p class="eyebrow">Учебник · Фаза 1 · PyTorch: берём управление в свои руки</p>
+    <h1>Глава 4. GPU, кривые обучения, Dropout и BatchNorm</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь перенести обучение на GPU, читать кривые обучения (train vs validation) и применять Dropout и BatchNorm для борьбы с переобучением и ускорения обучения.</p></aside>
+      <p>Модель обучается, но медленно, и склонна переобучаться. В этой главе три инструмента, которые превращают учебную сеть в рабочую: GPU (скорость), кривые обучения (диагностика) и регуляризация Dropout/BatchNorm (качество).</p>
+      <h2><b>GPU: ускорение в десятки раз</b></h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: один математик или тысяча  💡</p><p>Обычный процессор (CPU) — как один гениальный математик: решает задачи по очереди, очень умно. GPU — как тысяча школьников, каждый считает простую арифметику, но все одновременно. Обучение сети — это миллионы простых операций над числами, и «тысяча параллельно» бьёт «одного умного» в десятки раз. Поэтому глубокие сети учат на GPU. В Colab он бесплатный: Среда выполнения → сменить на GPU.</p></aside>
+      <pre><code># --- Мини-настройка: глава запускается сама (данные и сеть из глав 2-3) ---
+import torch, torch.nn as nn
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+_ds = datasets.MNIST(root="data", train=True, download=True,
+                     transform=transforms.ToTensor())
+train_loader = DataLoader(_ds, batch_size=64, shuffle=True)
+class Net(nn.Module):                       # та же сеть, что в главе 3
+    def __init__(self):
+        super().__init__()
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(28*28, 128)
+        self.fc2 = nn.Linear(128, 10)
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        x = self.flatten(x)
+        x = self.relu(self.fc1(x))
+        return self.fc2(x)
+# --- конец мини-настройки ---
+
+# Определяем устройство: GPU если есть, иначе CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Устройство:", device)
+
+model = Net().to(device)            # переносим модель на GPU
+
+# В цикле обучения переносим и данные:
+for images, labels in train_loader:
+    images, labels = images.to(device), labels.to(device)
+    # ... дальше обычный цикл обучения</code></pre>
+      <aside class="callout warn"><p class="callout-title">Внимание, частая ошибка  ⚠️</p><p>И модель, и данные должны быть на одном устройстве. Если модель на GPU (.to(device)), а данные забыл перенести — получишь ошибку "Expected all tensors to be on the same device". Правило: перенёс модель — переноси и каждый батч данных в цикле. Это самая частая ошибка при переходе на GPU.</p></aside>
+      <h2><b>Кривые обучения: train против validation</b></h2>
+      <p>В томе 1 мы диагностировали переобучение по разнице train/test. В PyTorch это делают наглядно — рисуют кривые обучения: как падает ошибка на обучающих и на проверочных данных по эпохам. Форма кривых сразу говорит, что не так.</p>
+      <p>Для этого данные делят на три части (а не две, как раньше): train (учимся), validation (следим за обучением и настраиваем), test (финальная честная проверка, один раз в конце). Validation — это «репетиция экзамена», test — «сам экзамен».</p>
+      <aside class="callout info"><p class="callout-title">Как читать кривые обучения  ℹ️</p><p>Обе кривые падают и сближаются — отлично, модель учится и обобщает.</p><p>Train падает, а validation растёт (расходятся) — переобучение: сеть зубрит train. Пора Dropout / early stopping.</p><p>Обе застряли высоко — недообучение: сеть слишком проста или мало училась. Усложни модель или учи дольше.</p><p>Кривая validation скачет — слишком большой learning rate или маленький батч.</p></aside>
+      <h2><b>Dropout: случайно «отключаем» нейроны</b></h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: команда без незаменимых  💡</p><p>Dropout во время обучения случайно «выключает» часть нейронов на каждом шаге. Зачем? Чтобы сеть не полагалась на отдельные нейроны, а распределяла знание — как в команде, где нет незаменимых людей и любой может подстраховать. В результате сеть устойчивее и меньше переобучается. На проверке (eval) Dropout автоматически выключается — работают все нейроны.</p></aside>
+      <h2><b>BatchNorm: держим числа в узде</b></h2>
+      <p>BatchNorm (батч-нормализация) нормирует значения внутри сети между слоями, не давая им «разбегаться» в слишком большие или малые. Это ускоряет и стабилизирует обучение — сеть учится быстрее и надёжнее. Добавляется как обычный слой.</p>
+      <pre><code>class BetterNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(28*28, 256)
+        self.bn1 = nn.BatchNorm1d(256)      # нормализация
+        self.drop = nn.Dropout(0.3)         # выключаем 30% нейронов
+        self.fc2 = nn.Linear(256, 10)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        x = x.flatten(1)
+        x = self.relu(self.bn1(self.fc1(x)))
+        x = self.drop(x)                    # dropout после активации
+        return self.fc2(x)</code></pre>
+      <p>Эти два слоя — Dropout и BatchNorm — почти всегда улучшают глубокие сети. Именно поэтому важны model.train() и model.eval() из прошлой главы: они включают и выключают эти слои в нужный момент.</p>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Включи GPU в Colab и перенеси обучение MNIST на него (.to(device) для модели и данных). Сравни время эпохи на CPU и на GPU. Во сколько раз быстрее?</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Добавь в сеть Dropout и BatchNorm, раздели данные на train/val/test и построй кривые обучения (ошибка train и val по эпохам). Покажи на графике момент, где без Dropout начиналось бы переобучение, а с ним — нет.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему GPU ускоряет обучение сети, а обычную программу — не обязательно?</li><li>Как по кривым обучения отличить переобучение от недообучения?</li><li>Зачем Dropout выключает нейроны и почему это помогает?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Почему обучение сетей идёт на GPU, а не на CPU?</p><p>2. Что показывает расхождение кривых train и validation?</p><p>3. Что делают Dropout и BatchNorm?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch03.html">‹ Глава 3</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch05.html">Глава 5 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

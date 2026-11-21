@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение H. Чек-листы уровня 2 · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение H. Чек-листы уровня 2</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Распечатай и держи рядом. Пройди по списку перед сдачей проекта.</p>
+      <h2><b>«Мой RAG готов?»</b></h2>
+      <aside class="callout info"><p class="callout-title">Проверка RAG  ℹ️</p><p>Документы порезаны осмысленно (куски — законченные мысли, есть overlap).</p><p>Эмбеддинг-модель подходит языку (многоязычная для русского).</p><p>Retrieval находит нужные фрагменты (проверено на вопросах-перефразировках).</p><p>Ответ опирается на найденное, не выдумывает (faithfulness).</p><p>Модель признаёт, когда ответа в документах нет.</p><p>Оценено на наборе вопросов, а не «на глаз».</p></aside>
+      <h2><b>«Модель к деплою готова?»</b></h2>
+      <aside class="callout info"><p class="callout-title">Проверка перед выпуском  ℹ️</p><p>Модель сохранена (state_dict / joblib) вместе с кодом архитектуры.</p><p>Обёрнута в API (FastAPI) или интерфейс (Gradio), проверена на новых данных.</p><p>Окружение зафиксировано (requirements.txt, при возможности Docker).</p><p>Есть базовые тесты (форма выхода, диапазон, устойчивость к пропускам).</p><p>Продуман мониторинг дрейфа (хотя бы вручную).</p><p>Эксперименты записаны (MLflow) — знаешь, какая версия лучшая и почему.</p></aside>
+      <h2><b>Командный проект</b></h2>
+      <aside class="callout goal"><p class="callout-title">Перед защитой  🎯</p><p>Роли распределены, вклад каждого виден в Git-истории.</p><p>Работали через ветки и pull request, а не коммитами в main.</p><p>Пройден весь цикл: данные → модель → инженерия → интерфейс.</p><p>Есть публичная ссылка на работающий продукт.</p><p>README с историей проекта (проблема → решение → результат) и ролями.</p><p>Защита отрепетирована, каждый рассказывает свою часть, готово живое демо.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-g.html">‹ Приложение G</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-i.html">Приложение I ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

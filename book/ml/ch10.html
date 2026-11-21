@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 10. Pipeline и кросс-валидация · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml" data-chapter="10">
+    <p class="eyebrow">Учебник · Фаза 2 · Классический ML</p>
+    <h1>Глава 10. Pipeline и кросс-валидация</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь собрать предобработку и модель в единый Pipeline, применить кросс-валидацию для надёжной оценки и объяснить, почему оценка по одному разбиению ненадёжна.</p></aside>
+      <aside class="callout goal"><p class="callout-title">Правило курса  🎯</p><p>Начиная с этой главы, все модели в книге собираются через Pipeline. Это профессиональный стандарт, который исключает целый класс ошибок — в первую очередь утечку данных. Дальше без Pipeline мы не работаем — это привычка настоящего специалиста.</p></aside>
+      <h2>Зачем нужен Pipeline</h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: конвейер на заводе  💡</p><p>Pipeline — это конвейер на заводе. Данные входят с одного конца, проходят через одни и те же станки в строгом порядке (заполнить пропуски → закодировать текст → отмасштабировать → модель) и выходят готовым предсказанием. Собрав конвейер один раз, ты гарантируешь, что и на обучении, и на тесте, и в реальном приложении данные обрабатываются абсолютно одинаково — без ручных ошибок и расхождений.</p></aside>
+      <p>Помимо порядка и удобства, Pipeline решает главную проблему из главы 6 — утечку данных. Он «настраивает» преобразования (например, вычисляет среднее для заполнения пропусков) ТОЛЬКО на train и затем применяет их к test, а не подсматривает в test заранее. Ручное масштабирование до разделения было источником утечки — Pipeline закрывает эту дыру автоматически.</p>
+      <h2>Масштабирование признаков</h2>
+      <p>Вспомни проблему KNN из главы 5: возраст 0–80 и цена 0–500 несопоставимы по масштабу, и цена «перевешивает». <b>Масштабирование</b> приводит все признаки к сравнимому диапазону, чтобы ни один не доминировал просто из-за крупных чисел. Самый частый инструмент — StandardScaler, который приводит каждый признак к среднему 0 и типичному разбросу 1.</p>
+      <h2>Собираем первый Pipeline</h2>
+      <pre><code># === Подготовка: выполни первой, если открыл новый блокнот ===
+import pandas as pd
+from sklearn.model_selection import train_test_split
+url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/penguins.csv"
+df = pd.read_csv(url).dropna(subset=["bill_length_mm", "body_mass_g", "island", "species"])
+X = df[["bill_length_mm", "body_mass_g", "island"]]
+y = df["species"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.neighbors import KNeighborsClassifier
+
+# Конвейер из трёх станков, выполняемых по порядку:
+pipe = Pipeline([
+    ("impute", SimpleImputer(strategy="median")),   # 1. заполнить пропуски
+    ("scale",  StandardScaler()),                    # 2. отмасштабировать
+    ("model",  KNeighborsClassifier(n_neighbors=5)), # 3. модель
+])
+
+pipe.fit(X_train[["bill_length_mm", "body_mass_g"]], y_train)   # обучаем на числах
+print("Pipeline accuracy:", pipe.score(X_test[["bill_length_mm", "body_mass_g"]], y_test))</code></pre>
+      <p><i>Теперь пропуски и масштаб обрабатываются честно, только на train, без утечки.</i></p>
+      <p>Красота Pipeline в том, что снаружи он ведёт себя как обычная модель: те же .fit() и .score(). Но внутри выполняет всю цепочку преобразований. Заменить модель или добавить шаг — вопрос одной строки.</p>
+      <h2>Разные типы столбцов: ColumnTransformer</h2>
+      <p>В реальных данных числа и текст соседствуют: длина клюва (число) и остров (текст «Biscoe»/«Dream»). Числа нужно масштабировать, а текст — превратить в числа (модель не понимает слов). ColumnTransformer позволяет применить разные преобразования к разным столбцам внутри одного конвейера.</p>
+      <pre><code>from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestClassifier
+
+num = ["bill_length_mm", "body_mass_g"]   # числовые столбцы
+cat = ["island"]             # текстовые (категориальные) столбцы
+
+prep = ColumnTransformer([
+    ("num", StandardScaler(), num),
+    ("cat", OneHotEncoder(), cat),   # текст → числа (0/1)
+])
+
+full = Pipeline([("prep", prep),
+                 ("model", RandomForestClassifier(random_state=42))])</code></pre>
+      <p>Инструмент OneHotEncoder превращает категорию в набор столбцов из 0 и 1: «Biscoe» → [1, 0, 0], «Dream» → [0, 1, 0]. Так текст становится числами, понятными модели, без выдумывания ложного порядка (ведь один остров не «больше» другого).</p>
+      <h2>Кросс-валидация: одна проверка — ненадёжно</h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: одна контрольная или четыре  💡</p><p>Оценить ученика по одной контрольной ненадёжно — вдруг попался неудачный вариант или, наоборот, он списал. Четыре контрольные по разным темам дают честную картину. Кросс-валидация делает то же самое: делит данные на несколько частей (folds), по очереди обучает модель на одних и проверяет на оставшейся, а потом усредняет результаты. Каждый кусок данных успевает побыть и в обучении, и в проверке.</p></aside>
+      <pre><code>from sklearn.model_selection import cross_val_score
+
+# cv=5 → делим данные на 5 частей, обучаем и проверяем 5 раз
+scores = cross_val_score(full, X, y, cv=5)
+print("Оценки по фолдам:", scores.round(3))
+print("Среднее:", scores.mean().round(3))</code></pre>
+      <p>Пять чисел вместо одного показывают не только средний результат, но и его стабильность. Если оценки скачут (0,60 и 0,80) — модель неустойчива, зависит от того, какие данные попали в обучение, и одному запуску верить нельзя. Если все пять близки — результат надёжен. Кросс-валидация — золотой стандарт честной оценки.</p>
+      <h2>Соревнование класса</h2>
+      <p>Возьмите общий датасет (например, House Prices с Kaggle). Каждый собирает свой Pipeline и настраивает модель, а победитель определяется по средней оценке кросс-валидации — не по одному везучему разбиению. Так соревнование становится по-настоящему честным: побеждает устойчиво хорошая модель, а не удачливая.</p>
+      <h2>Задания</h2>
+      <aside class="callout note"><p class="callout-title">Базовый уровень</p><p>Собери Pipeline с ColumnTransformer на пингвинах (числа bill_length_mm, body_mass_g + категория island). Оцени его через cross_val_score с cv=5. Насколько стабильны пять оценок?</p></aside>
+      <aside class="callout star"><p class="callout-title">Со звёздочкой  ⭐</p><p>Сравни две модели внутри одинакового Pipeline (например, KNN и случайный лес) по средней кросс-валидации. Какая устойчивее (меньше разброс между фолдами)? Почему устойчивость иногда важнее чуть более высокого среднего?</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Как именно Pipeline защищает от утечки данных, а ручная обработка — нет?</li><li>Почему для KNN масштабирование критично, а для дерева решений — почти не важно?</li><li>Чем оценка по кросс-валидации надёжнее одного train/test split?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Назови два преимущества Pipeline.</p><p>2. Зачем нужен OneHotEncoder?</p><p>3. Что показывают пять чисел кросс-валидации, кроме среднего?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch09.html">‹ Глава 9</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch11.html">Глава 11 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

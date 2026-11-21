@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 28. SQL для ML без боли: DuckDB · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="28">
+    <p class="eyebrow">Учебник · Фаза 5 · Настоящие данные</p>
+    <h1>Глава 28. SQL для ML без боли: DuckDB</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь объяснить, зачем ML-специалисту SQL, писать базовые SQL-запросы (SELECT, WHERE, GROUP BY, JOIN) и выполнять их прямо в Python через DuckDB.</p></aside>
+      <p>В реальных компаниях данные живут не в CSV-файлах, а в базах данных, и достают их языком SQL. Это один из самых востребованных навыков ML-специалиста. Хорошая новость: с DuckDB можно писать SQL прямо в Python, без установки тяжёлой базы, — учиться легко и приятно.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: заказ официанту вместо похода на кухню  💡</p><p>Представь огромный склад данных. Можно самому бегать по полкам и всё перебирать (так делает pandas, загружая всё в память). А можно дать точный заказ кладовщику: «принеси только красные коробки с полки 3, отсортированные по весу» — и он вернёт ровно нужное. SQL — это язык таких заказов к данным: ты описываешь ЧТО хочешь получить, а база сама эффективно это достаёт. Для больших данных это куда быстрее, чем тащить всё к себе.</p></aside>
+      <h2><b>DuckDB: SQL прямо в Python</b></h2>
+      <p>DuckDB — лёгкая база, которая живёт внутри Python и умеет выполнять SQL прямо по твоим данным (в том числе по DataFrame pandas и по CSV-файлам, не загружая их целиком). Ставится одной командой, сервер поднимать не нужно.</p>
+      <pre><code># pip install duckdb
+import duckdb
+import pandas as pd
+
+df = pd.read_csv("sales.csv")
+
+# SQL прямо по DataFrame — DuckDB видит переменную df
+result = duckdb.sql("""
+    SELECT city, AVG(price) AS avg_price
+    FROM df
+    WHERE price &gt; 100
+    GROUP BY city
+    ORDER BY avg_price DESC
+""").df()      # .df() — вернуть результат как pandas DataFrame
+
+print(result)</code></pre>
+      <p><i>Ожидаемый результат: таблица средних цен по городам, отсортированная по убыванию.</i></p>
+      <h2><b>Четыре кита SQL</b></h2>
+      <p>SQL огромен, но 90% работы делают четыре конструкции. Освой их — и ты сможешь достать почти любые данные.</p>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Конструкция</b></th><th><b>Что делает</b></th><th><b>Аналог в pandas</b></th></tr><tr><td>SELECT ... FROM</td><td>Выбрать столбцы из таблицы</td><td>df[["col1","col2"]]</td></tr><tr><td>WHERE</td><td>Отобрать строки по условию</td><td>df[df["x"] &gt; 5]</td></tr><tr><td>GROUP BY</td><td>Сгруппировать и посчитать (AVG, COUNT, SUM)</td><td>df.groupby(...)</td></tr><tr><td>JOIN</td><td>Соединить две таблицы по общему ключу</td><td>pd.merge(...)</td></tr></table></div>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>Ты уже знаешь эти операции по pandas из тома 1 — SQL просто выражает их другим языком. SELECT+WHERE — это фильтрация, GROUP BY — это groupby, JOIN — это merge. Поэтому SQL даётся легко тому, кто освоил pandas: те же идеи, другой синтаксис. А JOIN особенно важен: реальные данные почти всегда разбросаны по нескольким таблицам (клиенты в одной, заказы в другой), и их нужно соединять.</p></aside>
+      <h2><b>JOIN: соединяем таблицы</b></h2>
+      <pre><code># Две таблицы: клиенты и их заказы
+customers = pd.read_csv("customers.csv")   # id, name, city
+orders = pd.read_csv("orders.csv")         # customer_id, amount
+
+# Соединяем по ключу и сразу считаем сумму заказов на клиента
+result = duckdb.sql("""
+    SELECT c.name, c.city, SUM(o.amount) AS total
+    FROM customers c
+    JOIN orders o ON c.id = o.customer_id
+    GROUP BY c.name, c.city
+    ORDER BY total DESC
+""").df()</code></pre>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Возьми любой CSV (или df из тома 1) и выполни через DuckDB три запроса: (1) выбрать строки по условию (WHERE), (2) сгруппировать и посчитать среднее/количество (GROUP BY), (3) отсортировать (ORDER BY). Сравни с тем, как ты делал бы это в pandas.</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Создай две связанные таблицы (например, ученики и оценки, или товары и продажи) и соедини их через JOIN, посчитав агрегаты по группам. Затем прогони один и тот же запрос по CSV напрямую (DuckDB умеет read_csv в SQL) — без загрузки в pandas.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему в реальных компаниях данные хранят в базах, а не в CSV, и достают через SQL?</li><li>Как SQL-конструкции соотносятся с операциями pandas из тома 1?</li><li>Зачем нужен JOIN и что было бы без него, если данные в разных таблицах?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Что делает DuckDB и чем он удобен для обучения SQL?</p><p>2. Назови четыре главные конструкции SQL и их смысл.</p><p>3. Зачем нужен JOIN?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch27.html">‹ Глава 27</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch29.html">Глава 29 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

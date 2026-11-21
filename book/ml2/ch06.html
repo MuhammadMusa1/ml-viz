@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 6. Мини-проект: модель из тома 1 на PyTorch · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="6">
+    <p class="eyebrow">Учебник · Фаза 1 · PyTorch: берём управление в свои руки</p>
+    <h1>Глава 6. Мини-проект: модель из тома 1 на PyTorch</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты соберёшь полный проект на PyTorch от начала до конца (Dataset → модель → обучение с валидацией → ранняя остановка → сохранение) и сравнишь его с версией на Keras из тома 1.</p></aside>
+      <p>Первая фаза завершается проектом, который связывает том 1 и том 2: возьмём задачу, которую ты уже решал на Keras, и решим её заново на PyTorch — целиком, со всеми навыками фазы. Это закрепит паттерн PyTorch и покажет, что ты уже владеешь инструментом всерьёз.</p>
+      <h2><b>Задача проекта</b></h2>
+      <p>Возьми любую задачу классификации из тома 1 — MNIST, свой датасет фото или табличные данные (Titanic). Цель — пройти полный путь на PyTorch, применив всё из фазы 1: свой Dataset, модель через nn.Module, цикл обучения, GPU, кривые обучения, Dropout, early stopping и сохранение.</p>
+      <h2><b>Чек-лист проекта</b></h2>
+      <p>Полный проект PyTorch собирается из кирпичиков, которые ты освоил в главах 1–5. Пройди по списку — это и есть скелет любого проекта на PyTorch.</p>
+      <ol><li>Данные: свой Dataset (или готовый) + DataLoader с батчами, деление на train/val/test.</li><li>Модель: класс nn.Module с __init__ и forward, при желании Dropout и BatchNorm.</li><li>Обучение: цикл из пяти шагов, перенос на GPU (.to(device)).</li><li>Контроль: кривые обучения train/val, early stopping по validation.</li><li>Сохранение: лучшая модель в state_dict.</li><li>Оценка: точность на test (один раз, в конце) + сравнение с версией из тома 1.</li></ol>
+      <h2><b>Каркас проекта</b></h2>
+      <p>Вот скелет, который остаётся наполнить своими данными и архитектурой. Он объединяет всю фазу 1 в один рабочий файл.</p>
+      <pre><code># --- Мини-настройка: данные и сеть из глав 2-3 ---
+import torch, torch.nn as nn
+from torchvision import datasets, transforms
+from torch.utils.data import random_split
+_full = datasets.MNIST(root="data", train=True, download=True,
+                      transform=transforms.ToTensor())
+train_ds, val_ds = random_split(_full, [55000, 5000])
+class Net(nn.Module):                       # та же сеть, что в главе 3
+    def __init__(self):
+        super().__init__()
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(28*28, 128)
+        self.fc2 = nn.Linear(128, 10)
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        x = self.flatten(x)
+        x = self.relu(self.fc1(x))
+        return self.fc2(x)
+# --- конец мини-настройки ---
+
+import torch, torch.nn as nn, torch.optim as optim
+from torch.utils.data import DataLoader
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# 1. Данные (свой Dataset или готовый) + DataLoader
+train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
+val_loader   = DataLoader(val_ds, batch_size=64)
+
+# 2. Модель
+model = Net().to(device)
+loss_fn = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# 3-5. Обучение с валидацией, ранней остановкой и сохранением
+best_val, wait, patience = float("inf"), 0, 3
+for epoch in range(100):
+    model.train()
+    for X, y in train_loader:
+        X, y = X.to(device), y.to(device)
+        optimizer.zero_grad()
+        loss = loss_fn(model(X), y)
+        loss.backward()
+        optimizer.step()
+
+    # валидация
+    model.eval()
+    val_loss = 0
+    with torch.no_grad():
+        for X, y in val_loader:
+            X, y = X.to(device), y.to(device)
+            val_loss += loss_fn(model(X), y).item()
+
+    if val_loss &lt; best_val:
+        best_val, wait = val_loss, 0
+        torch.save(model.state_dict(), "best.pt")
+    else:
+        wait += 1
+        if wait &gt;= patience:
+            print(f"Стоп на эпохе {epoch+1}"); break</code></pre>
+      <p>Прочитай этот каркас — в нём нет ни одной строки, которую ты бы не разобрал в главах 1–5. Это и есть «взрослый» PyTorch: не магия, а привычный паттерн из понятных шагов.</p>
+      <h2><b>Сравни с томом 1</b></h2>
+      <p>Завершив проект, честно сравни: та же задача на Keras (том 1) и на PyTorch (том 2). Точность должна быть примерно одинаковой — алгоритм тот же. Что изменилось: кода больше, но и контроля больше. Запиши свои выводы: где PyTorch оказался удобнее, где Keras проще, что понравилось тебе.</p>
+      <aside class="callout goal"><p class="callout-title">Главная мысль фазы 1  🎯</p><p>Ты перешёл с «магического» model.fit() на полный контроль: сам готовишь данные, описываешь модель, пишешь цикл обучения, борешься с переобучением и сохраняешь результат. PyTorch больше не пугает — это просто набор понятных шагов. На этом фундаменте построена вся современная работа с нейросетями, и следующие фазы (компьютерное зрение, эмбеддинги, LLM) опираются именно на него.</p></aside>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Собери полный проект на MNIST по каркасу: DataLoader, модель, обучение на GPU, оценка на тесте. Добейся точности выше 0,97 и сохрани модель. Сравни с версией из тома 1.</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Возьми СВОЙ датасет (фото или таблицу), напиши для него Dataset, добавь Dropout/BatchNorm, кривые обучения и early stopping. Доведи до сохранённой лучшей модели. Опиши, где PyTorch дал больше контроля, чем Keras.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Что в PyTorch оказалось сложнее, чем в Keras, а что — удобнее?</li><li>Почему точность на одной задаче у Keras и PyTorch примерно одинакова?</li><li>Какой из пяти шагов обучения тебе поначалу было труднее всего запомнить и почему?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Перечисли кирпичики полного проекта на PyTorch.</p><p>2. Почему кода в PyTorch больше, чем в Keras, — и что мы получаем взамен?</p><p>3. Готов ли ты объяснить весь каркас обучения строка за строкой?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch05.html">‹ Глава 5</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch07.html">Глава 7 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 31. Подбор гиперпараметров · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml" data-chapter="31">
+    <p class="eyebrow">Учебник · Часть 7 · Продвинутые темы</p>
+    <h1>Глава 31. Подбор гиперпараметров</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь автоматически подбирать гиперпараметры через GridSearchCV и RandomizedSearchCV, встраивать подбор в Pipeline и понимать идею современных инструментов вроде Optuna.</p></aside>
+      <p>В главах про KNN и деревья мы подбирали K и max_depth вручную, циклом. Это работает для одного параметра, но что если их пять и у каждого десяток значений? Перебирать вручную невозможно. К счастью, sklearn умеет искать лучшие настройки автоматически.</p>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: настройка гитары  💡</p><p>Гиперпараметры — как колки на гитаре: их крутят, пока звук не станет чистым. Модель со стандартными настройками играет неплохо, но точная подстройка колков (гиперпараметров) делает звук идеальным. GridSearchCV — терпеливый мастер, который методично пробует все комбинации настроек и находит лучшее звучание. Только вместо слуха он проверяет качество по кросс-валидации.</p></aside>
+      <h2>GridSearchCV: перебрать всё</h2>
+      <p>GridSearchCV пробует все комбинации из заданной «сетки» значений и для каждой честно оценивает модель по кросс-валидации. В конце выдаёт лучшую комбинацию. Надёжно, но при многих параметрах комбинаций становится очень много.</p>
+      <pre><code># === Подготовка: данные пингвинов ===
+import pandas as pd
+from sklearn.model_selection import train_test_split
+url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/penguins.csv"
+df = pd.read_csv(url).dropna(subset=["bill_length_mm", "body_mass_g", "species"])
+X = df[["bill_length_mm", "body_mass_g"]]
+y = df["species"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+
+# Сетка: какие значения перебрать
+grid = {
+    "n_estimators": [50, 100, 200],
+    "max_depth": [3, 5, 10, None],
+}
+
+search = GridSearchCV(
+    RandomForestClassifier(random_state=42),
+    grid, cv=5, scoring="accuracy")
+search.fit(X_train, y_train)
+
+print("Лучшие параметры:", search.best_params_)
+print("Лучший результат:", round(search.best_score_, 3))</code></pre>
+      <p>Здесь 3 × 4 = 12 комбинаций, каждая проверяется 5-кратной кросс-валидацией — 60 обучений модели. GridSearchCV делает это сам и запоминает лучшую.</p>
+      <h2>RandomizedSearchCV: когда комбинаций слишком много</h2>
+      <p>Если параметров много, полный перебор становится неподъёмным (сотни тысяч комбинаций). RandomizedSearchCV пробует случайное подмножество — скажем, 20 случайных комбинаций — и часто находит почти такой же хороший результат в разы быстрее.</p>
+      <pre><code>from sklearn.model_selection import RandomizedSearchCV
+
+search = RandomizedSearchCV(
+    RandomForestClassifier(random_state=42),
+    grid, n_iter=10,      # пробуем только 10 случайных комбинаций
+    cv=5, random_state=42)
+search.fit(X_train, y_train)</code></pre>
+      <h2>Подбор внутри Pipeline</h2>
+      <p>Красота в том, что подбор параметров дружит с Pipeline из главы 10. Можно настраивать параметры любого шага конвейера, обращаясь к ним через имя шага и двойное подчёркивание.</p>
+      <pre><code>from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+
+pipe = Pipeline([("sc", StandardScaler()),
+                 ("knn", KNeighborsClassifier())])
+
+# Настраиваем K внутри шага "knn" (имя шага + __ + параметр)
+grid = {"knn__n_neighbors": [3, 5, 7, 9, 15]}
+search = GridSearchCV(pipe, grid, cv=5).fit(X_train, y_train)
+print(search.best_params_)</code></pre>
+      <h2>Optuna — современный стандарт</h2>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>GridSearchCV перебирает «вслепую». Современные инструменты вроде Optuna умнее: они учатся на предыдущих попытках и направляют поиск в перспективные области, находя хорошие параметры за меньшее число проб. Это как мастер, который по первым нескольким подкруткам колков понимает, в какую сторону крутить дальше. Для больших задач Optuna — текущий стандарт; идея та же, что у GridSearchCV, но поиск умный.</p></aside>
+      <aside class="callout warn"><p class="callout-title">Внимание: не переусердствуй  ⚠️</p><p>Подбор гиперпараметров обычно даёт скромный прирост (пара процентов). Хорошие признаки (глава 26) и чистые данные почти всегда важнее идеальной настройки. Не трать дни на выжимание десятых долей процента — сначала выжми максимум из данных и признаков.</p></aside>
+      <h2>Задания</h2>
+      <aside class="callout note"><p class="callout-title">Базовый уровень</p><p>Замени ручной цикл подбора K для KNN на GridSearchCV. Найди лучшее K автоматически. Совпало ли оно с тем, что ты находил вручную в фазе 2?</p></aside>
+      <aside class="callout star"><p class="callout-title">Со звёздочкой  ⭐</p><p>Настрой случайный лес через GridSearchCV по двум параметрам (n_estimators, max_depth) внутри Pipeline. Сравни точность до подбора (настройки по умолчанию) и после. Насколько вырос результат? Стоил ли прирост потраченного времени?</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Когда стоит выбрать RandomizedSearchCV вместо полного GridSearchCV?</li><li>Почему подбор параметров оценивают по кросс-валидации, а не по одному разбиению?</li><li>Что важнее для результата — идеальная настройка параметров или хорошие признаки? Почему?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Чем GridSearchCV отличается от RandomizedSearchCV?</p><p>2. Как настроить параметр шага внутри Pipeline?</p><p>3. Что обычно даёт больший прирост — подбор параметров или хорошие признаки?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch30.html">‹ Глава 30</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch32.html">Глава 32 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

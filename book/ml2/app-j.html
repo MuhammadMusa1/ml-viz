@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение J. Глоссарий терминов уровня 2 · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение J. Глоссарий терминов уровня 2</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Новые термины тома 2. Термины тома 1 (train/test, Pipeline, эмбеддинг и др.) — в глоссарии первого тома.</p>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Термин</b></th><th><b>Значение</b></th></tr><tr><td>Batch (батч)</td><td>Пачка примеров, которую подают модели за один шаг обучения.</td></tr><tr><td>BatchNorm</td><td>Слой, нормирующий значения внутри сети; ускоряет и стабилизирует обучение.</td></tr><tr><td>CI/CD</td><td>Автопроверка кода при каждом изменении (CI) и автовыпуск (CD).</td></tr><tr><td>Cross-encoder (кросс-энкодер)</td><td>Модель, оценивающая пару «запрос+документ» вместе; точнее, но медленнее.</td></tr><tr><td>DataLoader</td><td>Инструмент PyTorch, выдающий данные батчами и перемешивающий их.</td></tr><tr><td>Data drift (дрейф данных)</td><td>Постепенное расхождение свежих данных с обучающими; модель «стареет».</td></tr><tr><td>Detection (детекция)</td><td>Задача «что и где»: найти объекты и обвести рамками.</td></tr><tr><td>Docker</td><td>Упаковка приложения с окружением в контейнер; «работает у всех».</td></tr><tr><td>Dropout</td><td>Случайное отключение нейронов при обучении против переобучения.</td></tr><tr><td>DuckDB</td><td>Лёгкая база для SQL прямо в Python, без сервера.</td></tr><tr><td>Early stopping</td><td>Остановка обучения, когда validation-ошибка перестала падать.</td></tr><tr><td>Embedding-модель</td><td>Модель, превращающая текст в вектор смысла (Sentence Transformers).</td></tr><tr><td>FastAPI</td><td>Библиотека для выпуска модели как API для других программ.</td></tr><tr><td>Fine-tuning</td><td>Дообучение готовой модели под свою задачу.</td></tr><tr><td>Function calling</td><td>Способность LLM вызывать внешние инструменты.</td></tr><tr><td>Grad-CAM</td><td>Тепловая карта «куда смотрит» свёрточная сеть при решении.</td></tr><tr><td>GNN</td><td>Графовая нейросеть — учится на данных-связях (соцсети, молекулы).</td></tr><tr><td>LangChain</td><td>Библиотека-конструктор приложений с LLM (в т.ч. RAG).</td></tr><tr><td>LoRA / QLoRA</td><td>Экономное дообучение LLM: учим маленькие адаптеры, не всю модель.</td></tr><tr><td>MLflow</td><td>Журнал экспериментов: параметры, метрики, модели.</td></tr><tr><td>Мульти-агенты</td><td>Несколько LLM-агентов с ролями, решающих задачу вместе.</td></tr><tr><td>Ollama</td><td>Инструмент запуска LLM локально, офлайн и приватно.</td></tr><tr><td>polars / dask</td><td>Замена pandas: polars — быстрее, dask — данные больше памяти.</td></tr><tr><td>Pull request (PR)</td><td>Заявка влить свою ветку в main после код-ревью.</td></tr><tr><td>RAG</td><td>Ответы LLM по найденным в твоих документах фрагментам.</td></tr><tr><td>RAGAS</td><td>Инструмент автоматической оценки качества RAG.</td></tr><tr><td>ResNet</td><td>Глубокая сеть с остаточными связями (skip connections).</td></tr><tr><td>Segmentation (сегментация)</td><td>Разметка объекта по пикселям, а не рамкой.</td></tr><tr><td>Streaming</td><td>Потоковая выдача ответа LLM по словам, как в ChatGPT.</td></tr><tr><td>Тензор</td><td>Многомерный массив чисел в PyTorch; умеет GPU и градиенты.</td></tr><tr><td>Chunking</td><td>Нарезка документов на куски для RAG.</td></tr><tr><td>Автоград</td><td>Автоматический расчёт градиентов в PyTorch (.backward()).</td></tr><tr><td>Векторная база</td><td>Хранилище эмбеддингов с быстрым поиском ближайших (Chroma).</td></tr><tr><td>Квантование</td><td>Снижение точности чисел модели ради лёгкости и скорости.</td></tr><tr><td>Feature store</td><td>Общий склад признаков для команды и разных моделей.</td></tr><tr><td>YOLO</td><td>Быстрая модель детекции объектов («смотрим один раз»).</td></tr></table></div>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-i.html">‹ Приложение I</a><a class="btn" href="index.html">Оглавление</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

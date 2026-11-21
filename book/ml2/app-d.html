@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение D. Шпаргалка по Docker и Git · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение D. Шпаргалка по Docker и Git</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Инженерия из фазы 6: упаковка (Docker) и командная работа (Git).</p>
+      <h2><b>Git: базовые команды</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>git init</td><td>Завести репозиторий</td></tr><tr><td>git add . / git commit -m "..."</td><td>Добавить и сохранить</td></tr><tr><td>git push / git pull</td><td>Отправить / подтянуть</td></tr><tr><td>git checkout -b feature/x</td><td>Создать ветку и перейти</td></tr><tr><td>git merge / git status</td><td>Слить ветку / статус</td></tr></table></div>
+      <h2><b>Git: командный процесс</b></h2>
+      <aside class="callout goal"><p class="callout-title">Цикл командной работы  🎯</p><p>1. Своя ветка под задачу: git checkout -b feature/задача</p><p>2. Работаешь, коммитишь, пушишь ветку</p><p>3. На GitHub открываешь pull request</p><p>4. Коллеги делают код-ревью, ты правишь</p><p>5. После одобрения — merge в main</p><p>Правило: никогда не коммить прямо в main.</p></aside>
+      <h2><b>Docker: Dockerfile</b></h2>
+      <pre><code>FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
+      <h2><b>Docker: команды</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>docker build -t имя .</td><td>Собрать образ по Dockerfile</td></tr><tr><td>docker run -p 8000:8000 имя</td><td>Запустить контейнер</td></tr><tr><td>docker ps</td><td>Список запущенных контейнеров</td></tr><tr><td>docker images</td><td>Список собранных образов</td></tr></table></div>
+      <aside class="callout info"><p class="callout-title">Три понятия Docker  ℹ️</p><p>Dockerfile — рецепт (как собрать). Образ — готовый слепок (собран по рецепту). Контейнер — запущенный экземпляр образа. Рецепт → замороженное блюдо → разогретое блюдо.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-c.html">‹ Приложение C</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-e.html">Приложение E ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение I. Частые ошибки уровня 2 · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение I. Частые ошибки уровня 2</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Типичные проблемы тома 2 и как их чинить. Когда что-то не работает — сначала загляни сюда.</p>
+      <h2><b>PyTorch</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Симптом</b></th><th><b>Причина и решение</b></th></tr><tr><td>Сеть не учится совсем</td><td>Забыт optimizer.step() или zero_grad(); проверь порядок цикла</td></tr><tr><td>«tensors on different devices»</td><td>Модель и данные на разных устройствах — .to(device) обоим</td></tr><tr><td>Метрики врут на тесте</td><td>Забыл model.eval() и torch.no_grad() на оценке</td></tr><tr><td>load_state_dict падает</td><td>Архитектура модели не совпадает с сохранённой</td></tr></table></div>
+      <h2><b>RAG и LLM</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Симптом</b></th><th><b>Причина и решение</b></th></tr><tr><td>RAG отвечает мимо</td><td>Плохой retrieval: проверь chunking и эмбеддинг-модель</td></tr><tr><td>Модель выдумывает</td><td>Низкая faithfulness: усиль промпт «только по тексту», проверь куски</td></tr><tr><td>Плохо на русском</td><td>Английская эмбеддинг-модель — возьми многоязычную</td></tr><tr><td>Импорт LangChain не работает</td><td>Изменился между версиями — сверься с документацией</td></tr></table></div>
+      <h2><b>Данные и инженерия</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Симптом</b></th><th><b>Причина и решение</b></th></tr><tr><td>pandas тормозит/падает</td><td>Слишком много данных — polars (быстрее) или dask (по кускам)</td></tr><tr><td>Парсинг забанили</td><td>Нет пауз между запросами; проверь robots.txt и добавь time.sleep</td></tr><tr><td>«работает у меня»</td><td>Разное окружение — зафиксируй через Docker/requirements</td></tr><tr><td>Потерял лучшую модель</td><td>Не вёл эксперименты — используй MLflow</td></tr></table></div>
+      <aside class="callout goal"><p class="callout-title">Главный принцип отладки (из тома 1)  🎯</p><p>Меняй по одной вещи за раз. Читай текст ошибки — там подсказка. Для RAG: сначала проверь retrieval (те ли куски находятся), потом generation. Терпение решает почти всё.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-h.html">‹ Приложение H</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-j.html">Приложение J ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

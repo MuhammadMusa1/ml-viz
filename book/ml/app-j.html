@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение J. Частые ошибки и как их исправить · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение J. Частые ошибки и как их исправить</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Ошибки — часть обучения. Ниже собраны самые типичные проблемы новичков с решениями. Когда что-то не работает, сначала загляни сюда.</p>
+      <h2>Ошибки в данных и оценке</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Симптом</b></th><th><b>Причина и решение</b></th></tr><tr><td>Точность на test намного ниже train</td><td>Переобучение. Упрости модель (меньше max_depth), добавь данных</td></tr><tr><td>Точность подозрительно высока (~0,99)</td><td>Утечка данных. Проверь, нет ли «подсматривающих» признаков</td></tr><tr><td>Модель не лучше baseline</td><td>Слабые признаки. Попробуй feature engineering или другую задачу</td></tr><tr><td>Результат меняется при каждом запуске</td><td>Забыт random_state. Поставь его везде</td></tr></table></div>
+      <h2>Ошибки в коде</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Симптом</b></th><th><b>Причина и решение</b></th></tr><tr><td>KNN даёт плохой результат</td><td>Нет масштабирования. Добавь StandardScaler в Pipeline</td></tr><tr><td>Ошибка при фильтрации Pandas</td><td>Одиночное = вместо ==; забыты скобки вокруг условий</td></tr><tr><td>Ошибка формы данных в sklearn</td><td>Признаки должны быть 2D: используй reshape(-1, 1)</td></tr><tr><td>ValueError про текст в модели</td><td>Модель не понимает текст. Закодируй через OneHotEncoder</td></tr></table></div>
+      <h2>Ошибки в нейросетях и LLM</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Симптом</b></th><th><b>Причина и решение</b></th></tr><tr><td>Сеть совсем не учится</td><td>Забыт relu; пиксели не поделены на 255</td></tr><tr><td>MobileNet/Gradio не работает</td><td>Нужен интернет — запускай в Colab, не офлайн</td></tr><tr><td>LLM выдумывает факты</td><td>Галлюцинации. Используй RAG, перепроверяй важное</td></tr><tr><td>API возвращает ошибку доступа</td><td>Проверь ключ; храни его в «Секретах» Colab</td></tr></table></div>
+      <aside class="callout goal"><p class="callout-title">Главный принцип отладки  🎯</p><p>Читай текст ошибки — там почти всегда есть подсказка (номер строки, тип проблемы). Меняй по одной вещи за раз и проверяй. Если застрял — скопируй ошибку в поисковик или спроси у LLM, объяснив, что пытаешься сделать. Ошибки решаются терпением, а не паникой.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-i.html">‹ Приложение I</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-k.html">Приложение K ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

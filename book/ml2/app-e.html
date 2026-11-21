@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение E. Шпаргалка по MLflow · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение E. Шпаргалка по MLflow</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Отслеживание экспериментов из фазы 6 — «лабораторный журнал» для ML.</p>
+      <h2><b>Логирование запуска</b></h2>
+      <pre><code>import mlflow, mlflow.sklearn
+
+mlflow.set_experiment("мой_проект")
+
+with mlflow.start_run():
+    model = ...  # обучаем
+    mlflow.log_param("lr", 0.001)          # параметр
+    mlflow.log_param("n_estimators", 100)
+    mlflow.log_metric("accuracy", 0.87)    # метрика
+    mlflow.log_metric("f1", 0.82)
+    mlflow.sklearn.log_model(model, "model")  # сама модель</code></pre>
+      <h2><b>Что логировать</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>log_param("имя", значение)</td><td>Параметр (lr, глубина, число деревьев)</td></tr><tr><td>log_metric("имя", число)</td><td>Метрика (accuracy, f1, loss)</td></tr><tr><td>log_model(model, "model")</td><td>Сохранить саму модель</td></tr><tr><td>log_artifact("file.png")</td><td>Сохранить файл (график, отчёт)</td></tr></table></div>
+      <h2><b>Просмотр</b></h2>
+      <pre><code># В терминале — открыть веб-таблицу всех запусков:
+mlflow ui
+# затем открой http://localhost:5000
+# там: сортировка по метрике, сравнение запусков, скачивание моделей</code></pre>
+      <aside class="callout goal"><p class="callout-title">Зачем это  🎯</p><p>Когда экспериментов десятки, MLflow отвечает на вопрос «какой запуск был лучшим и с какими параметрами?» точно, а не «где-то был хороший вариант». Вместе с random_state, Git и Docker даёт полную воспроизводимость.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-d.html">‹ Приложение D</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-f.html">Приложение F ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

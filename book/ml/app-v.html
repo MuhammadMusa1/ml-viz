@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение V. MLOps на минималках · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение V. MLOps на минималках</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Обучить модель — половина дела. Что происходит дальше, когда модель нужно сохранить, запустить в работу и поддерживать? Это область MLOps. Здесь — самые основы на понятном уровне.</p>
+      <h2>Сохранение модели</h2>
+      <p>Обученную модель не нужно переобучать каждый раз — её сохраняют в файл и загружают, когда нужно. Для sklearn это делается в одну строку через joblib.</p>
+      <pre><code>import joblib
+
+# Сохранить обученную модель (или весь Pipeline!) в файл
+joblib.dump(model, "my_model.joblib")
+
+# Позже — загрузить и сразу использовать, без переобучения
+model = joblib.load("my_model.joblib")
+model.predict(X_new)</code></pre>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>Сохраняй весь Pipeline целиком, а не только модель! Тогда вся предобработка (масштабирование, кодирование) поедет вместе с моделью, и на новых данных всё сработает одинаково. Это ещё одна причина любить Pipeline из главы 10.</p></aside>
+      <h2>Простой API на FastAPI</h2>
+      <p>Чтобы другие программы могли обращаться к твоей модели, её оборачивают в API — программный интерфейс. FastAPI позволяет сделать это компактно. (В курсе для интерфейса мы использовали Gradio — он проще; FastAPI нужен, когда к модели обращается не человек, а другая программа.)</p>
+      <pre><code># pip install fastapi uvicorn
+from fastapi import FastAPI
+import joblib
+
+app = FastAPI()
+model = joblib.load("my_model.joblib")
+
+@app.post("/predict")
+def predict(features: list[float]):
+    prediction = model.predict([features])[0]
+    return {"prediction": int(prediction)}
+
+# Запуск: uvicorn main:app
+# Теперь другие программы могут слать данные и получать прогноз</code></pre>
+      <h2>Дрейф данных (data drift)</h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: модель стареет  💡</p><p>Модель обучена на данных прошлого. Но мир меняется: вкусы, цены, поведение людей. Со временем новые данные всё меньше похожи на те, на которых модель училась, — это дрейф данных (data drift). Модель «стареет» и предсказывает всё хуже, хотя её код не менялся. Как карта города, которая устаревает по мере стройки новых улиц.</p></aside>
+      <p>Что с этим делать: периодически сравнивать распределение свежих данных с обучающими (не «уехало» ли среднее, не появились ли новые категории) и следить за метриками на свежих данных. Если качество падает — модель пора переобучить на новых данных. В серьёзных системах это делают автоматически и регулярно.</p>
+      <h2>Жизненный цикл модели</h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Этап</b></th><th><b>Что происходит</b></th></tr><tr><td>Обучение</td><td>Модель учится на исторических данных</td></tr><tr><td>Сохранение</td><td>Модель (Pipeline) сохраняется в файл</td></tr><tr><td>Развёртывание</td><td>Модель доступна через API или приложение</td></tr><tr><td>Мониторинг</td><td>Следим за качеством и дрейфом данных</td></tr><tr><td>Переобучение</td><td>При падении качества — учим заново на свежих данных</td></tr></table></div>
+      <p>Этот цикл повторяется: модель — не «сделал и забыл», а живая система, которую поддерживают. Понимание этого отличает учебный проект от промышленного.</p>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-u.html">‹ Приложение U</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-w.html">Приложение W ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

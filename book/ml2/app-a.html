@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение A. Шпаргалка по PyTorch · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение A. Шпаргалка по PyTorch</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Рабочий минимум PyTorch из фазы 1: тензоры, модель, цикл обучения, сохранение. Держи рядом при работе с нейросетями.</p>
+      <h2><b>Тензоры</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>torch.tensor([1,2,3])</td><td>Создать тензор из списка</td></tr><tr><td>torch.zeros(2,3) / torch.rand(2,3)</td><td>Нули / случайные числа</td></tr><tr><td>x.shape</td><td>Форма тензора</td></tr><tr><td>x.reshape(-1, 1)</td><td>Изменить форму (−1 = посчитать самому)</td></tr><tr><td>x.to(device)</td><td>Перенести на GPU/CPU</td></tr><tr><td>x.requires_grad_(True)</td><td>Следить за градиентами</td></tr><tr><td>x.numpy() / torch.tensor(np_arr)</td><td>Тензор ↔ NumPy</td></tr></table></div>
+      <h2><b>Модель (nn.Module)</b></h2>
+      <pre><code>import torch.nn as nn
+
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(входы, 128)
+        self.fc2 = nn.Linear(128, классы)
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        x = self.relu(self.fc1(x))
+        return self.fc2(x)</code></pre>
+      <h2><b>Слои и функции</b></h2>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Код</b></th><th><b>Что делает</b></th></tr><tr><td>nn.Linear(in, out)</td><td>Полносвязный слой (Dense)</td></tr><tr><td>nn.Conv2d(in, out, 3)</td><td>Свёрточный слой</td></tr><tr><td>nn.ReLU()</td><td>Активация ReLU</td></tr><tr><td>nn.Dropout(0.3)</td><td>Dropout (регуляризация)</td></tr><tr><td>nn.BatchNorm1d(n)</td><td>Батч-нормализация</td></tr><tr><td>nn.CrossEntropyLoss()</td><td>Ошибка для классификации</td></tr><tr><td>nn.MSELoss()</td><td>Ошибка для регрессии</td></tr></table></div>
+      <h2><b>Цикл обучения (сердце PyTorch)</b></h2>
+      <pre><code>optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+for epoch in range(epochs):
+    model.train()
+    for X, y in train_loader:
+        X, y = X.to(device), y.to(device)
+        optimizer.zero_grad()      # 1. обнулить градиенты
+        pred = model(X)            # 2. прогноз
+        loss = loss_fn(pred, y)    # 3. ошибка
+        loss.backward()            # 4. градиенты
+        optimizer.step()           # 5. шаг</code></pre>
+      <h2><b>Оценка и сохранение</b></h2>
+      <pre><code># Оценка (без градиентов, режим eval)
+model.eval()
+with torch.no_grad():
+    for X, y in test_loader:
+        pred = model(X.to(device)).argmax(dim=1)
+
+# Сохранить / загрузить веса
+torch.save(model.state_dict(), "model.pt")
+model.load_state_dict(torch.load("model.pt")); model.eval()</code></pre>
+      <aside class="callout goal"><p class="callout-title">Золотые правила PyTorch  🎯</p><p>Порядок цикла всегда: zero_grad → forward → loss → backward → step.</p><p>Модель и данные — на одном устройстве (.to(device) для обоих).</p><p>На обучении model.train(), на оценке model.eval() + torch.no_grad().</p><p>Сохраняй state_dict (веса), а не модель целиком; код модели держи рядом.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch47.html">‹ Глава 47</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-b.html">Приложение B ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

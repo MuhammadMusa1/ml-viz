@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение U. Отладка ML-моделей · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение U. Отладка ML-моделей</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>«Модель не работает — что делать?» — самый частый вопрос. Здесь — система диагностики: как понять, в чём проблема, и куда копать. Держи рядом, когда результат разочаровывает.</p>
+      <h2>Диагностика по train и test</h2>
+      <p>Первый шаг — сравнить точность на train и на test. Это сразу сужает круг проблем.</p>
+      <div class="tbl-wrap"><table class="book-table"><tr><th><b>Train</b></th><th><b>Test</b></th><th><b>Диагноз</b></th><th><b>Что делать</b></th></tr><tr><td>Высокий</td><td>Низкий</td><td>Переобучение (high variance)</td><td>Упростить модель, больше данных, регуляризация</td></tr><tr><td>Низкий</td><td>Низкий</td><td>Недообучение (high bias)</td><td>Усложнить модель, больше признаков, feature engineering</td></tr><tr><td>Высокий</td><td>Высокий</td><td>Всё хорошо</td><td>Модель обобщает — можно улучшать дальше</td></tr><tr><td>Низкий</td><td>Высокий</td><td>Странность</td><td>Проверь данные и разбиение — обычно ошибка</td></tr></table></div>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: два вида плохой учёбы  💡</p><p>Недообучение (high bias) — ученик не выучил даже основы, плох везде. Лечится «учить больше и глубже» (сложнее модель, лучше признаки). Переобучение (high variance) — ученик вызубрил учебник наизусть, но валится на новых задачах. Лечится «понимать, а не зубрить» (проще модель, больше данных). Диагноз ставится по разнице между train и test.</p></aside>
+      <h2>Чек-лист «модель показывает 50%»</h2>
+      <aside class="callout warn"><p class="callout-title">С чего начать, если всё плохо  ⚠️</p><p>Проверь baseline — может, задача трудная и 50% близко к пределу?</p><p>Проверь данные глазами: нет ли мусора, все ли метки верны?</p><p>Проверь масштаб признаков (для KNN, нейросетей) — забыл StandardScaler?</p><p>Проверь, не перепутаны ли X и y, train и test.</p><p>Проверь баланс классов — может, нужен class_weight (глава 27)?</p><p>Проверь признаки: есть ли в них вообще сигнал? Построй feature importance.</p><p>Попробуй заведомо сильную модель (случайный лес) как проверку.</p></aside>
+      <h2>Кривые обучения (learning curves)</h2>
+      <p>Кривая обучения показывает, как меняется качество с ростом объёма данных. Она отвечает на важный вопрос: поможет ли собрать больше данных?</p>
+      <pre><code>from sklearn.model_selection import learning_curve
+import matplotlib.pyplot as plt
+import numpy as np
+
+sizes, train_sc, test_sc = learning_curve(model, X, y, cv=5,
+    train_sizes=np.linspace(0.1, 1.0, 5))
+
+plt.plot(sizes, train_sc.mean(axis=1), label="train")
+plt.plot(sizes, test_sc.mean(axis=1), label="test (CV)")
+plt.xlabel("Размер обучающей выборки"); plt.legend()
+plt.title("Кривая обучения")
+plt.show()</code></pre>
+      <p>Как читать: если train и test-кривые сошлись низко — недообучение, больше данных не поможет (нужна модель посложнее или признаки). Если между ними большой разрыв — переобучение, и вот тут больше данных как раз поможет сблизить кривые.</p>
+      <aside class="callout goal"><p class="callout-title">Главный принцип отладки  🎯</p><p>Меняй по одной вещи за раз и смотри на эффект. Читай текст ошибки — там подсказка. Сначала диагноз (train/test, данные, baseline), потом лечение. Хаотично крутить всё подряд — верный способ запутаться. Отладка — это методичное сужение круга причин.</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="app-t.html">‹ Приложение T</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-v.html">Приложение V ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

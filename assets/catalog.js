@@ -162,3 +162,9 @@ window.GLOSSARY = [
   { re: 'вектор[а-яё]*',                term: { ru: 'Вектор' },         def: { ru: 'Просто список чисел, например [0.2, 0.9, 0.1].' } },
   { re: 'softmax',                       term: { ru: 'Softmax' },        def: { ru: 'Превращает любые числа в проценты: все положительные, в сумме 100%.' } }
 ];
+
+/* Ноутбуки Colab к главам 1–33 книги лежат в notebooks/chNN.ipynb этого репозитория.
+   Colab открывает их прямо с GitHub — поэтому ссылка работает только для опубликованной (запушенной) версии. */
+window.COURSE = {
+  colab: 'https://colab.research.google.com/github/MuhammadMusa1/ml-viz/blob/main/notebooks/'
+};

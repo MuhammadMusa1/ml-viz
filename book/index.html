@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Учебники · Лаборатория ML</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <p class="lead" data-i18n="lead"></p>
+
+    <section class="phase">
+      <div class="grid">
+        <a class="card" href="ml/index.html">
+          <div class="meta"><span data-i18n="ml1Meta"></span></div>
+          <h3 data-i18n="ml1Title"></h3>
+          <div class="analogy" data-i18n="ml1About"></div>
+        </a>
+        <a class="card" href="ml2/index.html">
+          <div class="meta"><span data-i18n="ml2Meta"></span></div>
+          <h3 data-i18n="ml2Title"></h3>
+          <div class="analogy" data-i18n="ml2About"></div>
+        </a>
+        <a class="card" href="python/index.html">
+          <div class="meta"><span data-i18n="pyMeta"></span></div>
+          <h3 data-i18n="pyTitle"></h3>
+          <div class="analogy" data-i18n="pyAbout"></div>
+        </a>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../assets/core.js"></script>
+  <script src="../assets/catalog.js"></script>
+  <script>
+    var STR = {
+      ru: {
+        eyebrow: 'Учебник',
+        title: 'Учебники курса',
+        lead: 'Книги, по которым идёт курс. Читай главу, двигай ползунки в интерактиве к ней и запускай код в Colab.',
+        ml1Meta: 'Том 1 · 33 главы',
+        ml1Title: 'Машинное обучение для начинающих',
+        ml1About: 'От первых данных до своего проекта: Pandas, классический ML, нейросети, LLM. Глава N = урок N курса.',
+        ml2Meta: 'Том 2 · 47 глав',
+        ml2Title: 'Машинное обучение. Уровень 2',
+        ml2About: 'PyTorch, компьютерное зрение, эмбеддинги, RAG и агенты, MLOps — для тех, кто прошёл том 1.',
+        pyMeta: 'Подготовка · 30 уроков',
+        pyTitle: 'Основы программирования на Python',
+        pyAbout: 'Для тех, кто ещё не писал код: print, переменные, условия, циклы, функции и игры.',
+        howTitle: 'Как читать вместе с лабораторией',
+        howBody:
+          '<ol>' +
+          '<li><b>Глава книги = урок курса.</b> В начале глав 1–24 есть кнопки к интерактиву этого урока, а на странице урока внизу — кнопка «Глава N учебника».</li>' +
+          '<li><b>Код — в Colab.</b> К каждой главе тома 1 есть готовый ноутбук: кнопка «Открыть ноутбук в Colab». Для Colab нужен интернет и аккаунт Google.</li>' +
+          '<li><b>Код из книги можно скопировать.</b> У каждого блока кода есть кнопка «Скопировать» — вставь в ячейку Colab и запусти.</li>' +
+          '</ol>',
+        footer: 'Учебники — раздел Лаборатории ML. Работает офлайн, кроме ноутбуков Colab.'
+      }
+    };
+    MLViz.renderHeader('../');
+    MLViz.applyI18n(STR);
+  </script>
+</body>
+</html>

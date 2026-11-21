@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Глава 5. Early stopping и сохранение модели · Машинное обучение. Уровень 2 · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml2" data-chapter="5">
+    <p class="eyebrow">Учебник · Фаза 1 · PyTorch: берём управление в свои руки</p>
+    <h1>Глава 5. Early stopping и сохранение модели</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <aside class="callout goal"><p class="callout-title">Цель главы  🎯</p><p>После этой главы ты сможешь применять раннюю остановку (early stopping), чтобы не переобучаться, и сохранять/загружать модель через state_dict для повторного использования.</p></aside>
+      <p>Два практических навыка, без которых обучение «сырое»: вовремя остановиться (early stopping) и не потерять обученную модель (сохранение). Оба — стандарт реальной работы.</p>
+      <h2><b>Early stopping: остановись вовремя</b></h2>
+      <aside class="callout analogy"><p class="callout-title">Аналогия: снять пирог из духовки вовремя  💡</p><p>Если печь пирог слишком долго, он подгорит. С обучением так же: после какого-то момента validation-ошибка перестаёт падать и начинает расти — сеть переобучается, «подгорает». Early stopping — это таймер, который следит за validation-ошибкой и останавливает обучение, когда она перестала улучшаться несколько эпох подряд. Забираем «пирог» в лучший момент.</p></aside>
+      <pre><code># --- Мини-настройка: глава запускается сама (из глав 2-4) ---
+import torch, torch.nn as nn, torch.optim as optim
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader, random_split
+_full = datasets.MNIST(root="data", train=True, download=True,
+                      transform=transforms.ToTensor())
+_tr, _val = random_split(_full, [55000, 5000])
+train_loader = DataLoader(_tr, batch_size=64, shuffle=True)
+val_loader   = DataLoader(_val, batch_size=64)
+class Net(nn.Module):                       # та же сеть, что в главе 3
+    def __init__(self):
+        super().__init__()
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(28*28, 128)
+        self.fc2 = nn.Linear(128, 10)
+        self.relu = nn.ReLU()
+    def forward(self, x):
+        x = self.flatten(x)
+        x = self.relu(self.fc1(x))
+        return self.fc2(x)
+model = Net()
+loss_fn = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+def train_one_epoch(model, loader):         # один проход обучения
+    model.train()
+    for X, y in loader:
+        optimizer.zero_grad()
+        loss = loss_fn(model(X), y)
+        loss.backward(); optimizer.step()
+
+def evaluate(model, loader):                # средняя ошибка на данных
+    model.eval(); total = 0.0
+    with torch.no_grad():
+        for X, y in loader:
+            total += loss_fn(model(X), y).item()
+    return total / len(loader)
+# --- конец мини-настройки ---
+
+best_val = float("inf")     # лучшая (наименьшая) val-ошибка
+patience = 3                # сколько эпох терпеть без улучшения
+wait = 0
+
+for epoch in range(100):    # ставим много эпох — остановимся сами
+    train_one_epoch(model, train_loader)     # обучение (наш цикл)
+    val_loss = evaluate(model, val_loader)   # ошибка на validation
+
+    if val_loss &lt; best_val:
+        best_val = val_loss
+        wait = 0
+        torch.save(model.state_dict(), "best.pt")  # сохраняем лучшую
+    else:
+        wait += 1
+        if wait &gt;= patience:                  # терпение кончилось
+            print(f"Ранняя остановка на эпохе {epoch+1}")
+            break</code></pre>
+      <p>Логика проста: если validation-ошибка улучшилась — запоминаем модель и обнуляем счётчик терпения. Если нет — ждём. Прождали <code>patience</code> эпох без улучшения — останавливаемся. Так мы автоматически берём модель в её лучшей форме, не переобучая и не тратя время зря.</p>
+      <h2><b>Сохранение модели: state_dict</b></h2>
+      <p>Обучение может занять часы — терять результат нельзя. В PyTorch модель сохраняют через state_dict — это словарь со всеми обученными весами. Рекомендуемый способ (надёжнее, чем сохранять модель целиком).</p>
+      <pre><code># Сохранить веса обученной модели
+torch.save(model.state_dict(), "my_model.pt")
+
+# Загрузить в новой сессии:
+# 1. создать модель той же архитектуры
+model = Net()
+# 2. залить в неё сохранённые веса
+model.load_state_dict(torch.load("my_model.pt"))
+model.eval()                # сразу в режим оценки для использования</code></pre>
+      <aside class="callout warn"><p class="callout-title">Внимание, частая ошибка  ⚠️</p><p>Чтобы загрузить state_dict, нужно сначала создать модель ТОЙ ЖЕ архитектуры (тот же класс Net с теми же слоями). state_dict хранит только веса, а не структуру сети. Если архитектура не совпадёт — будет ошибка. Поэтому код модели держи рядом с сохранёнными весами. В Colab не забывай: файлы исчезают при сбросе сессии — сохраняй на Google Диск.</p></aside>
+      <h2><b>Собираем вместе</b></h2>
+      <p>Early stopping и сохранение работают в паре: следим за validation, при каждом улучшении сохраняем веса в best.pt, а после остановки загружаем именно лучшую версию. Это профессиональный паттерн обучения — им ты будешь пользоваться во всех проектах тома 2.</p>
+      <h2><b>Задания</b></h2>
+      <aside class="callout note"><p class="callout-title">Базовый путь  🟢</p><p>Обучи модель на MNIST и сохрани её через state_dict. Затем в новой ячейке создай модель заново, загрузи веса и проверь, что точность та же. Ты научился не терять обученную модель.</p></aside>
+      <aside class="callout note"><p class="callout-title">Продвинутый путь  🔵</p><p>Добавь в обучение early stopping с patience=3, следящий за validation-ошибкой, и сохранение лучшей модели. Поставь epochs=100 и убедись, что обучение само останавливается раньше. На какой эпохе? Сравни точность с моделью без ранней остановки.</p></aside>
+      <p><b>Вопросы для обсуждения  💬</b></p>
+      <ol><li>Почему обучать «подольше» — не всегда лучше?</li><li>Что именно хранит state_dict и почему рекомендуют сохранять его, а не модель целиком?</li><li>Как early stopping и сохранение лучшей модели работают вместе?</li></ol>
+      <aside class="callout info"><p class="callout-title">Проверь себя  ℹ️</p><p>1. Что такое early stopping и зачем он нужен?</p><p>2. Что хранится в state_dict?</p><p>3. Что нужно сделать перед загрузкой state_dict?</p></aside>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="ch04.html">‹ Глава 4</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="ch06.html">Глава 6 ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение. Уровень 2 · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложение A. Мини-справочник по Python · Машинное обучение для начинающих · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <!-- Страница сгенерирована tools/build_book.py из книги Word. Не правьте руками: пересоберите. -->
+  <header id="site-header"></header>
+  <main class="wrap book-page" data-book="ml">
+    <p class="eyebrow">Учебник</p>
+    <h1>Приложение A. Мини-справочник по Python</h1>
+    <div id="bookLinks"></div>
+    <article class="book-text">
+      <p>Короткое напоминание основ Python, которые нужны в этой книге. Если что-то из этого незнакомо — стоит потратить пару часов на вводный курс Python, прежде чем двигаться дальше.</p>
+      <h2>Переменные и типы данных</h2>
+      <pre><code>x = 5              # целое число (int)
+pi = 3.14          # дробное число (float)
+name = "Аня"       # строка (str)
+is_ready = True    # логический тип (bool): True / False
+nothing = None     # "ничего", пустое значение</code></pre>
+      <h2>Списки и словари</h2>
+      <pre><code># Список — упорядоченный набор элементов
+nums = [10, 20, 30]
+nums.append(40)         # добавить в конец -&gt; [10,20,30,40]
+print(nums[0])          # первый элемент -&gt; 10
+print(nums[-1])         # последний элемент -&gt; 40
+print(len(nums))        # длина списка -&gt; 4
+
+# Словарь — пары "ключ: значение"
+student = {"имя": "Аня", "возраст": 15}
+print(student["имя"])   # обращение по ключу -&gt; Аня
+student["класс"] = 9    # добавить новую пару</code></pre>
+      <h2>Условия</h2>
+      <pre><code>score = 75
+if score &gt;= 90:
+    print("отлично")
+elif score &gt;= 60:       # иначе если
+    print("хорошо")
+else:
+    print("надо подтянуть")</code></pre>
+      <h2>Циклы</h2>
+      <pre><code># Цикл по списку
+for n in [1, 2, 3]:
+    print(n)
+
+# Цикл по диапазону чисел
+for i in range(5):      # 0, 1, 2, 3, 4
+    print(i)
+
+# Цикл с условием
+count = 0
+while count &lt; 3:
+    count = count + 1</code></pre>
+      <h2>Функции</h2>
+      <pre><code># Функция принимает аргументы и возвращает результат
+def square(x):
+    return x * x
+
+print(square(4))        # -&gt; 16
+
+# Функция с несколькими аргументами и значением по умолчанию
+def greet(name, greeting="Привет"):
+    return f"{greeting}, {name}!"
+
+print(greet("Аня"))     # -&gt; Привет, Аня!</code></pre>
+      <aside class="callout info"><p class="callout-title">Полезно знать  ℹ️</p><p>Запись f"{name}!" называется f-строкой: она подставляет значение переменной прямо в текст. Очень удобно для вывода результатов. Отступы в Python не украшение, а часть синтаксиса — тело цикла, условия и функции сдвигается вправо на 4 пробела.</p></aside>
+      <h2>Импорт библиотек</h2>
+      <pre><code>import pandas as pd          # библиотека под коротким именем
+import numpy as np
+from sklearn.tree import DecisionTreeClassifier  # конкретный инструмент</code></pre>
+    </article>
+    <nav class="book-nav" aria-label="Главы">
+      <a class="btn" href="page36.html">‹ Глоссарий</a><a class="btn" href="index.html">Оглавление</a><a class="btn" href="app-b.html">Приложение B ›</a>
+    </nav>
+  </main>
+  <footer class="site-footer"><div class="wrap">Машинное обучение для начинающих · раздел «Учебник» Лаборатории ML.</div></footer>
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>MLViz.renderHeader('../../'); MLViz.renderBook();</script>
+</body>
+</html>
