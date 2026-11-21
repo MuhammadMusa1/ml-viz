@@ -5,12 +5,16 @@
 
   // ---------- Язык ----------
   // Сейчас только 'ru'. Таджикский ('tg') добавляется словарями в тех же объектах STR — разметку трогать не нужно.
-  var LANGS = ['ru'];          // когда появится перевод: ['ru', 'tg']
+  var LANGS = ['ru', 'tg'];    // таджикский — перевод из i18n/tg (tools/i18n.js)
   var LANG_NAMES = { ru: 'Рус', tg: 'Тоҷ' };
 
   function readLang() {
     var fromUrl = new URLSearchParams(location.search).get('lang');
-    if (fromUrl && LANGS.indexOf(fromUrl) !== -1) return fromUrl;
+    if (fromUrl && LANGS.indexOf(fromUrl) !== -1) {
+      // Язык из ссылки запоминаем: иначе на следующем уроке (ссылки в шапке без ?lang) он сбросился бы
+      try { localStorage.setItem('mlviz.lang', fromUrl); } catch (e) {}
+      return fromUrl;
+    }
     try {
       var saved = localStorage.getItem('mlviz.lang');
       if (saved && LANGS.indexOf(saved) !== -1) return saved;
@@ -32,6 +36,10 @@
     root.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(dict, el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-html]').forEach(function (el) { el.innerHTML = t(dict, el.dataset.i18nHtml); });
     document.documentElement.lang = lang;
+    // Название вкладки браузера: в HTML оно русское, на другом языке берём заголовок страницы из перевода
+    if (root === document && lang !== 'ru' && dict[lang] && dict[lang].title) {
+      document.title = (dict[lang].title + ' · ' + t(UI, 'brand')).replace(/<[^>]+>/g, '');
+    }
     if (root === document) decorateTerms();
   }
 
@@ -50,8 +58,7 @@
           doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.',
           book: 'Учебник', readChapter: '📖 Глава {n} учебника', colab: 'Открыть ноутбук в Colab',
           bookLinksTitle: 'К этой главе', vizLink: '🧪 Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓' },
-    tg: { all: 'Ҳамаи дарсҳо', brand: 'Лабораторияи <b>ML</b>', lesson: 'Дарси {n}', lessonShort: 'Дарси {n} ({k}/{m})',
-          lessonPart: 'Дарси {n} · қисми {k} аз {m}', prev: 'Дарси пешина: {t}', next: 'Дарси оянда: {t}', home: 'Лабораторияи ML — ба саҳифаи асосӣ' }
+    tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"📖 Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","bookLinksTitle":"Ба ин боб","vizLink":"🧪 Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓"}
   };
 
   // Номер страницы в уроке: на один урок курса бывает несколько страниц (урок 17 — три).
@@ -210,7 +217,10 @@
     }
     G.forEach(function (g, gi) {
       // Границы слова для кириллицы: \b в JS понимает только латиницу
-      var re = new RegExp('(^|[^\\p{L}\\p{N}_])(' + g.re + ')(?![\\p{L}\\p{N}_])', 'iu');
+      // На другом языке — своя основа слова (re_tg из перевода каталога); нет её — термин на этом языке не ищем
+      var stem = lang === 'ru' ? g.re : g['re_' + lang];
+      if (!stem) return;
+      var re = new RegExp('(^|[^\\p{L}\\p{N}_])(' + stem + ')(?![\\p{L}\\p{N}_])', 'iu');
       for (var k = 0; k < roots.length; k++) {
         var w = document.createTreeWalker(roots[k], NodeFilter.SHOW_TEXT), node, m;
         while ((node = w.nextNode())) {
