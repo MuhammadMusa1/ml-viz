@@ -92,6 +92,7 @@
             <h3 data-i18n="kernelLabel"></h3>
             <div class="seg" id="kernelBtns" style="margin-top:6px"></div>
             <div class="kgrid" id="kgrid"></div>
+            <button type="button" id="resetK" style="margin-top:8px" data-i18n="resetK" hidden></button>
             <p class="note" id="kernelNote"></p>
           </div>
         </div>
@@ -181,6 +182,7 @@
         kn_blur: 'Среднее девяти соседей (каждый вес 1/9): картинка становится мягче.',
         kn_sharpen: 'Центр ×5 минус четыре соседа: края становятся резче.',
         kn_custom: 'Нажимай на клетки фильтра: значение меняется −1 → 0 → 1 → 2 → −2.',
+        resetK: 'Сбросить фильтр',
         reluLabel: 'ReLU после фильтра',
         reluNote: 'Минусы превращаются в 0 — как в нейроне с ReLU (урок 13).',
         numsLabel: 'Показывать числа',
@@ -354,10 +356,11 @@
     function draw() {
       var ctx = g.ctx, cell = L.cell, font = MLViz.cssVar('--font'), out = featureMap(), k = kernel();
       ctx.clearRect(0, 0, g.w, g.h);
-      // Масштаб цвета: самое большое возможное значение для картинки из 0 и 1
-      var pos = 0, neg = 0;
-      k.forEach(function (r) { r.forEach(function (v) { if (v > 0) pos += v; else neg -= v; }); });
-      var scale = Math.max(pos, neg, 1e-9);
+      // Масштаб цвета — самый сильный отклик на этой карте: иначе у «Резкости» (сумма весов 5)
+      // обычная линия со значением 1 выходила бледной и казалось, что резкость «тусклее» краёв.
+      // Сами числа не меняются — их видно в расчёте и на клетках.
+      var scale = 1e-9;
+      out.forEach(function (r) { r.forEach(function (v) { scale = Math.max(scale, Math.abs(v)); }); });
 
       ctx.font = 'bold ' + L.fs + 'px ' + font; ctx.fillStyle = C_MUTED; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
       ctx.fillText(T('cvIn') + ' 14 × 14', L.in.x, L.in.y - 6);
@@ -444,6 +447,7 @@
         });
       });
       el('kernelNote').textContent = T('kn_' + state.kernel);
+      el('resetK').hidden = !custom;
 
       var ex = extremes(featureMap());
       el('statMax').innerHTML = T('statMax', { v: fmt(ex.max.v), r: ex.max.r + 1, c: ex.max.c + 1 });
@@ -533,6 +537,11 @@
     });
     el('relu').addEventListener('change', function (e) { state.relu = e.target.checked; refresh(); });
     el('nums').addEventListener('change', function (e) { state.nums = e.target.checked; draw(); });
+    // «Свой» фильтр обратно в «ничего не меняет» — чтобы не прокликивать 9 клеток по кругу
+    el('resetK').addEventListener('click', function () {
+      KERNELS.custom = [[0, 0, 0], [0, 1, 0], [0, 0, 0]];
+      refresh();
+    });
 
     // ======================= Игра «Угадай фильтр» (общий компонент MLViz.quiz) =======================
     var GAME_K = ['vertical', 'horizontal', 'blur', 'sharpen'];

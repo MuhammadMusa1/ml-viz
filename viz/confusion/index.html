@@ -106,17 +106,17 @@
 
         <div class="metrics">
           <div>
-            <small>Accuracy</small>
+            <small data-i18n="lblAcc"></small>
             <div class="big-number" id="mAcc"></div>
             <p class="note" id="mAccNote"></p>
           </div>
           <div>
-            <small>Precision</small>
+            <small data-i18n="lblPrec"></small>
             <div class="big-number" id="mPrec"></div>
             <p class="note" id="mPrecNote"></p>
           </div>
           <div>
-            <small>Recall</small>
+            <small data-i18n="lblRec"></small>
             <div class="big-number" id="mRec"></div>
             <p class="note" id="mRecNote"></p>
           </div>
@@ -212,6 +212,9 @@
         precNone: 'тревог не было',
         recNote: 'нашли Chinstrap: {c} из {n}',
         none: '—',
+        lblAcc: 'Accuracy · доля верных',
+        lblPrec: 'Precision · меткость тревог',
+        lblRec: 'Recall · полнота поиска',
         baseline: 'Accuracy (точность) — доля верных ответов. Для сравнения: ленивая модель «всегда нет» на test верна в {c} из {n} ({p}%) — и не находит ни одного Chinstrap. Здесь вопрос «да / нет», и ответ «нет» встречается гораздо чаще, чем самый частый вид в уроке 6 (там ленивая модель получала 51%).',
         gameStep: 'Задание {i} из {n}',
         task1: '<b>Перепись редких пингвинов.</b> Учёным нельзя пропускать Chinstrap: найди на validation <b>не меньше {need} из {p}</b> (recall ≥ 90%). Лишний осмотр не страшен, но чем меньше ложных тревог, тем лучше.',
@@ -464,8 +467,10 @@
         ctx.globalAlpha = state.cell && state.cell !== cell ? 0.15 : 1;
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
         if (v.key === 'test') {
+          // Кольцо test с лёгкой заливкой цвета вида: на проекторе Adelie и Gentoo не путаются
           ctx.fillStyle = 'rgba(23,19,46,.75)'; ctx.fill();
-          ctx.strokeStyle = COLORS[p.si]; ctx.lineWidth = Math.max(1.5, r / 2.5); ctx.stroke();
+          var a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * 0.3; ctx.fillStyle = COLORS[p.si]; ctx.fill(); ctx.globalAlpha = a0;
+          ctx.strokeStyle = COLORS[p.si]; ctx.lineWidth = Math.max(2.5, r / 2); ctx.stroke();
         } else {
           ctx.fillStyle = COLORS[p.si]; ctx.fill();
           ctx.strokeStyle = C_VAL; ctx.lineWidth = 1.5; ctx.stroke();

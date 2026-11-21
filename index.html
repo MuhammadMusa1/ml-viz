@@ -13,6 +13,8 @@
     <p class="eyebrow" data-i18n="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <p class="lead" data-i18n="lead"></p>
+    <!-- Прогресс ученика: сколько уроков доиграно до конца (хранится только в этом браузере) -->
+    <div class="progress" id="progress"></div>
     <div id="catalog"></div>
   </main>
 
@@ -28,9 +30,12 @@
         eyebrow: 'Курс Machine Learning',
         title: 'Машинное обучение, которое можно потрогать',
         lead: 'Интерактивные визуализации к курсу из 24 уроков. Двигай точки, крути ползунки и смотри, как модель принимает решения. Без установки и без интернета.',
-        lesson: 'Урок {n}',
-        ready: 'Готово',
         planned: 'Скоро',
+        done: '✓ Пройдено',
+        progress: 'Пройдено уроков: <b>{d} из {n}</b>',
+        progressHint: 'Урок отмечается, когда ты доиграешь в нём игру до конца. Отметки хранятся только в этом браузере.',
+        resetProgress: 'Сбросить отметки',
+        resetAsk: 'Сбросить все отметки о пройденных уроках в этом браузере?',
         footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Работает офлайн: скачайте папку и откройте <code>index.html</code>.'
       }
     };
@@ -39,16 +44,37 @@
     MLViz.applyI18n(STR);
 
     var L = MLViz.lang;
+    var DONE = MLViz.doneList();
+    var READY = [];
+    CATALOG.forEach(function (ph) { ph.items.forEach(function (it) { if (it.status === 'ready') READY.push(it.id); }); });
+
+    // Полоса прогресса. Компьютер в классе общий — поэтому есть «Сбросить отметки»
+    function renderProgress() {
+      var d = READY.filter(function (id) { return DONE.indexOf(id) !== -1; }).length, n = READY.length;
+      document.getElementById('progress').innerHTML =
+        '<div class="row"><span>' + MLViz.t(STR, 'progress', { d: d, n: n }) + '</span>' +
+        (d ? '<button type="button" id="resetProgress">' + MLViz.t(STR, 'resetProgress') + '</button>' : '') + '</div>' +
+        '<div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + d + '" aria-label="' +
+          MLViz.t(STR, 'progress', { d: d, n: n }).replace(/<[^>]+>/g, '') + '"><div class="fill" style="width:' + (100 * d / n) + '%"></div></div>' +
+        '<p class="note">' + MLViz.t(STR, 'progressHint') + '</p>';
+      var rb = document.getElementById('resetProgress');
+      if (rb) rb.addEventListener('click', function () {
+        if (!window.confirm(MLViz.t(STR, 'resetAsk'))) return;
+        MLViz.resetDone(); DONE = []; renderProgress(); renderCatalog();
+      });
+    }
     var tx = function (o) { return (o && (o[L] || o.ru)) || ''; };
+    function renderCatalog() {
     var html = CATALOG.map(function (ph) {
       var cards = ph.items.map(function (it) {
         var ready = it.status === 'ready';
         var tag = ready ? 'a' : 'div';
         var href = ready ? ' href="viz/' + it.id + '/index.html' + (L !== 'ru' ? '?lang=' + L : '') + '"' : '';
         return '<' + tag + ' class="card ' + it.status + '"' + href + '>' +
-          '<div class="meta"><span>' + MLViz.t(STR, 'lesson', { n: it.lesson }) + '</span>' +
+          '<div class="meta"><span>' + MLViz.lessonLabel(it) + '</span>' +
           // Бейдж только у будущих страниц: когда готово почти всё, «Готово» на каждой карточке — шум
-          (ready ? '' : '<span class="badge planned">' + MLViz.t(STR, 'planned') + '</span>') + '</div>' +
+          (!ready ? '<span class="badge planned">' + MLViz.t(STR, 'planned') + '</span>'
+            : DONE.indexOf(it.id) !== -1 ? '<span class="badge done">' + MLViz.t(STR, 'done') + '</span>' : '') + '</div>' +
           '<h3>' + tx(it.title) + '</h3>' +
           '<div class="analogy">' + tx(it.analogy) + '</div>' +
         '</' + tag + '>';
@@ -57,6 +83,9 @@
         '<span class="weeks">' + tx(ph.weeks) + '</span></div><div class="grid">' + cards + '</div></section>';
     }).join('');
     document.getElementById('catalog').innerHTML = html;
+    }
+    renderProgress();
+    renderCatalog();
   </script>
 </body>
 </html>

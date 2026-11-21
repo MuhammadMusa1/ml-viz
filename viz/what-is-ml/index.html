@@ -18,8 +18,8 @@
       <div class="stage">
         <canvas id="cv" class="drag"></canvas>
         <div class="legend" style="padding:8px 4px 0">
-          <span><i style="background:var(--adelie)"></i>Adelie</span>
-          <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+          <!-- Задача «Gentoo или нет»: два вида вместе — один ответ, поэтому в легенде они рядом -->
+          <span><i style="background:var(--adelie)"></i><i style="background:var(--chinstrap)"></i><span data-i18n="legNot"></span></span>
           <span><i style="background:var(--gentoo)"></i>Gentoo</span>
           <span id="legUnseen"><i class="dash"></i><span data-i18n="legUnseen"></span></span>
           <span><i class="ring"></i><span data-i18n="legTest"></span></span>
@@ -157,11 +157,12 @@
         testBtn: 'Проверить на новых пингвинах',
         accNote: 'Твоё правило угадало {y} из 69, правило компьютера — {p} из 69. Точность (accuracy) — доля верных ответов. Для сравнения: «ленивая» модель, которая всегда отвечает «не Gentoo», угадывает {l} из 69 ({lp}%). Сдвинешь свою границу — проверку придётся повторить.',
         fairNote: 'Подгонять границу под новых пингвинов нечестно: это как подсмотреть ответы экзамена.',
+        legNot: 'Adelie и Chinstrap = «не Gentoo»',
         legUnseen: 'компьютер ещё не видел',
-        legTest: 'новые пингвины (test)',
-        capTrain: 'Примеры для учёбы (train)',
-        capTest: 'Новые пингвины (test)',
-        capTestHidden: 'Новые пингвины (test) откроются после проверки',
+        legTest: 'новые пингвины (экзамен)',
+        capTrain: 'Примеры для учёбы',
+        capTest: 'Новые пингвины — экзамен',
+        capTestHidden: 'Новые пингвины — экзамен: откроются после проверки',
         tagYou: 'ты', tagPc: 'компьютер',
         hintExplore: 'Задача: Gentoo перед нами или нет (Adelie и Chinstrap здесь вместе — «не Gentoo»). Тяни белую линию по графику или ползунок в панели — это граница твоего правила. Фиолетовая линия — граница, которую компьютер нашёл сам.',
         hintGame: 'Видно только 8 примеров. Поставь белую линию так, чтобы отделить Gentoo от остальных, и нажми «Проверить».',

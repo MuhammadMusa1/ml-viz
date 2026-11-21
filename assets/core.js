@@ -32,6 +32,7 @@
     root.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(dict, el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-html]').forEach(function (el) { el.innerHTML = t(dict, el.dataset.i18nHtml); });
     document.documentElement.lang = lang;
+    if (root === document) decorateTerms();
   }
 
   function setLang(l) {
@@ -41,37 +42,193 @@
 
   // ---------- Шапка ----------
   var UI = {
-    ru: { all: 'Все уроки', brand: 'Лаборатория <b>ML</b>', lesson: 'Урок {n}', prev: 'Предыдущий урок: {t}', next: 'Следующий урок: {t}' },
-    tg: { all: 'Ҳамаи дарсҳо', brand: 'Лабораторияи <b>ML</b>', lesson: 'Дарси {n}', prev: 'Дарси пешина: {t}', next: 'Дарси оянда: {t}' }
+    ru: { all: 'Все уроки', brand: 'Лаборатория <b>ML</b>', lesson: 'Урок {n}', lessonShort: 'Урок {n} ({k}/{m})',
+          lessonPart: 'Урок {n} · часть {k} из {m}', prev: 'Предыдущий урок: {t}', next: 'Следующий урок: {t}', home: 'Лаборатория ML — на главную',
+          mythsTitle: 'Типичные ошибки новичка', mythSeems: 'Кажется:', mythTruth: 'На самом деле:',
+          nextTitle: 'Что дальше', nextGo: 'Дальше: {l} · {t} ›', toHome: 'На главную ›',
+          doneYes: '✓ Урок пройден: ты доиграл игру до конца. Отметка видна на главной.',
+          doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.' },
+    tg: { all: 'Ҳамаи дарсҳо', brand: 'Лабораторияи <b>ML</b>', lesson: 'Дарси {n}', lessonShort: 'Дарси {n} ({k}/{m})',
+          lessonPart: 'Дарси {n} · қисми {k} аз {m}', prev: 'Дарси пешина: {t}', next: 'Дарси оянда: {t}', home: 'Лабораторияи ML — ба саҳифаи асосӣ' }
   };
 
+  // Номер страницы в уроке: на один урок курса бывает несколько страниц (урок 17 — три).
+  // Возвращает {n, k, m}: урок n, страница k из m. Считается по каталогу, руками номера не пишем.
+  function lessonPart(it) {
+    var same = [];
+    (window.CATALOG || []).forEach(function (ph) { ph.items.forEach(function (x) { if (x.lesson === it.lesson) same.push(x.id); }); });
+    return { n: it.lesson, k: same.indexOf(it.id) + 1, m: same.length };
+  }
+  // «Урок 5» или «Урок 17 · часть 1 из 3» (short — коротко для кнопок шапки: «Урок 17 (1/3)»)
+  function lessonLabel(it, short) {
+    var p = lessonPart(it);
+    return p.m > 1 ? t(UI, short ? 'lessonShort' : 'lessonPart', p) : t(UI, 'lesson', p);
+  }
+
   // Соседние готовые уроки по каталогу (если catalog.js подключён) — учителю удобно листать на проекторе
-  function lessonNav(root) {
-    // Ищем именно папку /viz/<id>/: на GitHub Pages сайт лежит в /ml-viz/, и «viz/» встречается раньше
+  // id страницы урока из адреса. Ищем именно папку /viz/<id>/: на GitHub Pages сайт лежит в /ml-viz/,
+  // и «viz/» встречается раньше нужного места (то же на флешке, если папка называется ml-viz)
+  function pageId() {
     var m = location.pathname.match(/\/viz\/([^\/]+)\//);
-    if (!m || !window.CATALOG) return '';
+    return m ? m[1] : null;
+  }
+  function readyItems() {
     var ready = [];
-    window.CATALOG.forEach(function (ph) { ph.items.forEach(function (it) { if (it.status === 'ready') ready.push(it); }); });
-    var i = ready.map(function (it) { return it.id; }).indexOf(m[1]);
+    (window.CATALOG || []).forEach(function (ph) { ph.items.forEach(function (it) { if (it.status === 'ready') ready.push(it); }); });
+    return ready;
+  }
+  function tx(o) { return (o && (o[lang] || o.ru)) || ''; }
+
+  // ---------- Прогресс ученика ----------
+  // Урок «пройден», когда ученик доиграл игру страницы до конца. Хранится только в этом браузере (localStorage);
+  // в приватном режиме или с запретом хранения просто ничего не отмечается — страница работает как обычно.
+  var DONE_KEY = 'mlviz.done';
+  function doneList() {
+    try { var v = JSON.parse(localStorage.getItem(DONE_KEY) || '[]'); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+  }
+  function markDone(id) {
+    if (!id) return;
+    var d = doneList();
+    if (d.indexOf(id) === -1) { d.push(id); try { localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch (e) {} }
+    updateDoneNote();
+  }
+  function resetDone() { try { localStorage.removeItem(DONE_KEY); } catch (e) {} }
+  function updateDoneNote() {
+    var n = document.getElementById('doneNote'), id = pageId();
+    if (n && id) n.textContent = t(UI, doneList().indexOf(id) !== -1 ? 'doneYes' : 'doneNo');
+  }
+
+  // ---------- «Типичные ошибки новичка» и «Что дальше» ----------
+  // Тексты лежат в catalog.js (myths, bridge), а не в каждой странице: так их удобно писать и переводить одним списком.
+  // Ошибки встают перед «Для любопытных», «Что дальше» — в самый конец страницы.
+  function renderLessonExtras(root) {
+    var id = pageId(), main = document.querySelector('main');
+    if (!id || !main) return;
+    var ready = readyItems(), i = ready.map(function (it) { return it.id; }).indexOf(id);
+    if (i === -1) return;
+    var it = ready[i], next = ready[i + 1];
+    var myths = it.myths && (it.myths[lang] || it.myths.ru);
+    if (myths && myths.length) {
+      var sec = document.createElement('section');
+      sec.className = 'section myths';
+      sec.innerHTML = '<h2>' + t(UI, 'mythsTitle') + '</h2><ul>' + myths.map(function (m) {
+        return '<li><b>' + t(UI, 'mythSeems') + '</b> ' + m[0] + '<br><b>' + t(UI, 'mythTruth') + '</b> ' + m[1] + '</li>';
+      }).join('') + '</ul>';
+      var firstDetails = main.querySelector(':scope > details');
+      main.insertBefore(sec, firstDetails || null);
+    }
+    var br = document.createElement('section');
+    br.className = 'section bridge';
+    br.innerHTML = '<h2>' + t(UI, 'nextTitle') + '</h2>' +
+      (it.bridge ? '<p>' + tx(it.bridge) + '</p>' : '') +
+      '<p class="note" id="doneNote"></p>' +
+      '<p style="margin:12px 0 0">' + (next
+        ? '<a class="btn" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
+        : '<a class="btn" href="' + root + 'index.html">' + t(UI, 'toHome') + '</a>') + '</p>';
+    main.appendChild(br);
+    updateDoneNote();
+  }
+
+  // ---------- Словарь терминов ----------
+  // Первое упоминание термина на странице (в аналогии и текстовых разделах) становится кнопкой с подсказкой.
+  // Кнопка, а не наведение мышью: на телефоне и проекторе наведения нет.
+  var termPop = null, termBtn = null;
+  function closeTerm(focusBack) {
+    if (!termPop || termPop.hidden) return;
+    termPop.hidden = true;
+    if (termBtn) { termBtn.setAttribute('aria-expanded', 'false'); termBtn.removeAttribute('aria-describedby'); if (focusBack) termBtn.focus(); }
+    termBtn = null;
+  }
+  function openTerm(btn) {
+    var g = window.GLOSSARY[+btn.dataset.g];
+    if (!termPop) {
+      termPop = document.createElement('div');
+      termPop.className = 'term-pop'; termPop.id = 'termPop'; termPop.setAttribute('role', 'tooltip'); termPop.hidden = true;
+      document.body.appendChild(termPop);
+    }
+    closeTerm(false);
+    termPop.innerHTML = '<b>' + tx(g.term) + '</b><br>' + tx(g.def);
+    termPop.hidden = false;
+    var r = btn.getBoundingClientRect(), w = termPop.offsetWidth;
+    termPop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left)) + window.scrollX + 'px';
+    termPop.style.top = r.bottom + window.scrollY + 6 + 'px';
+    termBtn = btn; btn.setAttribute('aria-expanded', 'true'); btn.setAttribute('aria-describedby', 'termPop');
+  }
+  function decorateTerms() {
+    var G = window.GLOSSARY;
+    if (!G || document.body.hasAttribute('data-terms')) return;
+    document.body.setAttribute('data-terms', '');
+    var roots = document.querySelectorAll('main .analogy-box, main .section, main details.box');
+    var SKIP = /^(CODE|A|BUTTON|H1|H2|H3|SUMMARY|SCRIPT|STYLE)$/;
+    function skipped(node, root) {
+      for (var e = node.parentElement; e && e !== root; e = e.parentElement) if (SKIP.test(e.tagName)) return true;
+      return false;
+    }
+    G.forEach(function (g, gi) {
+      // Границы слова для кириллицы: \b в JS понимает только латиницу
+      var re = new RegExp('(^|[^\\p{L}\\p{N}_])(' + g.re + ')(?![\\p{L}\\p{N}_])', 'iu');
+      for (var k = 0; k < roots.length; k++) {
+        var w = document.createTreeWalker(roots[k], NodeFilter.SHOW_TEXT), node, m;
+        while ((node = w.nextNode())) {
+          if (skipped(node, roots[k]) || !(m = re.exec(node.data))) continue;
+          var word = node.splitText(m.index + m[1].length);
+          word.splitText(m[2].length);
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'term'; b.dataset.g = gi; b.setAttribute('aria-expanded', 'false');
+          b.textContent = word.data;
+          word.parentNode.replaceChild(b, word);
+          return;
+        }
+      }
+    });
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('button.term');
+      if (b) { if (b === termBtn) closeTerm(false); else openTerm(b); return; }
+      if (termPop && !termPop.contains(e.target)) closeTerm(false);
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeTerm(true); });
+    window.addEventListener('resize', function () { closeTerm(false); });
+  }
+
+  function lessonNav(root) {
+    var id = pageId();
+    if (!id || !window.CATALOG) return '';
+    var ready = readyItems();
+    var i = ready.map(function (it) { return it.id; }).indexOf(id);
     if (i === -1) return '';
     function link(it, cls, label, tipKey) {
       var title = (it.title && (it.title[lang] || it.title.ru)) || it.id;
       return '<a class="lesson-step ' + cls + '" href="' + root + 'viz/' + it.id + '/index.html" title="' +
         t(UI, tipKey, { t: title }) + '" aria-label="' + t(UI, tipKey, { t: title }) + '">' + label + '</a>';
     }
-    return (i > 0 ? link(ready[i - 1], 'prev', '‹ ' + t(UI, 'lesson', { n: ready[i - 1].lesson }), 'prev') : '') +
-           (i < ready.length - 1 ? link(ready[i + 1], 'next', t(UI, 'lesson', { n: ready[i + 1].lesson }) + ' ›', 'next') : '');
+    return (i > 0 ? link(ready[i - 1], 'prev', '‹ ' + lessonLabel(ready[i - 1], true), 'prev') : '') +
+           (i < ready.length - 1 ? link(ready[i + 1], 'next', lessonLabel(ready[i + 1], true) + ' ›', 'next') : '');
   }
 
-  // Логотип: три точки цветов пингвинов — маленькая «диаграмма рассеяния»
-  var LOGO =
-    '<svg class="logo" viewBox="0 0 32 32" aria-hidden="true">' +
+  // Логотип: пингвин — герой всего курса (датасет Palmer Penguins). Рисунок в SVG, чтобы работал офлайн
+  var LOGO_SVG =
+    '<svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true">' +
       '<rect x="1" y="1" width="30" height="30" rx="9" fill="#261F4A" stroke="#3A3168"/>' +
-      '<path d="M9 22 L16 12 L23 18" fill="none" stroke="#A9A2CC" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>' +
-      '<circle cx="9" cy="22" r="3.6" fill="#A78BFA"/>' +
-      '<circle cx="16" cy="12" r="3.6" fill="#22D3EE"/>' +
-      '<circle cx="23" cy="18" r="3.6" fill="#FBBF24"/>' +
+      '<ellipse cx="16" cy="17.2" rx="8.6" ry="10.2" fill="#0F0C22" stroke="#A78BFA" stroke-width="1.3"/>' +
+      '<path d="M8.2 17 Q5.6 20.5 7.4 24.2" fill="none" stroke="#A78BFA" stroke-width="1.3" stroke-linecap="round"/>' +
+      '<path d="M23.8 17 Q26.4 20.5 24.6 24.2" fill="none" stroke="#A78BFA" stroke-width="1.3" stroke-linecap="round"/>' +
+      '<ellipse cx="16" cy="20.3" rx="5.6" ry="6.6" fill="#EEEAFB"/>' +
+      '<circle cx="13.2" cy="12.4" r="1.55" fill="#EEEAFB"/><circle cx="13.5" cy="12.6" r=".75" fill="#0F0C22"/>' +
+      '<circle cx="18.8" cy="12.4" r="1.55" fill="#EEEAFB"/><circle cx="18.5" cy="12.6" r=".75" fill="#0F0C22"/>' +
+      '<path d="M14.3 14.9 L17.7 14.9 L16 17.3 Z" fill="#FBBF24"/>' +
+      '<ellipse cx="13" cy="27.4" rx="2.3" ry="1.05" fill="#FBBF24"/><ellipse cx="19" cy="27.4" rx="2.3" ry="1.05" fill="#FBBF24"/>' +
     '</svg>';
+  var LOGO = LOGO_SVG;
+
+  // Тот же пингвин — значком вкладки браузера (data-URL: без отдельного файла и без сети)
+  function setFavicon() {
+    if (document.querySelector('link[rel="icon"]')) return;
+    var l = document.createElement('link');
+    l.rel = 'icon'; l.type = 'image/svg+xml';
+    l.href = 'data:image/svg+xml,' + encodeURIComponent(LOGO_SVG.replace(' class="logo"', '').replace(' aria-hidden="true"', ''));
+    document.head.appendChild(l);
+  }
 
   // root — относительный путь до корня сайта ('' для главной, '../../' для viz/xxx/)
   function renderHeader(root) {
@@ -82,16 +239,19 @@
           return '<button type="button" data-lang="' + l + '" aria-pressed="' + (l === lang) + '">' + LANG_NAMES[l] + '</button>';
         }).join('') + '</div>'
       : '';
-    h.className = 'site-header';
+    setFavicon();
+    // На странице урока в шапке ещё кнопки «‹ Урок N · Урок N ›»: на телефоне там остаётся только пингвин
+    h.className = 'site-header' + (root ? ' in-lesson' : '');
     h.innerHTML =
       '<div class="wrap">' +
-        '<a class="brand" href="' + root + 'index.html">' + LOGO + '<span>' + t(UI, 'brand') + '</span></a>' +
-        '<nav>' + (root ? '<a href="' + root + 'index.html">' + t(UI, 'all') + '</a>' + lessonNav(root) : '') + '</nav>' +
+        '<a class="brand" href="' + root + 'index.html" aria-label="' + t(UI, 'home') + '">' + LOGO + '<span>' + t(UI, 'brand') + '</span></a>' +
+        '<nav>' + (root ? '<a class="all-link" href="' + root + 'index.html">' + t(UI, 'all') + '</a>' + lessonNav(root) : '') + '</nav>' +
         langBtns +
       '</div>';
     h.querySelectorAll('[data-lang]').forEach(function (b) {
       b.addEventListener('click', function () { setLang(b.dataset.lang); });
     });
+    if (root) renderLessonExtras(root);
   }
 
   // ---------- Canvas ----------
@@ -242,6 +402,7 @@
       // Без отдельного итога (игра-экзамен из одного раунда) — сразу «Сыграть ещё»
       if (q.i === q.n - 1 && !o.text.final) {
         q.over = true;
+        markDone(pageId());   // доиграл до конца — урок пройден
         if (o.text.finishTitle) step.textContent = o.text.finishTitle;
         next.textContent = o.text.again;
         if (o.onEnd) o.onEnd(q);
@@ -272,6 +433,7 @@
       if (q.over) { q.start(); return; }
       if (q.i < q.n - 1) { q.i++; begin(); return; }
       q.over = true;
+      markDone(pageId());   // доиграл до конца — урок пройден
       step.textContent = o.text.finishTitle;
       result.innerHTML = o.text.final(q);
       next.textContent = o.text.again;
@@ -281,7 +443,7 @@
   }
 
   window.MLViz = {
-    lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader,
+    lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, doneList: doneList, resetDone: resetDone,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
     fontPx: fontPx, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, quiz: quiz
   };
