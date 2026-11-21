@@ -10,7 +10,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -127,7 +127,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 13 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -145,7 +144,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 13 · часть 2 из 2 · Нейросети',
         title: 'Как учится сеть: спуск с горы',
         analogy: '<b>Спуск с горы в тумане маленькими шагами.</b> Ты стоишь на склоне и не видишь, где низ. Но ногами чувствуешь, куда земля идёт вниз круче всего, — и делаешь шаг туда. Потом снова. Так нейрон и учится: «гора» — это его ошибка, а шаги меняют веса так, чтобы ошибка становилась меньше.',
         cvLabel: 'Гора ошибки: по горизонтали вес w, по вертикали смещение b. Чем светлее, тем больше ошибка. Мяч — текущие веса нейрона',
@@ -251,7 +249,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 13 · қисми 2 аз 2 · Шабакаҳои нейронӣ",
         "title": "Шабака чӣ тавр меомӯзад: фуруд омадан аз кӯҳ",
         "analogy": "<b>Фуруд омадан аз кӯҳ дар туман бо қадамҳои хурд.</b> Ту дар нишебӣ истодаӣ ва намебинӣ, ки поён дар куҷост. Аммо бо пойҳоят ҳис мекунӣ, ки замин ба кадом тараф тезтар поён меравад — ва ба ҳамон тараф қадам мегузорӣ. Баъд боз. Нейрон маҳз ҳамин тавр меомӯзад: «кӯҳ» — ин хатои он аст, қадамҳо бошанд вазнҳоро тавре тағйир медиҳанд, ки хато камтар шавад.",
         "cvLabel": "Кӯҳи хато: аз рӯи уфуқ вазн w, аз рӯи амуд лағжиш b. Ҳар қадар равшантар бошад, хато ҳамон қадар калонтар аст. Тӯб — вазнҳои ҳозираи нейрон",
@@ -710,9 +707,6 @@
       var w = Math.max(DOM.w0, Math.min(DOM.w1, sw.invert(m.x))), b = Math.max(DOM.b0, Math.min(DOM.b1, sb.invert(m.y)));
       resetPath(w, b); refresh();
     });
-
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

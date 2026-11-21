@@ -10,7 +10,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -120,7 +120,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 6 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -138,7 +137,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 6 · Классические алгоритмы',
         title: 'Train / Test: учёба и экзамен для модели',
         analogy: '<b>Нельзя проверять знания по билетам, которые ты уже видел.</b> Кто выучил ответы наизусть, сдаст эти билеты на «отлично», но провалится на новых. Поэтому часть пингвинов мы прячем от модели (это <b>test</b>, «экзамен»), а учится она на остальных (<b>train</b>, «учёба»).',
         cvLabel: 'Пингвины: длина клюва и масса тела, обучающие и экзаменационные',
@@ -239,7 +237,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 6 · Алгоритмҳои классикӣ",
         "title": "Train / Test: омӯзиш ва имтиҳон барои модел",
         "analogy": "<b>Донишро аз рӯи билетҳое, ки аллакай дидаӣ, санҷидан мумкин нест.</b> Касе, ки ҷавобҳоро аз ёд кардааст, ин билетҳоро ба «аъло» месупорад, аммо дар навҳояш меафтад. Бинобар ин як қисми пингвинҳоро аз модел пинҳон мекунем (ин <b>test</b>, «имтиҳон» аст), вай бошад дар боқимондаҳо (<b>train</b>, «омӯзиш») меомӯзад.",
         "cvLabel": "Пингвинҳо: дарозии нӯл ва вазни бадан, омӯзишӣ ва имтиҳонӣ",
@@ -632,9 +629,6 @@
     document.getElementById('modeExplore').addEventListener('click', function () { setMode('explore'); });
     document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
     document.getElementById('submitBtn').addEventListener('click', submitExam);
-
-    var colab = document.getElementById('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

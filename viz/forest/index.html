@@ -19,7 +19,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -136,7 +136,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 9 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -154,7 +153,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 9 · Классические алгоритмы',
         title: 'Случайный лес',
         analogy: '<b>Голосование всего класса точнее одного мнения.</b> Один ученик может ошибиться, но если спросить весь класс и выбрать самый частый ответ, ошибок будет меньше. Это работает, только если ученики ошибаются по-разному: если весь класс списал у одного, голосование не поможет. Поэтому в случайном лесу каждое из многих деревьев решений учат немного по-разному.',
         mapNote: 'Каждая точка фона окрашена в ответ леса. Где деревья спорят между собой, цвет бледнее.',
@@ -248,7 +246,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 9 · Алгоритмҳои классикӣ",
         "title": "Ҷангали тасодуфӣ",
         "analogy": "<b>Овоздиҳии тамоми синф аз як фикр саҳеҳтар аст.</b> Як хонанда метавонад хато кунад, аммо агар аз тамоми синф пурсем ва ҷавоби аз ҳама маъмулро интихоб кунем, хатоҳо камтар мешаванд. Ин танҳо вақте кор мекунад, ки хонандагон ба таври гуногун хато кунанд: агар тамоми синф аз як кас рӯбардор карда бошад, овоздиҳӣ кӯмак намекунад. Бинобар ин дар ҷангали тасодуфӣ ҳар яке аз дарахтони зиёди қарорҳоро каме гуногун меомӯзонанд.",
         "mapNote": "Ҳар як нуқтаи пасманзар бо ҷавоби ҷангал ранг карда шудааст. Дар ҷое, ки дарахтон байни худ баҳс мекунанд, ранг хиратар аст.",
@@ -756,9 +753,6 @@
     document.getElementById('nextTree').addEventListener('click', function () { state.view = 'tree'; setK(state.k + 1); });
     document.getElementById('modeExplore').addEventListener('click', function () { setMode('explore'); });
     document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
-
-    var colab = document.getElementById('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

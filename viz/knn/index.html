@@ -10,7 +10,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -98,7 +98,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 5 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -116,7 +115,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 5 · Классические алгоритмы',
         title: 'KNN: метод ближайших соседей',
         analogy: '<b>Скажи мне, кто твой сосед, — и я скажу, кто ты.</b> Появился новый пингвин, и мы не знаем, какого он вида. Смотрим на <b>K</b> самых похожих пингвинов, которых уже знаем, и выбираем тот вид, которого среди них больше.',
         cvLabel: 'Пингвины: длина и глубина клюва, новый пингвин и его соседи',
@@ -192,7 +190,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 5 · Алгоритмҳои классикӣ",
         "title": "KNN: усули ҳамсояҳои наздиктарин",
         "analogy": "<b>Ба ман бигӯ ҳамсояат кист — ман мегӯям ту кистӣ.</b> Пингвини нав пайдо шуд ва мо намедонем, ки вай аз кадом намуд аст. Ба <b>K</b> пингвини аз ҳама монанд, ки аллакай мешиносем, нигоҳ мекунем ва намудеро интихоб мекунем, ки дар байни онҳо бештар аст.",
         "cvLabel": "Пингвинҳо: дарозӣ ва чуқурии нӯл, пингвини нав ва ҳамсояҳои ӯ",
@@ -472,9 +469,6 @@
     document.getElementById('scaled').addEventListener('change', function (e) { state.scaled = e.target.checked; refresh(); });
     document.getElementById('modeExplore').addEventListener('click', function () { setMode('explore'); });
     document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
-
-    var colab = document.getElementById('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

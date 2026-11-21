@@ -10,7 +10,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -109,7 +109,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 1 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -127,7 +126,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 1 · Данные',
         title: 'Что такое машинное обучение',
         analogy: '<b>Правило не пишут — его находят по примерам.</b> Обычную программу пишет человек: «если…, то…». В машинном обучении компьютеру показывают много примеров с готовыми ответами, и правило он находит сам. Такое найденное правило называют <b>моделью</b>. Так и ты научился отличать кошку от собаки: тебе не давали правил, тебе показывали кошек и собак.',
         cvLabel: 'Пингвины на одной оси признака: сверху примеры для учёбы, снизу новые пингвины. Белая линия — граница твоего правила, фиолетовая — граница правила компьютера.',
@@ -238,7 +236,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 1 · Маълумот",
         "title": "Омӯзиши мошинӣ чист",
         "analogy": "<b>Қоидаро наменависанд — онро аз рӯи мисолҳо меёбанд.</b> Барномаи оддиро одам менависад: «агар…, пас…». Дар омӯзиши мошинӣ ба компютер мисолҳои зиёдеро бо ҷавобҳои тайёр нишон медиҳанд ва қоидаро вай худаш меёбад. Чунин қоидаи ёфтшударо <b>модел</b> меноманд. Ту низ ҳамин тавр фарқ кардани гурбаро аз саг ёд гирифтӣ: ба ту қоида надоданд, ба ту гурбаҳо ва сагҳоро нишон медоданд.",
         "cvLabel": "Пингвинҳо дар як меҳвари аломат: дар боло мисолҳо барои омӯзиш, дар поён пингвинҳои нав. Хати сафед — сарҳади қоидаи ту, бунафш — сарҳади қоидаи компютер.",
@@ -658,9 +655,6 @@
     cv.addEventListener('pointermove', function (e) { if (dragging) moveThr(e); });
     cv.addEventListener('pointerup', function () { dragging = false; });
     cv.addEventListener('pointercancel', function () { dragging = false; });
-
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

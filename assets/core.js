@@ -87,6 +87,14 @@
     return ready;
   }
   function tx(o) { return (o && (o[lang] || o.ru)) || ''; }
+  // Фаза урока без номера: «Фаза 2 · Классические алгоритмы» → «Классические алгоритмы»
+  function phaseName(it) {
+    var name = '';
+    (window.CATALOG || []).forEach(function (ph) { if (ph.items.indexOf(it) !== -1) name = tx(ph.phase); });
+    return name.split(' · ').slice(1).join(' · ');
+  }
+  // Данные в атрибут title="…": кавычка в названии урока иначе обрежет атрибут
+  function attr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
   // ---------- Прогресс ученика ----------
   // Урок «пройден», когда ученик доиграл игру страницы до конца. Хранится только в этом браузере (localStorage);
@@ -154,6 +162,9 @@
     var ready = readyItems(), i = ready.map(function (it) { return it.id; }).indexOf(id);
     if (i === -1) return;
     var it = ready[i], next = ready[i + 1];
+    // «Урок 5 · Классические алгоритмы» — из каталога, чтобы номер и фаза не расходились со страницами
+    var eb = main.querySelector('.eyebrow');
+    if (eb) eb.textContent = lessonLabel(it) + ' · ' + phaseName(it);
     var myths = it.myths && (it.myths[lang] || it.myths.ru);
     if (myths && myths.length) {
       var sec = document.createElement('section');
@@ -251,9 +262,9 @@
     var i = ready.map(function (it) { return it.id; }).indexOf(id);
     if (i === -1) return '';
     function link(it, cls, label, tipKey) {
-      var title = (it.title && (it.title[lang] || it.title.ru)) || it.id;
+      var tip = attr(t(UI, tipKey, { t: tx(it.title) || it.id }));
       return '<a class="lesson-step ' + cls + '" href="' + root + 'viz/' + it.id + '/index.html" title="' +
-        t(UI, tipKey, { t: title }) + '" aria-label="' + t(UI, tipKey, { t: title }) + '">' + label + '</a>';
+        tip + '" aria-label="' + tip + '">' + label + '</a>';
     }
     return (i > 0 ? link(ready[i - 1], 'prev', '‹ ' + lessonLabel(ready[i - 1], true), 'prev') : '') +
            (i < ready.length - 1 ? link(ready[i + 1], 'next', lessonLabel(ready[i + 1], true) + ' ›', 'next') : '');

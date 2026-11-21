@@ -24,7 +24,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -113,7 +113,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 18 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -131,7 +130,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 18 · Как работают LLM',
         title: 'Температура и галлюцинации',
         analogy: '<b>Языковая модель — очень умный автодополнитель.</b> Как подсказки в телефоне, она смотрит на уже написанное и угадывает следующий кусочек текста (токен; у нас для простоты — целое слово). Но не всегда берёт самое вероятное: она бросает кубик. <b>Температура</b> решает, насколько смело бросать. А иногда модель — даже без кубика — выдаёт гладкое, уверенное предложение, которое просто неправда, — это <b>галлюцинация</b>.',
         cvLabel: 'Вероятности следующего слова и «рулетка», на которой выпадает слово',
@@ -216,7 +214,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 18 · LLM чӣ тавр кор мекунад",
         "title": "Ҳарорат ва галлютсинатсияҳо",
         "analogy": "<b>Модели забонӣ — худпуркунандаи хеле доно аст.</b> Мисли пешниҳодҳо дар телефон, вай ба чизи аллакай навишташуда нигоҳ мекунад ва пораи ояндаи матнро (токенро; дар мо барои соддагӣ — калимаи пурраро) меёбад. Аммо на ҳамеша аз ҳама эҳтимолтаринашро мегирад: вай зар мепартояд. <b>Ҳарорат</b> ҳал мекунад, ки зарро то чӣ андоза далерона партоем. Ва баъзан модел — ҳатто бе зар — ҷумлаи ҳамвор ва боварибахш мебарорад, ки танҳо дурӯғ аст — ин <b>галлютсинатсия</b> мебошад.",
         "cvLabel": "Эҳтимолиятҳои калимаи оянда ва «рулетка», ки дар он калима меафтад",
@@ -514,8 +511,6 @@
     el('modeGame').addEventListener('click', function () { setMode('game'); });
 
     el('corpusText').textContent = LM_CORPUS.text;
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

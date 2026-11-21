@@ -25,7 +25,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -155,7 +155,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 20 · AutoML и AI-инструменты',
         title: 'Gradio: приложение за урок',
         analogy: '<b>От кухни к ресторану.</b> Модель в Colab — блюдо, которое готовишь только себе. Gradio строит «зал и меню» — страницу с кнопками, а Hugging Face Spaces — «здание с постоянным адресом», куда может зайти любой.',
         appTitle: 'Так приложение увидит пользователь',
@@ -234,7 +233,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 20 · AutoML ва абзорҳои AI",
         "title": "Gradio: барнома дар як дарс",
         "analogy": "<b>Аз ошхона ба тарабхона.</b> Модел дар Colab — хӯрокест, ки танҳо барои худат мепазӣ. Gradio «толор ва меню» — саҳифаи тугмадорро месозад, Hugging Face Spaces бошад — «бино бо суроғаи доимӣ»-ро, ки ба он ҳар кас даромада метавонад.",
         "appTitle": "Истифодабаранда барномаро ҳамин тавр мебинад",
@@ -504,8 +502,6 @@
     el('modeExplore').addEventListener('click', function () { setMode('explore'); });
     el('modeGame').addEventListener('click', function () { setMode('game'); });
 
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 
     state.sent = state.x;

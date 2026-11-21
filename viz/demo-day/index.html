@@ -10,7 +10,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -83,7 +83,6 @@
 
     var STR = {
       ru: {
-        eyebrow: 'Урок 24 · Финальный проект',
         title: 'Demo Day: презентация и защита',
         analogy: '<b>Это праздник, а не экзамен.</b> Ты показываешь то, что сделал своими руками: живое приложение по ссылке. Зал настроен доброжелательно и хочет увидеть твой успех.',
         cvLabel: 'Баллы защиты по четырём критериям из 12 и пороги сертификатов.',
@@ -169,7 +168,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 24 · Лоиҳаи ниҳоӣ",
         "title": "Demo Day: муаррифӣ ва ҳимоя",
         "analogy": "<b>Ин ҷашн аст, на имтиҳон.</b> Ту чизеро нишон медиҳӣ, ки бо дастони худат сохтаӣ: барномаи зинда бо пайванд. Толор хайрхоҳ аст ва мехоҳад муваффақияти туро бинад.",
         "cvLabel": "Холҳои ҳимоя аз рӯи чор меъёр аз 12 ва остонаҳои сертификатҳо.",
@@ -349,8 +347,6 @@
     el('modeExplore').addEventListener('click', function () { setMode('explore'); });
     el('modeGame').addEventListener('click', function () { setMode('game'); });
 
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 
     updatePanel(); resize();

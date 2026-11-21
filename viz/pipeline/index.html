@@ -39,7 +39,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -150,7 +150,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 10 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -168,7 +167,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 10 · Классические алгоритмы',
         title: 'Pipeline: конвейер для модели',
         analogy: '<b>Конвейер: данные заходят — прогноз выходит.</b> Как на фабрике: каждая станция делает свою работу и передаёт деталь дальше. Пингвин проходит подготовку данных, потом модель — и всегда в одном и том же порядке.',
         cvLabel: 'Пингвины: длина клюва и масса, соседи нового пингвина и карта решений',
@@ -277,7 +275,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 10 · Алгоритмҳои классикӣ",
         "title": "Pipeline: конвейер барои модел",
         "analogy": "<b>Конвейер: маълумот медарояд — пешгӯӣ мебарояд.</b> Мисли завод: ҳар як истгоҳ кори худро мекунад ва қисмро ба пеш медиҳад. Пингвин аз омодасозии маълумот, баъд аз модел мегузарад — ва ҳамеша бо як тартиб.",
         "cvLabel": "Пингвинҳо: дарозии нӯл ва вазн, ҳамсояҳои пингвини нав ва харитаи қарорҳо",
@@ -788,9 +785,6 @@
     document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
     document.getElementById('runBtn').addEventListener('click', runGame);
     document.getElementById('examBtn').addEventListener('click', exam);
-
-    var colab = document.getElementById('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

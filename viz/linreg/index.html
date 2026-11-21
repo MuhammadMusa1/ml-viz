@@ -20,7 +20,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -111,7 +111,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 8 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -129,7 +128,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 8 · Классические алгоритмы',
         title: 'Линейная регрессия',
         analogy: '<b>Положи линейку через точки так, чтобы ошибок было меньше.</b> Чем длиннее у пингвина крыло, тем он обычно тяжелее. Одна прямая линия — и по длине крыла можно угадать массу.',
         cvLabel: 'Пингвины: длина крыла и масса тела, прямая регрессии',
@@ -216,7 +214,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 8 · Алгоритмҳои классикӣ",
         "title": "Регрессияи хаттӣ",
         "analogy": "<b>Ҷадвалро аз байни нуқтаҳо тавре гузор, ки хатоҳо камтар шаванд.</b> Ҳар қадар боли пингвин дарозтар бошад, вай одатан ҳамон қадар вазнинтар аст. Як хати рост — ва аз рӯи дарозии бол вазнро ёфтан мумкин аст.",
         "cvLabel": "Пингвинҳо: дарозии бол ва вазни бадан, хати рости регрессия",
@@ -582,9 +579,6 @@
     document.getElementById('modeExplore').addEventListener('click', function () { setMode('explore'); });
     document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
     document.getElementById('checkBtn').addEventListener('click', checkGame);
-
-    var colab = document.getElementById('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

@@ -26,7 +26,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -145,7 +145,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 11 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -163,7 +162,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 11 · Классические алгоритмы',
         title: 'Матрица ошибок: когда accuracy обманывает',
         analogy: '<b>Пожарная сигнализация, которая никогда не пищит, «права» почти каждый день</b> — пожаров ведь мало. Но толку от неё ноль. Поэтому датчик оценивают по двум вопросам: <b>сколько пожаров он заметил</b> и <b>сколько раз пищал зря</b>. Наша модель — такой датчик: она ищет редких пингвинов Chinstrap.',
         cvLabel: 'Пингвины, разложенные по числу соседей-Chinstrap из 10. Справа от линии порога модель поднимает тревогу',
@@ -290,7 +288,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 11 · Алгоритмҳои классикӣ",
         "title": "Матритсаи хатоҳо: вақте ки accuracy фиреб медиҳад",
         "analogy": "<b>Бонги хатари сӯхтор, ки ҳеҷ гоҳ садо намедиҳад, қариб ҳар рӯз «ҳақ» аст</b> — охир сӯхтор кам мешавад. Аммо фоидае аз он нест. Бинобар ин датчик-ро аз рӯи ду савол баҳо медиҳанд: <b>чанд сӯхторро пай бурд</b> ва <b>чанд маротиба беҳуда садо дод</b>. Модели мо ҳамин гуна датчик аст: вай пингвинҳои нодири Chinstrap-ро меҷӯяд.",
         "cvLabel": "Пингвинҳое, ки аз рӯи шумораи ҳамсояҳои Chinstrap аз 10 ҷойгир шудаанд. Аз тарафи рости хати остона модел бонги хатар мебардорад",
@@ -775,9 +772,6 @@
     el('modeExplore').addEventListener('click', function () { setMode('explore'); });
     el('modeGame').addEventListener('click', function () { setMode('game'); });
     el('examBtn').addEventListener('click', takeExam);
-
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

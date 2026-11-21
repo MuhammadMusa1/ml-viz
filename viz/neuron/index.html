@@ -10,7 +10,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -123,7 +123,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 13 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -141,7 +140,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 13 · часть 1 из 2 · Нейросети',
         title: 'Нейрон: взвесить, сложить, решить',
         analogy: '<b>Нейрон голосует «да» или «нет».</b> Он смотрит на несколько чисел, каждому даёт свой вес — насколько оно важно и в какую сторону тянет, — складывает и решает. Как ты решаешь, идти ли гулять: «солнце» тянет к «да», «контрольная завтра» тянет к «нет», и что-то перевешивает. Наш нейрон по клюву решает: это Chinstrap или нет.',
         cvLabel: 'Пингвины: длина и глубина клюва. Голубой фон — где нейрон отвечает «Chinstrap», белая линия — его граница',
@@ -252,7 +250,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 13 · қисми 1 аз 2 · Шабакаҳои нейронӣ",
         "title": "Нейрон: баркашидан, ҷамъ кардан, ҳал кардан",
         "analogy": "<b>Нейрон «ҳа» ё «не» овоз медиҳад.</b> Вай ба якчанд адад нигоҳ мекунад, ба ҳар кадомаш вазни худро медиҳад — то чӣ андоза муҳим аст ва ба кадом тараф мекашад — ҷамъ мекунад ва ҳал мекунад. Мисли он ки ту ҳал мекунӣ, ба сайругашт равӣ ё не: «офтоб» ба «ҳа» мекашад, «кори санҷишӣ пагоҳ» ба «не» мекашад ва чизе вазнинтар мебарояд. Нейрони мо аз рӯи нӯл ҳал мекунад: ин Chinstrap аст ё не.",
         "cvLabel": "Пингвинҳо: дарозӣ ва чуқурии нӯл. Пасманзари кабуд — ҷое ки нейрон «Chinstrap» ҷавоб медиҳад, хати сафед — сарҳади он",
@@ -744,9 +741,6 @@
     cv.addEventListener('pointermove', function (e) { if (dragging) pick(e); });
     cv.addEventListener('pointerup', function () { dragging = false; });
     cv.addEventListener('pointercancel', function () { dragging = false; });
-
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

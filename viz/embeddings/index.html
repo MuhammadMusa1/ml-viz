@@ -43,7 +43,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -128,7 +128,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 17 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -146,7 +145,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 17 · часть 2 из 3 · Как работают LLM',
         title: 'Эмбеддинги: карта, где похожие слова живут рядом',
         analogy: '<b>Каждое слово — это анкета из чисел.</b> Живое? Летает? Большое? Сладкое? Ответы записываем числами от 0 до 1 — получается список чисел, <b>вектор</b>. У похожих слов анкеты похожи, поэтому на карте они оказываются рядом. Языковая модель хранит такой вектор для каждого токена — это и есть <b>эмбеддинг</b>.',
         cvLabel: 'Карта слов: каждое слово — точка, похожие слова рядом',
@@ -240,7 +238,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 17 · қисми 2 аз 3 · LLM чӣ тавр кор мекунад",
         "title": "Эмбеддингҳо: харитае, ки дар он калимаҳои монанд дар паҳлуи ҳам зиндагӣ мекунанд",
         "analogy": "<b>Ҳар як калима — ин пурсишнома аз ададҳост.</b> Зинда? Парвоз мекунад? Калон? Ширин? Ҷавобҳоро бо ададҳои аз 0 то 1 менависем — рӯйхати ададҳо, <b>вектор</b> ҳосил мешавад. Дар калимаҳои монанд пурсишномаҳо монанданд, бинобар ин дар харита онҳо дар паҳлуи ҳам меафтанд. Модели забонӣ барои ҳар як токен чунин векторро нигоҳ медорад — ин маҳз <b>эмбеддинг</b> аст.",
         "cvLabel": "Харитаи калимаҳо: ҳар як калима — нуқта, калимаҳои монанд дар паҳлуи ҳам",
@@ -615,9 +612,6 @@
     });
     el('modeExplore').addEventListener('click', function () { setMode('explore'); });
     el('modeGame').addEventListener('click', function () { setMode('game'); });
-
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

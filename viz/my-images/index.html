@@ -17,7 +17,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -134,7 +134,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 16 · Нейросети',
         title: 'Проект «Классификатор моих картинок»',
         analogy: '<b>Личный датасет.</b> До сих пор данные были чужие. Теперь ты сам решаешь, что модель будет различать, и сам рисуешь примеры. Хорошие примеры с простой моделью почти всегда лучше плохих примеров со сложной.',
         padLabel: 'Поле 28 × 28 для рисования своих картинок.',
@@ -228,7 +227,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 16 · Шабакаҳои нейронӣ",
         "title": "Лоиҳаи «Таснифгари расмҳои ман»",
         "analogy": "<b>Датасети шахсӣ.</b> То ҳол маълумот аз дигарон буд. Акнун ту худат ҳал мекунӣ, ки модел чиро фарқ мекунад, ва худат мисолҳоро мекашӣ. Мисолҳои хуб бо модели содда қариб ҳамеша аз мисолҳои бад бо модели мураккаб беҳтаранд.",
         "padLabel": "Майдони 28 × 28 барои кашидани расмҳои худ.",
@@ -541,8 +539,6 @@
     el('modeExplore').addEventListener('click', function () { setMode('explore'); });
     el('modeGame').addEventListener('click', function () { setMode('game'); });
 
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 
     renderNames();

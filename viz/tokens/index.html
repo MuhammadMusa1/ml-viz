@@ -35,7 +35,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -128,7 +128,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 17 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -146,7 +145,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 17 · часть 1 из 3 · Как работают LLM',
         title: 'Токенизатор: как текст режется на кусочки',
         analogy: '<b>Языковая модель читает не буквы и не слова, а кусочки — токены.</b> Это как конструктор: из маленьких деталей можно собрать любое слово, а частые слова удобно держать уже собранными. Токенизатор сам решает, какие кусочки нужны: он ищет в текстах, какие буквы чаще всего стоят рядом, и склеивает их.',
         textLabel: 'Напиши любой текст',
@@ -226,7 +224,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 17 · қисми 1 аз 3 · LLM чӣ тавр кор мекунад",
         "title": "Токенизатор: матн чӣ тавр ба пораҳо бурида мешавад",
         "analogy": "<b>Модели забонӣ на ҳарфҳо ва на калимаҳоро, балки пораҳо — токенҳоро мехонад.</b> Ин мисли конструктор аст: аз қисмҳои хурд ҳар гуна калимаро ҷамъ кардан мумкин аст, калимаҳои маъмулро бошад аллакай ҷамъшуда нигоҳ доштан қулай аст. Токенизатор худаш ҳал мекунад, ки кадом пораҳо лозиманд: вай дар матнҳо меҷӯяд, ки кадом ҳарфҳо бештар дар паҳлуи ҳам меистанд ва онҳоро мечаспонад.",
         "textLabel": "Ҳар гуна матнро бинавис",
@@ -486,8 +483,6 @@
 
     el('text').value = T('defaultText');
     el('corpusText').textContent = CORPUS;
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     setMode('explore');
   })();

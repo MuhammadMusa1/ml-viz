@@ -19,7 +19,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -107,7 +107,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 3 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -125,7 +124,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 3 · Данные',
         title: 'Корреляция: растут ли вместе?',
         analogy: '<b>У длинных пингвинов обычно и масса больше</b> — эти два числа «ходят вместе». Насколько дружно — показывает одно число от −1 до +1, <b>коэффициент корреляции r</b>. +1 — точки лежат на растущей прямой, −1 — на падающей, 0 — связи по прямой нет.',
         cvLabel: 'Точечный график двух признаков и линия тренда',
@@ -218,7 +216,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 3 · Маълумот",
         "title": "Коррелятсия: оё якҷоя меафзоянд?",
         "analogy": "<b>Дар пингвинҳои дароз одатан вазнашон ҳам бештар аст</b> — ин ду адад «якҷоя мегарданд». То чӣ андоза дӯстона будани онҳоро як адад аз −1 то +1, <b>коэффитсиенти коррелятсия r</b> нишон медиҳад. +1 — нуқтаҳо дар хати рости болораванда хобидаанд, −1 — дар поёнраванда, 0 — алоқа аз рӯи хати рост нест.",
         "cvLabel": "Графики нуқтагии ду аломат ва хати тренд",
@@ -570,8 +567,6 @@
     }
     el('modes').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
 
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 
     resize();

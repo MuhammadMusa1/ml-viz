@@ -34,7 +34,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -138,7 +138,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 7 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -156,7 +155,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 7 · Классические алгоритмы',
         title: 'Дерево решений',
         analogy: '<b>Игра «20 вопросов».</b> Чтобы угадать вид пингвина, задаём простые вопросы с ответом «да» или «нет»: «Клюв длиннее 42 мм?», «Клюв мельче 16 мм?». Каждый ответ отсекает часть вариантов, пока не останется один вид.',
         cvLabel: 'Пингвины: длина и глубина клюва, области листьев дерева',
@@ -258,7 +256,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 7 · Алгоритмҳои классикӣ",
         "title": "Дарахти қарорҳо",
         "analogy": "<b>Бозии «20 савол».</b> Барои ёфтани намуди пингвин саволҳои содда бо ҷавоби «ҳа» ё «не» медиҳем: «Нӯл аз 42 мм дарозтар аст?», «Нӯл аз 16 мм тунуктар аст?». Ҳар як ҷавоб як қисми вариантҳоро мебурад, то вақте ки як намуд бимонад.",
         "cvLabel": "Пингвинҳо: дарозӣ ва чуқурии нӯл, минтақаҳои баргҳои дарахт",
@@ -784,9 +781,6 @@
     document.getElementById('modeModel').addEventListener('click', function () { setMode('model'); });
     document.getElementById('modeGame').addEventListener('click', function () { setMode('game'); });
     document.getElementById('compareBtn').addEventListener('click', compare);
-
-    var colab = document.getElementById('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

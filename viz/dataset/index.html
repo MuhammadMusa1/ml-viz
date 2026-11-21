@@ -33,7 +33,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -124,7 +124,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 2 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -142,7 +141,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 2 · Данные',
         title: 'Из чего состоит датасет',
         analogy: '<b>Датасет — это стопка анкет.</b> Учёные поймали 342 пингвина и на каждого заполнили анкету: на каком острове живёт, какой длины клюв, сколько весит. Каждая анкета — <b>строка</b> таблицы, каждый вопрос — <b>столбец</b>. А один столбец особенный: это <b>ответ</b>, который модель будет учиться угадывать по остальным.',
         cvLabel: 'Гистограмма выбранного столбца: сколько пингвинов с каждым значением, цвет — вид',
@@ -239,7 +237,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 2 · Маълумот",
         "title": "Датасет аз чӣ иборат аст",
         "analogy": "<b>Датасет — ин дастаи пурсишномаҳост.</b> Олимон 342 пингвинро доштанд ва барои ҳар кадомаш пурсишнома пур карданд: дар кадом ҷазира зиндагӣ мекунад, дарозии нӯлаш чӣ қадар аст, чӣ қадар вазн дорад. Ҳар як пурсишнома — <b>сатри</b> ҷадвал, ҳар як савол — <b>сутун</b>. Як сутун бошад махсус аст: ин <b>ҷавоб</b> аст, ки модел аз рӯи дигар сутунҳо ёфтани онро меомӯзад.",
         "cvLabel": "Гистограммаи сутуни интихобшуда: чанд пингвин бо ҳар як қимат, ранг — намуд",
@@ -587,9 +584,6 @@
     });
     el('modeExplore').addEventListener('click', function () { setMode('explore'); });
     el('modeGame').addEventListener('click', function () { setMode('game'); });
-
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

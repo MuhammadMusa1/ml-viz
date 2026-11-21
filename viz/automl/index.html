@@ -15,7 +15,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -107,7 +107,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 19 · AutoML и AI-инструменты',
         title: 'AutoML: ускоряем работу',
         analogy: '<b>AutoML — автопилот.</b> Он сам перебирает модели и настройки, сравнивает их и выдаёт лучшую. Но куда ехать и не везёт ли он не туда, решает водитель — то есть ты.',
         cvLabel: 'Рейтинг моделей, которые перебрал AutoML: средняя точность по кросс-валидации.',
@@ -194,7 +193,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 19 · AutoML ва абзорҳои AI",
         "title": "AutoML: корро метезонем",
         "analogy": "<b>AutoML — автопилот.</b> Вай худаш моделҳо ва танзимотро месанҷад, онҳоро муқоиса мекунад ва беҳтаринашро медиҳад. Аммо ба куҷо рафтанро ва оё ба роҳи нодуруст намебарад, ронанда — яъне ту ҳал мекунӣ.",
         "cvLabel": "Рейтинги моделҳое, ки AutoML санҷид: саҳеҳии миёна аз рӯи кросс-валидатсия.",
@@ -460,8 +458,6 @@
     el('modeExplore').addEventListener('click', function () { setMode('explore'); });
     el('modeGame').addEventListener('click', function () { setMode('game'); });
 
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 
     resize();

@@ -32,7 +32,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -132,7 +132,6 @@
       <summary data-i18n="teacherTitle"></summary>
       <div data-i18n-html="teacherBody"></div>
       <div class="lesson-links" style="margin-top:10px">
-        <!-- TODO: вставить ссылку на ноутбук урока 4 в Colab -->
         <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
       </div>
     </details>
@@ -151,7 +150,6 @@
     // ======================= Тексты =======================
     var STR = {
       ru: {
-        eyebrow: 'Урок 4 · Данные',
         title: 'Выбросы и пропуски',
         analogy: '<b>Один «великан» портит среднее.</b> Если в классе 10 учеников весят около 40 кг, а кто-то по ошибке записал 400, средний вес станет 76 кг — и ничего не скажет о классе. Такие странные значения — <b>выбросы</b>. А если в анкете клетка пустая, это <b>пропуск</b>. Модели плохо работают и с тем, и с другим, поэтому данные сначала чистят.',
         cvLabel: 'Значения признака у всех пингвинов, среднее, медиана и «ящик с усами»',
@@ -253,7 +251,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 4 · Маълумот",
         "title": "Партофтҳо ва холигиҳо",
         "analogy": "<b>Як «бузургҷусса» миёнаро вайрон мекунад.</b> Агар дар синф 10 хонанда тақрибан 40 кг вазн дошта бошанд ва касе хато карда 400 навишта бошад, вазни миёна 76 кг мешавад — ва дар бораи синф ҳеҷ чиз намегӯяд. Чунин қиматҳои аҷиб — <b>партофтҳо</b> (выбросы) мебошанд. Агар дар пурсишнома катак холӣ бошад, ин <b>холигӣ</b> аст. Моделҳо ҳам бо яке ва ҳам бо дигаре бад кор мекунанд, бинобар ин маълумотро аввал тоза мекунанд.",
         "cvLabel": "Қиматҳои аломат дар ҳамаи пингвинҳо, миёна, медиана ва «қуттии мӯйлабдор»",
@@ -582,8 +579,6 @@
     }
     el('modes').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
 
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 
     resize();

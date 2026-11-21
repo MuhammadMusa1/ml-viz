@@ -10,7 +10,7 @@
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <p class="eyebrow"></p>
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
@@ -86,7 +86,6 @@
 
     var STR = {
       ru: {
-        eyebrow: 'Урок 23 · Финальный проект',
         title: 'Финальный проект: репетиция',
         analogy: '<b>Объясни бабушке.</b> Если человек, который ни разу не слышал слов «Pipeline» и «accuracy», понял, что делает твоё приложение и чем оно полезно, — значит, ты сам понял свой проект по-настоящему.',
         cvLabel: 'Таймер защиты: 5 минут на пять частей.',
@@ -181,7 +180,6 @@
       },
       /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
       tg: {
-        "eyebrow": "Дарси 23 · Лоиҳаи ниҳоӣ",
         "title": "Лоиҳаи ниҳоӣ: машқ",
         "analogy": "<b>Ба бибиат фаҳмон.</b> Агар одаме, ки калимаҳои «Pipeline» ва «accuracy»-ро боре ҳам нашунидааст, фаҳмад, ки барномаи ту чӣ кор мекунад ва чӣ фоида дорад — пас ту худат лоиҳаи худро ба таври ҳақиқӣ фаҳмидаӣ.",
         "cvLabel": "Таймери ҳимоя: 5 дақиқа барои панҷ қисм.",
@@ -393,8 +391,6 @@
     el('modeExplore').addEventListener('click', function () { setMode('explore'); });
     el('modeGame').addEventListener('click', function () { setMode('game'); });
 
-    var colab = el('colabLink');
-    if (colab.getAttribute('href')) colab.hidden = false;
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 
     resize(); updateBtns(); updateCheck();
