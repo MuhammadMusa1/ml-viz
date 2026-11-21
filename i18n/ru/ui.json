@@ -18,6 +18,7 @@
   "book": "Учебник",
   "readChapter": "📖 Глава {n} учебника",
   "colab": "Открыть ноутбук в Colab",
+  "warmup": "🐍 Python-разминка к уроку",
   "bookLinksTitle": "К этой главе",
   "vizLink": "🧪 Интерактив: {l} · {t}",
   "copy": "Скопировать",

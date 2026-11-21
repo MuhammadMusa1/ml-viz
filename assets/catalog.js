@@ -245,7 +245,9 @@ window.GLOSSARY = [
 /* Ноутбуки Colab к главам 1–33 книги лежат в notebooks/chNN.ipynb этого репозитория.
    Colab открывает их прямо с GitHub — поэтому ссылка работает только для опубликованной (запушенной) версии. */
 window.COURSE = {
-  colab: 'https://colab.research.google.com/github/MuhammadMusa1/ml-viz/blob/main/notebooks/'
+  colab: 'https://colab.research.google.com/github/MuhammadMusa1/ml-viz/blob/main/notebooks/',
+  // Уроки, к которым есть Python-разминка (warmup/index.html, задания — tools/build_warmup.py, он сверяет этот список)
+  warmup: [1, 2, 3, 4, 5, 6]
 };
 
 /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */

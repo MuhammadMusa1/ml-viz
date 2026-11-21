@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Python-разминка · Лаборатория ML</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    /* Только для этой страницы: блок кода с номерами строк и сборка программы из строк */
+    .warm { max-width: 900px; margin-top: 18px; padding: 16px 18px; }
+    .warm h3 { margin: 0 0 4px; }
+    .warm .ask { font-size: 18px; margin: 4px 0 0; }
+    pre.code { font-family: var(--mono); font-size: 19px; line-height: 1.5; background: var(--bg); border: 1px solid var(--line);
+               border-radius: var(--radius-sm); padding: 12px 14px; margin: 12px 0; overflow-x: auto; }
+    pre.code .ln { display: block; white-space: pre; min-height: 1.5em; }
+    pre.code .no { display: inline-block; width: 2ch; margin-right: 16px; color: var(--muted); text-align: right; user-select: none; }
+    .choices.mono button { font-family: var(--mono); font-size: 17px; text-align: left; justify-content: flex-start; }
+    .parsons { display: grid; gap: 10px; margin-top: 10px; }
+    .parsons .lines { display: flex; flex-direction: column; gap: 6px; }
+    .parsons .built { min-height: 52px; border: 1px dashed var(--line); border-radius: var(--radius-sm); padding: 8px; }
+    .parsons .lines button { font-family: var(--mono); font-size: 17px; white-space: pre-wrap; text-align: left; justify-content: flex-start; width: 100%; }
+    .parsons .empty { color: var(--muted); margin: 6px 4px; }
+    .warm #gameResult { font-size: 17px; line-height: 1.5; }
+    .warm #gameResult pre.code { font-size: 16px; }
+    .final-list { list-style: none; padding: 0; margin: 8px 0; }
+    .final-list li { margin: 4px 0; }
+    @media (max-width: 600px) {
+      pre.code { font-size: 15px; padding: 10px; }
+      pre.code .no { margin-right: 10px; }
+      .choices.mono { grid-template-columns: 1fr; }
+      .choices.mono button, .parsons .lines button { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div style="margin-top:18px">
+      <p class="sub" data-i18n="pick"></p>
+      <div class="seg" id="lessonSeg"></div>
+      <p class="note" id="lessonInfo" style="font-size:15px;margin-top:8px"></p>
+    </div>
+
+    <div class="stage warm" id="game">
+      <h3 id="gameStep"></h3>
+      <p class="ask" id="ask"></p>
+      <pre class="code" id="code"></pre>
+      <div id="answer"></div>
+      <p id="gameResult"></p>
+      <button type="button" id="nextBtn" hidden></button>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <script src="../assets/core.js"></script>
+  <script src="../assets/catalog.js"></script>
+  <script src="../data/warmup.js"></script>
+  <script>
+    // ======================= Тексты =======================
+    // x_<id> — объяснение после ответа, g_<id> — условие задания «Собери программу».
+    // Сами программы и ответы — в data/warmup.js (их считает настоящий Python: tools/build_warmup.py).
+    var STR = {
+      ru: {
+        title: 'Python-разминка перед уроком',
+        eyebrow: 'Python-разминка',
+        analogy: '<b>Как разминка перед футболом:</b> 5 минут — и голова готова к уроку. Здесь только тот Python, который понадобится сегодня: прочитай код, угадай, что он сделает, найди ошибку, собери программу из кусочков.',
+        pick: 'Разминка к уроку',
+        lessonBtn: 'Урок {n}',
+        lessonInfo: '<b>{l} · {t}.</b> Сегодня пригодится: {topics}.',
+        toLesson: 'Открыть урок ›',
+        codeAria: 'Код программы с номерами строк',
+        step: 'Задание {i} из {n}',
+        next: 'Дальше',
+        finish: 'Итог',
+        finishTitle: 'Итог разминки',
+        again: 'Сыграть ещё ↺',
+        askOut: 'Что выведет программа? Сначала подумай, потом нажимай.',
+        askBug: 'В этой программе есть ошибка. В какой строке Python остановится?',
+        askParsons: 'Собери программу: нажимай строки по порядку. {g}',
+        errChoice: 'Ошибка — программа не запустится',
+        lineN: 'Строка {n}',
+        noBug: 'Ошибки нет',
+        bugIs: 'Ошибка в строке {n}. Python напишет <code>{err}</code>.',
+        yourProgram: 'Твоя программа (нажми строку, чтобы убрать её)',
+        poolLabel: 'Строки (нажми, чтобы добавить)',
+        emptyProg: 'Пока пусто — нажимай строки ниже.',
+        reset: 'Сначала',
+        check: 'Проверить',
+        rightOrder: 'Правильная программа:',
+        right: '<b>✓ Верно!</b>',
+        wrong: '<b>✕ Не так.</b>',
+        finalScore: 'Верно: <b>{s} из {n}</b>.',
+        finalAll: 'Отлично — ты готов к уроку!',
+        finalSome: 'Неплохо. Перед уроком повтори темы, где ошибся.',
+        finalFew: 'Эти темы стоит разобрать вместе с учителем — с ними урок пойдёт легче.',
+        repeat: 'Повторить: {t}.',
+
+        topic_var: 'переменные',
+        topic_if: 'условия if / else',
+        topic_list: 'списки и номера элементов',
+        topic_dict: 'словари',
+        topic_loop: 'цикл for',
+        topic_sort: 'sorted и медиана',
+        topic_none: 'пропуски None',
+        topic_func: 'функции и return',
+        topic_slice: 'срезы списка',
+        topic_fstr: 'f-строки',
+
+        x_l1a: '210 больше 206 — условие верно, поэтому работает только строка под <code>if</code>. Ветка <code>else</code> пропускается: из двух веток всегда выполняется ровно одна.',
+        x_l1b: 'Python сначала считает правую часть: 200 + 6 = 206, и кладёт результат обратно в <code>border</code>. Старое значение 200 стирается.',
+        x_l1c: 'После условия <code>if</code> обязательно ставится двоеточие: <code>if flipper &gt; 206:</code>. Без него Python не понимает, где кончается условие — ошибка записи (SyntaxError).',
+        g_l1d: 'Если масса больше 4500 г, она печатает Gentoo, иначе — not Gentoo. Для <code>mass = 5000</code> должно получиться Gentoo.',
+        x_l1d: 'Сначала переменная, потом условие. Строки с отступом принадлежат тому <code>if</code> или <code>else</code>, который стоит над ними.',
+
+        x_l2a: 'Номера в списке начинаются с 0: <code>masses[0]</code> — это 3750, <code>masses[1]</code> — 3800. Строки таблицы в pandas нумеруются так же, с нуля.',
+        x_l2b: 'Словарь — как анкета пингвина: по названию поля (ключу) получаем значение. В pandas <code>df["species"]</code> работает так же, только достаёт целый столбец.',
+        x_l2c: 'В списке 3 элемента, их номера 0, 1, 2. Номера 3 нет — Python выходит за край списка (IndexError). Строки 1 и 2 успели выполниться: программа успела напечатать 3.',
+        g_l2d: 'Она добавляет в список Chinstrap и печатает, сколько теперь в нём пингвинов. Должно получиться 4.',
+        x_l2d: '<code>append</code> добавляет элемент в конец списка, <code>len</code> считает элементы. Если посчитать до <code>append</code>, получится 3.',
+
+        x_l3a: 'Цикл три раза прибавляет массу к <code>total</code>: 3000, 7000, 12000. <code>print</code> стоит без отступа — он не в цикле и выполняется один раз, в конце.',
+        x_l3b: '<code>print</code> с отступом стоит внутри цикла — он срабатывает на каждом шаге. А каждый <code>print</code> печатает с новой строки.',
+        x_l3c: 'Тело цикла пишется с отступом (4 пробела). Без отступа Python не знает, что повторять, и останавливается на строке 3 — ошибка отступа (IndentationError).',
+        g_l3d: 'Она считает среднюю массу пингвинов. Должно получиться 4000.0.',
+        x_l3d: 'Среднее = сумма / количество. Сумму копим в цикле, а делим один раз — после цикла, поэтому последняя строка без отступа.',
+
+        x_l4a: '<code>sorted</code> выстраивает числа по возрастанию. «Великан» 6300 оказывается с краю — так выбросы легко заметить.',
+        x_l4b: 'После сортировки получается [3400, 3800, 6300], посередине стоит 3800 — это медиана. Среднее было бы 4500: один «великан» тянет его вверх, а медиану почти не сдвигает.',
+        x_l4c: '<code>None</code> — «пусто», пропуск в данных. К числу нельзя прибавить пустоту: на строке 4, когда цикл доходит до <code>None</code>, Python останавливается (TypeError). В pandas такой пропуск выглядит как NaN.',
+        g_l4d: 'Она складывает массы и пропускает пустые значения <code>None</code>. Должно получиться 7400.',
+        x_l4d: '<code>is not None</code> значит «не пусто»: складываем только настоящие числа. Похоже на <code>dropna()</code> в pandas — пропуски просто не участвуют.',
+
+        x_l5a: '<code>abs</code> — расстояние без знака: abs(40 − 46) = abs(−6) = 6. KNN ищет соседей как раз по таким расстояниям.',
+        x_l5b: '<code>return</code> отдаёт результат обратно: <code>double(3)</code> — это 6, <code>double(4)</code> — 8, вместе 14. Сама функция ничего не печатает — печатает только <code>print</code>.',
+        x_l5c: 'Python читает программу сверху вниз. На строке 1 функции <code>dist</code> ещё нет — неизвестное имя (NameError). Сначала <code>def</code>, потом вызов.',
+        g_l5d: 'Новый пингвин с клювом 45 мм. Программа находит в списке ближайшую длину клюва. Должно получиться 47.',
+        x_l5d: 'Это KNN при K = 1: перебираем всех и запоминаем самого близкого. 47 ближе всех: до него всего 2 мм.',
+
+        x_l6a: '<code>data[4:]</code> — от номера 4 до конца, это только [5]. <code>data[:4]</code> — первые четыре. Так пингвинов делят на train и test.',
+        x_l6b: 'Совпали 3 ответа из 4: 3 / 4 = 0.75, то есть 75%. Это и есть точность (accuracy) — доля верных ответов.',
+        x_l6c: 'Один знак <code>=</code> кладёт значение в переменную, а сравнивают двумя: <code>==</code>. Python видит ошибку записи на строке 3 (SyntaxError).',
+        g_l6d: 'Она печатает: accuracy = 0.75',
+        x_l6d: 'Сначала данные, потом расчёт, потом вывод. <code>f"…{acc}…"</code> подставляет значение переменной прямо в текст.',
+
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Выбери урок</b> — задания только на тот Python, который понадобится на этом уроке.</li>' +
+          '<li><b>Сначала подумай, потом нажимай.</b> Угадывать бесполезно: после ответа появится объяснение, и попытка одна.</li>' +
+          '<li><b>Ошибся — найди это место в коде</b> и прочитай объяснение ещё раз. Ошибки — нормальная часть программирования.</li>' +
+          '<li><b>В конце — итог</b> и список тем, которые стоит повторить.</li>' +
+          '<li><b>Ещё лучше:</b> перепиши программу в Thonny или Colab, поменяй одно число и угадай новый ответ, прежде чем запустить.</li>' +
+          '</ol>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Когда:</b> первые 5–7 минут урока, до интерактива. Разминки есть к урокам 1–6; ссылка на неё — внизу страницы урока, рядом с главой учебника.</p>' +
+          '<p><b>Как:</b></p>' +
+          '<ul>' +
+          '<li>На проекторе: класс голосует руками за вариант, потом вы нажимаете. Спросите тех, кто ошибся: «почему ты так думал?» — это ценнее правильного ответа.</li>' +
+          '<li>В парах: один отвечает, второй объясняет почему. Сильного сажайте со слабым.</li>' +
+          '<li>Порядок «предскажи → запусти → измени»: после задания попросите поменять одно число и предсказать новый вывод.</li>' +
+          '<li>Итог показывает темы с ошибками — их стоит повторить на этом уроке, хотя бы 2 минуты.</li>' +
+          '</ul>' +
+          '<p><b>Ответы проверены настоящим Python:</b> задания написаны в <code>tools/build_warmup.py</code>, скрипт запускает каждую программу и сам записывает вывод, строку ошибки и все верные порядки строк в <code>data/warmup.js</code>.</p>'
+      },
+      /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
+      /* tg:end */
+    };
+
+    MLViz.renderHeader('../');
+    MLViz.applyI18n(STR);
+
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    var W = window.WARMUP;
+    var LESSONS = Object.keys(W).map(Number).sort(function (a, b) { return a - b; });
+    var rand = MLViz.rng(Date.now());   // свой порядок вариантов при каждой игре
+    el('code').setAttribute('aria-label', T('codeAria'));
+
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    // Код с номерами строк: в заданиях «найди ошибку» номер строки — это ответ
+    function codeHtml(code) {
+      return code.split('\n').map(function (l, i) {
+        return '<span class="ln"><span class="no">' + (i + 1) + '</span>' + esc(l) + '</span>';
+      }).join('');
+    }
+    function lessonItem(n) {
+      var it = null;
+      (window.CATALOG || []).forEach(function (ph) { ph.items.forEach(function (x) { if (!it && x.lesson === n) it = x; }); });
+      return it;
+    }
+    function topicsOf(n) {
+      var seen = [];
+      W[n].forEach(function (t) { if (seen.indexOf(t.topic) === -1) seen.push(t.topic); });
+      return seen.map(function (k) { return T('topic_' + k); }).join(', ');
+    }
+
+    // ---------- Выбор урока: ?lesson=N в адресе (на него ведёт ссылка со страницы урока) ----------
+    var lesson = +new URLSearchParams(location.search).get('lesson');
+    if (LESSONS.indexOf(lesson) === -1) lesson = LESSONS[0];
+
+    LESSONS.forEach(function (n) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.n = n; b.textContent = T('lessonBtn', { n: n });
+      b.addEventListener('click', function () { pickLesson(n); });
+      el('lessonSeg').appendChild(b);
+    });
+    function pickLesson(n) {
+      lesson = n;
+      MLViz.setPressed(el('lessonSeg'), function (b) { return +b.dataset.n === n; });
+      var it = lessonItem(n);
+      el('lessonInfo').innerHTML = T('lessonInfo', {
+        l: it ? MLViz.lessonLabel(it) : T('lessonBtn', { n: n }),
+        t: it ? esc(it.title[MLViz.lang] || it.title.ru) : '',
+        topics: topicsOf(n)
+      }) + (it && it.status === 'ready' ? ' <a href="../viz/' + it.id + '/index.html">' + T('toLesson') + '</a>' : '');
+      // Адрес запоминает урок: перезагрузка и переключатель языка остаются на нём
+      var u = new URL(location.href); u.searchParams.set('lesson', n);
+      try { history.replaceState(null, '', u.toString()); } catch (e) {}
+      game.start();
+    }
+
+    // ---------- Раунды ----------
+    function tasks() { return W[lesson]; }
+
+    function roundOut(q, t) {
+      el('ask').textContent = T('askOut');
+      var opts = MLViz.shuffle(t.choices.map(function (c, k) { return { v: c, ok: k === 0 }; }), rand);
+      var box = el('answer');
+      box.className = 'choices mono';
+      q.choices(box, opts.map(function (o) {
+        return o.v === '!err' ? esc(T('errChoice')) : esc(o.v).replace(/\n/g, '<br>');
+      }), function (k) { return opts[k].ok; }, function (k, ok) {
+        q.data.res[q.i] = ok;
+        q.answer(ok ? 1 : 0, (ok ? T('right') : T('wrong')) + ' ' + T('x_' + t.id));
+      });
+    }
+
+    function roundBug(q, t) {
+      el('ask').textContent = T('askBug');
+      var nums = [];
+      t.code.split('\n').forEach(function (l, i) { if (l.trim()) nums.push(i + 1); });   // пустые строки не варианты
+      var box = el('answer');
+      box.className = 'choices';
+      var labels = nums.map(function (n) { return T('lineN', { n: n }); }).concat([T('noBug')]);
+      q.choices(box, labels, function (k) { return nums[k] === t.line; }, function (k, ok) {
+        q.data.res[q.i] = ok;
+        q.answer(ok ? 1 : 0, (ok ? T('right') : T('wrong')) + ' ' + T('bugIs', { n: t.line, err: t.err }) + ' ' + T('x_' + t.id));
+      });
+    }
+
+    // «Собери программу»: строки нажимают по порядку, нажатую в программе строку можно вернуть обратно
+    function roundParsons(q, t) {
+      el('ask').innerHTML = T('askParsons', { g: T('g_' + t.id) });
+      el('code').hidden = true;
+      var n = t.lines.length, built = [], pool;
+      function isValid(order) {
+        return t.orders.some(function (o) { return o.join() === order.join(); });
+      }
+      // Перемешиваем так, чтобы строки не стояли сразу в верном порядке
+      do { pool = MLViz.shuffle(MLViz.range(0, n - 1, 1), rand); } while (isValid(pool));
+      var box = el('answer');
+      box.className = 'parsons';
+      box.innerHTML =
+        '<div><p class="sub">' + T('yourProgram') + '</p><div class="lines built" id="built"></div></div>' +
+        '<div><p class="sub">' + T('poolLabel') + '</p><div class="lines" id="pool"></div></div>' +
+        '<div class="row"><button type="button" id="resetBtn">' + T('reset') + '</button>' +
+        '<button type="button" class="primary" id="checkBtn" disabled>' + T('check') + '</button></div>';
+      var done = false;
+      function lineBtn(i, onClick) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = t.lines[i];
+        b.disabled = done;
+        b.addEventListener('click', onClick);
+        return b;
+      }
+      function draw() {
+        var bEl = el('built'), pEl = el('pool');
+        bEl.innerHTML = ''; pEl.innerHTML = '';
+        if (!built.length) bEl.innerHTML = '<p class="empty">' + T('emptyProg') + '</p>';
+        built.forEach(function (i, pos) {
+          bEl.appendChild(lineBtn(i, function () { built.splice(pos, 1); draw(); }));
+        });
+        pool.forEach(function (i) {
+          if (built.indexOf(i) === -1) pEl.appendChild(lineBtn(i, function () { built.push(i); draw(); }));
+        });
+        el('checkBtn').disabled = done || built.length < n;
+        el('resetBtn').disabled = done || !built.length;
+      }
+      el('resetBtn').addEventListener('click', function () { built = []; draw(); });
+      el('checkBtn').addEventListener('click', function () {
+        if (built.length < n) return;
+        var ok = isValid(built);
+        done = true; draw();
+        q.data.res[q.i] = ok;
+        q.answer(ok ? 1 : 0, (ok ? T('right') : T('wrong') + ' ' + T('rightOrder') +
+          '<pre class="code">' + codeHtml(t.lines.join('\n')) + '</pre>') + ' ' + T('x_' + t.id));
+      });
+      draw();
+    }
+
+    function finalHtml(q) {
+      var list = tasks(), missed = [];
+      var items = list.map(function (t, i) {
+        var ok = q.data.res[i];
+        var name = T('topic_' + t.topic);
+        if (!ok && missed.indexOf(name) === -1) missed.push(name);
+        return '<li>' + (ok ? '✓ ' : '✕ ') + T('step', { i: i + 1, n: list.length }) + ' — ' + name + '</li>';
+      }).join('');
+      var msg = q.score === q.n ? T('finalAll') : q.score >= q.n / 2 ? T('finalSome') : T('finalFew');
+      return T('finalScore', { s: q.score, n: q.n }) + ' ' + msg +
+        '<ul class="final-list">' + items + '</ul>' + (missed.length ? T('repeat', { t: missed.join(', ') }) : '');
+    }
+
+    var game = MLViz.quiz({
+      box: el('game'),
+      rounds: function () { return tasks().length; },
+      text: {
+        step: function (q) { return T('step', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), again: T('again'), finishTitle: T('finishTitle'),
+        final: finalHtml
+      },
+      start: function (q) { q.data.res = []; },
+      round: function (q) {
+        var t = tasks()[q.i];
+        el('code').hidden = false;
+        el('code').innerHTML = t.code ? codeHtml(t.code) : '';
+        if (t.type === 'out') roundOut(q, t);
+        else if (t.type === 'bug') roundBug(q, t);
+        else roundParsons(q, t);
+      },
+      onEnd: function () {
+        el('ask').textContent = ''; el('code').hidden = true; el('answer').innerHTML = '';
+      }
+    });
+
+    pickLesson(lesson);
+  </script>
+</body>
+</html>

@@ -56,9 +56,9 @@
           nextTitle: 'Что дальше', nextGo: 'Дальше: {l} · {t} ›', toHome: 'На главную ›',
           doneYes: '✓ Урок пройден: ты доиграл игру до конца. Отметка видна на главной.',
           doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.',
-          book: 'Учебник', readChapter: '📖 Глава {n} учебника', colab: 'Открыть ноутбук в Colab',
+          book: 'Учебник', readChapter: '📖 Глава {n} учебника', colab: 'Открыть ноутбук в Colab', warmup: '🐍 Python-разминка к уроку',
           bookLinksTitle: 'К этой главе', vizLink: '🧪 Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓' },
-    tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"📖 Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","bookLinksTitle":"Ба ин боб","vizLink":"🧪 Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓"}
+    tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"📖 Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"🐍 Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"🧪 Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓"}
   };
 
   // Номер страницы в уроке: на один урок курса бывает несколько страниц (урок 17 — три).
@@ -120,6 +120,8 @@
   // Глава N книги «Машинное обучение для начинающих» = урок N курса; ноутбук главы — notebooks/chNN.ipynb.
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   function chapterUrl(root, n) { return root + 'book/ml/ch' + pad2(n) + '.html'; }
+  // Python-разминка к уроку (warmup/index.html) — для уроков из списка COURSE.warmup
+  function hasWarmup(n) { return !!(window.COURSE && window.COURSE.warmup && window.COURSE.warmup.indexOf(n) !== -1); }
   function colabUrl(n) { return window.COURSE && window.COURSE.colab ? window.COURSE.colab + 'ch' + pad2(n) + '.ipynb' : ''; }
 
   // На странице главы: какие интерактивы к ней есть и кнопка Colab
@@ -180,7 +182,8 @@
     br.innerHTML = '<h2>' + t(UI, 'nextTitle') + '</h2>' +
       (it.bridge ? '<p>' + tx(it.bridge) + '</p>' : '') +
       '<p class="row" style="margin:10px 0 0"><a class="btn" href="' + chapterUrl(root, it.lesson) + '">' + t(UI, 'readChapter', { n: it.lesson }) + '</a>' +
-        (colabUrl(it.lesson) ? '<a class="btn" href="' + colabUrl(it.lesson) + '" target="_blank" rel="noopener">' + t(UI, 'colab') + ' ↗</a>' : '') + '</p>' +
+        (colabUrl(it.lesson) ? '<a class="btn" href="' + colabUrl(it.lesson) + '" target="_blank" rel="noopener">' + t(UI, 'colab') + ' ↗</a>' : '') +
+        (hasWarmup(it.lesson) ? '<a class="btn" href="' + root + 'warmup/index.html?lesson=' + it.lesson + '">' + t(UI, 'warmup') + '</a>' : '') + '</p>' +
       '<p class="note" id="doneNote"></p>' +
       '<p style="margin:12px 0 0">' + (next
         ? '<a class="btn" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
