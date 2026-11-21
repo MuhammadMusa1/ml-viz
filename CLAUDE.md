@@ -53,6 +53,7 @@
 
 ## Код
 
+- Модели, которые считаются как в sklearn (KNN в Pipeline, дерево, `StratifiedKFold`), — в `assets/models.js` (`MLModels`); страницы с кросс-валидацией (уроки 12, 19) берут их оттуда.
 - Общие функции в `assets/core.js` (`MLViz.fitCanvas`, `scale`, `pointer`, `rng`, `shuffle`, `t`, `applyI18n`, `renderHeader`, `drawAxes`, `plotPad`, `range`, `setPressed`). Не дублировать их в страницах.
 - Оси графиков — только через `MLViz.drawAxes` и отступы `MLViz.plotPad(w, символов_в_делениях_Y)`: шрифт растёт под проектор.
 - Переключатели режимов и видов — контейнер `.seg` (режимы: `.seg.modes`) и `MLViz.setPressed(...)` (`aria-pressed`). Класс `.primary` — **только** для кнопок действия («Лучшая прямая», «Сдать экзамен»).

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gradio: приложение за урок · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Макет приложения: светлая карточка, как веб-страница, которую увидит пользователь */
+    .app { background: #F7F5FF; color: #1A1530; border-radius: 12px; padding: 16px 18px; }
+    .app h3 { color: #1A1530; font-size: 22px; text-transform: none; letter-spacing: 0; margin: 0 0 12px; }
+    .app .box { border: 1px solid #D8D2F0; border-radius: 10px; padding: 10px 12px; background: #fff; margin-bottom: 10px; }
+    .app label { display: block; font-size: 14px; color: #5B5480; font-weight: 700; margin-bottom: 6px; }
+    .app input[type="number"] { font: inherit; font-size: 18px; width: 100%; padding: 8px; border: 1px solid #CFC8EE; border-radius: 8px; min-height: 44px; }
+    .app input[type="range"]::-webkit-slider-runnable-track { background: #D8D2F0; }
+    .app .val { font-size: 18px; font-weight: 700; }
+    .app .out { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .app button.submit { background: #1A1530; color: #fff; border: 0; font-weight: 700; width: 100%; }
+    .app .url { font-family: var(--mono); font-size: 13px; color: #5B5480; margin-top: 8px; overflow-wrap: anywhere; }
+    .code { position: relative; background: #0F0C22; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow-x: auto;
+            font-family: var(--mono); font-size: 14px; line-height: 1.5; white-space: pre; margin: 0; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <!-- Так приложение увидит пользователь по ссылке -->
+        <div class="stage">
+          <p class="sub" data-i18n="appTitle"></p>
+          <div class="app" id="app">
+            <h3 id="appName"></h3>
+            <div class="box">
+              <label id="inLabel" for="inRange"></label>
+              <div id="inSlider"><input type="range" id="inRange"><div class="val" id="inVal"></div></div>
+              <input type="number" id="inNum" hidden>
+            </div>
+            <button type="button" class="submit" id="submit" data-i18n="submit"></button>
+            <div class="box" style="margin-top:10px">
+              <label data-i18n="outLabel"></label>
+              <div class="out" id="out">—</div>
+            </div>
+            <div class="url" id="url"></div>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="stage viz-extra">
+          <p class="sub" data-i18n="modelTitle"></p>
+          <canvas id="cv" class="drag"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--gentoo)"></i><span data-i18n="legData"></span></span>
+            <span><i style="border-radius:0; height:3px; background:var(--text)"></i><span data-i18n="legLine"></span></span>
+            <span><i style="background:var(--c-neg)"></i><span data-i18n="legNeg"></span></span>
+          </div>
+          <p class="note" style="padding:0 4px" id="zoneNote"></p>
+        </div>
+
+        <div class="stage viz-extra">
+          <p class="sub" data-i18n="codeTitle"></p>
+          <pre class="code" id="code"></pre>
+          <div class="row" style="margin-top:8px"><button type="button" id="copyBtn" data-i18n="copy"></button></div>
+          <p class="note" data-i18n="codeNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Режим «Исследуй»: конструктор приложения -->
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:14px">
+          <div>
+            <h3 data-i18n="bTitle"></h3>
+            <input type="text" id="titleIn" maxlength="40" style="font:inherit; width:100%; margin-top:6px; padding:8px; border-radius:8px; border:1px solid var(--line); background:var(--bg-2); color:var(--text); min-height:44px">
+          </div>
+          <div>
+            <h3 data-i18n="bInput"></h3>
+            <div class="seg" id="inputBtns" style="margin-top:6px">
+              <button type="button" data-v="slider" data-i18n="slider"></button>
+              <button type="button" data-v="number" data-i18n="number"></button>
+            </div>
+          </div>
+          <div id="rangeBox">
+            <h3 data-i18n="bRange"></h3>
+            <div class="seg" id="rangeBtns" style="margin-top:6px">
+              <button type="button" data-v="data"></button>
+              <button type="button" data-v="wide" data-i18n="rangeWide"></button>
+            </div>
+          </div>
+          <div>
+            <h3 data-i18n="bHost"></h3>
+            <div class="seg" id="hostBtns" style="margin-top:6px">
+              <button type="button" data-v="share" data-i18n="hostShare"></button>
+              <button type="button" data-v="spaces" data-i18n="hostSpaces"></button>
+            </div>
+            <p class="note" id="hostNote"></p>
+          </div>
+          <p id="trust" style="margin:0"></p>
+        </div>
+
+        <!-- Игра «Протестируй приложение» -->
+        <div id="gamePanel" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameCase"></p>
+          <div class="choices" id="choiceBtns"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+          <div style="margin-top:12px"><div class="big-number" id="score">0</div><small data-i18n="scoreLbl"></small></div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 20 · AutoML и AI-инструменты',
+        title: 'Gradio: приложение за урок',
+        analogy: '<b>От кухни к ресторану.</b> Модель в Colab — блюдо, которое готовишь только себе. Gradio строит «зал и меню» — страницу с кнопками, а Hugging Face Spaces — «здание с постоянным адресом», куда может зайти любой.',
+        appTitle: 'Так приложение увидит пользователь',
+        submit: 'Отправить',
+        inLabel: 'Длина крыла, мм',
+        outLabel: 'Прогноз массы, г',
+        defaultTitle: 'Сколько весит пингвин?',
+        urlShare: 'https://a1b2c3d4.gradio.live — временная ссылка: работает около 72 часов и только пока открыт блокнот Colab',
+        urlSpaces: 'https://huggingface.co/spaces/твоё-имя/penguin-mass — постоянный адрес: работает, даже когда твой компьютер выключен',
+        modelTitle: 'Что внутри: модель и её данные',
+        legData: 'пингвины train', legLine: 'прямая модели', legNeg: 'масса меньше нуля — бессмыслица',
+        zoneNote: 'Модель училась на крыльях от {lo} до {hi} мм (светлая полоса). Вне полосы прямая просто продолжается — и может выдать что угодно, даже отрицательную массу. Тяни по графику, чтобы ввести длину крыла.',
+        codeTitle: 'Код приложения: app.py',
+        copy: 'Скопировать код', copied: 'Скопировано ✓',
+        codeNote: 'Код меняется вместе с настройками справа. Для Hugging Face Spaces нужен ещё файл requirements.txt со списком библиотек.',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: протестируй приложение',
+        bTitle: 'Заголовок приложения (title)',
+        bInput: 'Поле ввода',
+        slider: 'Ползунок (gr.Slider)', number: 'Число (gr.Number)',
+        bRange: 'Пределы ползунка',
+        rangeData: 'Как в данных: {lo}–{hi}', rangeWide: 'От 0 до 300',
+        bHost: 'Где живёт приложение',
+        hostShare: 'share=True', hostSpaces: 'Hugging Face Spaces',
+        hostShareNote: 'Gradio даёт временную ссылку на ~72 часа. Закрыл блокнот Colab — ссылка перестала работать.',
+        hostSpacesNote: 'Код (app.py) и список библиотек (requirements.txt) загружают на Spaces — там приложение работает круглосуточно по постоянному адресу.',
+        trustIn: 'Сейчас введено {x} мм — внутри данных. Ответу модели можно верить (с обычной ошибкой регрессии).',
+        trustOut: 'Сейчас введено {x} мм — <b>вне данных</b> ({lo}–{hi} мм). Модель такого не видела: ответ {y} г ничего не значит.',
+        trustNum: 'В поле «Число» можно ввести что угодно. Ползунок с пределами как в данных защищает пользователя от бессмысленных ответов.',
+        hintExplore: 'Меняй настройки в панели — приложение и его код обновляются сразу. Нажми «Отправить», как настоящий пользователь.',
+        hintGame: 'Ты тестировщик: пользователь ввёл длину крыла. Можно ли верить ответу приложения?',
+        gameStep: 'Тест {i} из {n}',
+        gameCase: 'Пользователь ввёл крыло <b>{x} мм</b>, приложение ответило: <b>{y} г</b>. Можно верить этому ответу?',
+        yes: 'Да, можно', no: 'Нет, нельзя',
+        right: 'Верно!', wrong: 'Не совсем.',
+        eIn: 'Можно: {x} мм — внутри данных ({lo}–{hi} мм), модель видела таких пингвинов.',
+        eOut: 'Нельзя: {x} мм — вне данных ({lo}–{hi} мм). Прямая просто продолжилась и дала {y} г. Ползунок с пределами не дал бы такое ввести.',
+        next: 'Следующий тест →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        scoreLbl: 'верных ответов',
+        gameOver: 'Ты разобрал правильно <b>{s} из {n}</b> тестов. {v}',
+        goGood: 'Отличный тестировщик: ты ловишь ответы, которым нельзя верить.',
+        goMid: 'Неплохо. Посмотри на светлую полосу на графике — в ней модели можно верить.',
+        goLow: 'Подсказка: смотри, попадает ли длина крыла в данные train.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Функция.</b> Пишешь обычную функцию <code>predict(крыло)</code>, которая спрашивает модель и возвращает массу.</li>' +
+          '<li><b>Интерфейс.</b> <code>gr.Interface</code> строит вокруг функции страницу: поле ввода (ползунок или число), кнопку и поле ответа. HTML писать не нужно.</li>' +
+          '<li><b>Временная ссылка.</b> <code>demo.launch(share=True)</code> в Colab даёт ссылку *.gradio.live примерно на 72 часа — пока открыт блокнот.</li>' +
+          '<li><b>Постоянный адрес.</b> На Hugging Face Spaces загружают <code>app.py</code> и <code>requirements.txt</code> — приложение работает всегда, по адресу huggingface.co/spaces/имя/название.</li>' +
+          '<li><b>Защита от глупостей.</b> Пользователь может ввести что угодно. Пределы ползунка как в данных не дают спросить модель о том, чего она не видела.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Выбери «Число (gr.Number)» и введи 100. Что ответило приложение? Почему так получилось?</li>' +
+          '<li>Переключи пределы ползунка «От 0 до 300». Где на графике модель начинает выдавать бессмыслицу?</li>' +
+          '<li>Сравни share=True и Hugging Face Spaces. Какой вариант выбрать, чтобы отправить ссылку бабушке на неделю?</li>' +
+          '<li>Найди в коде app.py строчку, которая поменялась, когда ты сменил поле ввода.</li>' +
+          '<li>Сыграй «Игра: протестируй приложение». Какие ответы модели тебя обманули бы?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Модель внутри — линейная регрессия из урока 8: <code>масса = a × крыло + b</code>, где a и b подобраны по 273 пингвинам train методом наименьших квадратов. Вне данных формула продолжает работать как прямая — поэтому для крыла 100 мм получается отрицательная масса.</p>' +
+          '<p>Код приложения справа запускается в Colab целиком (сначала <code>!pip install gradio</code>). Слово <code>gr.Interface</code> — это Gradio; слово <code>pipeline</code> из Hugging Face (урок 19) и sklearn <code>Pipeline</code> (урок 10) — другие вещи.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Модель.</b> <code>LinearRegression</code> на train (273 пингвина, <code>train_test_split(test_size=0.2, random_state=42)</code>): масса ≈ 49.85 × крыло − 5816.9 — те же числа, что в уроке 8. Прогнозы приложения совпадают с sklearn (<code>tools/check_gradio.py</code>). Ссылки *.gradio.live и huggingface.co на странице — примеры адресов, приложение здесь работает без интернета.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «Протестируй приложение» — класс голосует «можно / нельзя верить». Потом каждый настраивает приложение, копирует код в Colab, запускает с <code>share=True</code> и отправляет ссылку себе на телефон. Дома — Hugging Face Spaces.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Чем временная ссылка отличается от хостинга? Почему пределы ввода — часть честной модели? Что ещё может сломать приложение (пустое поле, буквы вместо числа)?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.',
+        axisX: 'Длина крыла, мм', axisY: 'Масса, г'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    el('cv').setAttribute('aria-label', T('modelTitle'));
+    el('inLabel').textContent = T('inLabel');
+
+    // ======================= Модель: линейная регрессия на train (как в уроке 8) =======================
+    var train = PENGUINS.rows.filter(function (r) { return r[6] === 0; }).map(function (r) { return { x: r[4], y: r[5] }; });
+    var n = train.length;
+    var mx = train.reduce(function (s, p) { return s + p.x; }, 0) / n, my = train.reduce(function (s, p) { return s + p.y; }, 0) / n;
+    var sxy = 0, sxx = 0;
+    train.forEach(function (p) { sxy += (p.x - mx) * (p.y - my); sxx += (p.x - mx) * (p.x - mx); });
+    var A = sxy / sxx, B = my - A * mx;                     // метод наименьших квадратов
+    var LO = Math.min.apply(null, train.map(function (p) { return p.x; })), HI = Math.max.apply(null, train.map(function (p) { return p.x; }));
+    function predict(x) { return Math.round(A * x + B); }
+    function inData(x) { return x >= LO && x <= HI; }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', title: T('defaultTitle'), input: 'slider', range: 'data', host: 'share', x: 200, sent: null, game: null };
+    function bounds() { return state.range === 'data' ? [LO, HI] : [0, 300]; }
+
+    // ======================= Приложение (как его видит пользователь) =======================
+    function updateApp() {
+      el('appName').textContent = state.title || ' ';
+      var b = bounds(), r = el('inRange');
+      el('inSlider').hidden = state.input !== 'slider';
+      el('inNum').hidden = state.input !== 'number';
+      r.min = b[0]; r.max = b[1]; r.step = 1;
+      if (state.input === 'slider') state.x = Math.min(b[1], Math.max(b[0], state.x));
+      r.value = state.x; el('inNum').value = state.x;
+      el('inVal').textContent = state.x;
+      var y = state.sent === null ? null : predict(state.sent);
+      el('out').textContent = y === null ? '—' : y;
+      el('url').textContent = T(state.host === 'share' ? 'urlShare' : 'urlSpaces');
+    }
+
+    // ======================= Код app.py — живой, по настройкам =======================
+    function pyStr(s) { return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
+    function code() {
+      var b = bounds();
+      var inp = state.input === 'slider'
+        ? 'gr.Slider(' + b[0] + ', ' + b[1] + ', value=200, label=' + pyStr(T('inLabel')) + ')'
+        : 'gr.Number(value=200, label=' + pyStr(T('inLabel')) + ')';
+      var lines = [
+        state.host === 'share' ? '# Запускать в Google Colab (сначала: !pip install gradio)' : '# app.py — файл для Hugging Face Spaces',
+        'import gradio as gr',
+        'from palmerpenguins import load_penguins',
+        'from sklearn.model_selection import train_test_split',
+        'from sklearn.linear_model import LinearRegression',
+        '',
+        "df = load_penguins().drop(columns=['sex']).dropna().reset_index(drop=True)",
+        "X, y = df[['flipper_length_mm']], df['body_mass_g']",
+        'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)',
+        'model = LinearRegression().fit(X_train, y_train)',
+        '',
+        'def predict(flipper):',
+        "    return round(float(model.predict(X_train.iloc[:1].assign(flipper_length_mm=flipper))[0]))",
+        '',
+        'demo = gr.Interface(fn=predict,',
+        '                    inputs=' + inp + ',',
+        '                    outputs=gr.Number(label=' + pyStr(T('outLabel')) + '),',
+        '                    title=' + pyStr(state.title) + ')',
+        state.host === 'share' ? 'demo.launch(share=True)   # временная ссылка *.gradio.live' : 'demo.launch()   # на Spaces адрес выдаётся сам'
+      ];
+      if (state.host === 'spaces') lines.push('', '# requirements.txt:', '# gradio', '# scikit-learn', '# palmerpenguins');
+      return lines.join('\n');
+    }
+
+    // ======================= График: данные, прямая, полоса «можно верить» =======================
+    var cv = el('cv'), g, PAD, sx, sy, DOM = { x0: 80, x1: 310, y0: -2000, y1: 10000 };
+    function resize() {
+      g = MLViz.fitCanvas(cv, cv.parentElement.clientWidth < 560 ? 0.8 : 0.5);
+      PAD = MLViz.plotPad(g.w, 5);
+      sx = MLViz.scale(DOM.x0, DOM.x1, PAD.l, g.w - PAD.r);
+      sy = MLViz.scale(DOM.y0, DOM.y1, g.h - PAD.b, PAD.t);
+      draw();
+    }
+    function draw() {
+      var ctx = g.ctx;
+      ctx.clearRect(0, 0, g.w, g.h);
+      // Полоса данных — где модели можно верить
+      ctx.fillStyle = 'rgba(238,234,251,.08)';
+      ctx.fillRect(sx(LO), PAD.t, sx(HI) - sx(LO), g.h - PAD.b - PAD.t);
+      MLViz.drawAxes(ctx, { w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy, xTicks: MLViz.range(100, 300, 50), yTicks: MLViz.range(-2000, 10000, 2000),
+        xLabel: T('axisX'), yLabel: T('axisY') });
+      ctx.fillStyle = MLViz.cssVar('--gentoo'); ctx.globalAlpha = 0.75;
+      train.forEach(function (p) { ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 3, 0, Math.PI * 2); ctx.fill(); });
+      ctx.globalAlpha = 1;
+      // Прямая модели; часть ниже нуля — цветом отрицательных чисел
+      var x0 = (0 - B) / A;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = MLViz.cssVar('--c-neg');
+      ctx.beginPath(); ctx.moveTo(sx(DOM.x0), sy(A * DOM.x0 + B)); ctx.lineTo(sx(x0), sy(0)); ctx.stroke();
+      ctx.strokeStyle = MLViz.cssVar('--text');
+      ctx.beginPath(); ctx.moveTo(sx(x0), sy(0)); ctx.lineTo(sx(DOM.x1), sy(A * DOM.x1 + B)); ctx.stroke();
+      // Текущий ввод пользователя
+      var x = state.mode === 'game' && state.game ? state.game.x : state.x;
+      if (x >= DOM.x0 && x <= DOM.x1) {
+        var y = predict(x);
+        ctx.strokeStyle = 'rgba(238,234,251,.6)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx(x), g.h - PAD.b); ctx.lineTo(sx(x), sy(y)); ctx.stroke();
+        ctx.beginPath(); ctx.arc(sx(x), sy(y), 7, 0, Math.PI * 2);
+        ctx.fillStyle = y < 0 ? MLViz.cssVar('--c-neg') : '#fff'; ctx.fill();
+      }
+    }
+
+    // ======================= Панель =======================
+    function updatePanel() {
+      MLViz.setPressed(el('inputBtns'), function (b) { return b.dataset.v === state.input; });
+      MLViz.setPressed(el('rangeBtns'), function (b) { return b.dataset.v === state.range; });
+      MLViz.setPressed(el('hostBtns'), function (b) { return b.dataset.v === state.host; });
+      el('rangeBox').hidden = state.input !== 'slider';
+      el('hostNote').textContent = T(state.host === 'share' ? 'hostShareNote' : 'hostSpacesNote');
+      var x = state.x;
+      el('trust').innerHTML = (inData(x) ? T('trustIn', { x: x }) : T('trustOut', { x: x, lo: LO, hi: HI, y: predict(x) })) +
+        (state.input === 'number' ? ' ' + T('trustNum') : '');
+      el('code').textContent = code();
+      el('zoneNote').textContent = T('zoneNote', { lo: LO, hi: HI });
+    }
+    function refresh() { updateApp(); updatePanel(); draw(); }
+
+    function setX(v) { if (isFinite(v)) { state.x = Math.round(v); state.sent = state.x; refresh(); } }
+
+    // ======================= Игра «Протестируй приложение» (общий компонент MLViz.quiz) =======================
+    // 8 тестов: длина крыла — то внутри данных, то вне. Ответ приложения считает настоящая модель.
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n, v: T(q.score >= 7 ? 'goGood' : q.score >= 5 ? 'goMid' : 'goLow') }); }
+      },
+      start: function (q) {
+        var inside = MLViz.shuffle(MLViz.range(LO, HI, 1), Math.random).slice(0, 4);
+        var outside = MLViz.shuffle([0, 50, 100, 120, 140, 150, 160, 165, 240, 250, 260, 280, 300, 400], Math.random).slice(0, 4);
+        q.data.xs = MLViz.shuffle(inside.concat(outside), Math.random);
+        el('score').textContent = 0;
+      },
+      round: function (q) {
+        var x = q.data.xs[q.i], y = predict(x), ok = inData(x);
+        state.game = { x: x };
+        el('gameCase').innerHTML = T('gameCase', { x: x, y: y });
+        q.choices(el('choiceBtns'), [T('yes'), T('no')], function (i) { return (i === 0) === ok; }, function (i, right) {
+          q.answer(right ? 1 : 0, '<b>' + T(right ? 'right' : 'wrong') + '</b> ' + T(ok ? 'eIn' : 'eOut', { x: x, y: y, lo: LO, hi: HI }));
+          el('score').textContent = q.score;
+        });
+        draw();
+      },
+      onEnd: function () { el('choiceBtns').innerHTML = ''; el('gameCase').textContent = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').style.display = m === 'explore' ? 'flex' : 'none';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else { state.game = null; refresh(); }   // настройки приложения игра не трогает
+    }
+
+    // ======================= События =======================
+    el('rangeBtns').querySelector('[data-v="data"]').textContent = T('rangeData', { lo: LO, hi: HI });
+    el('titleIn').value = state.title;
+    el('titleIn').addEventListener('input', function (e) { state.title = e.target.value; refresh(); });
+    function segClick(id, keyName) {
+      el(id).addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state[keyName] = b.dataset.v; refresh(); } });
+    }
+    segClick('inputBtns', 'input'); segClick('rangeBtns', 'range'); segClick('hostBtns', 'host');
+    el('inRange').addEventListener('input', function (e) { state.x = +e.target.value; el('inVal').textContent = state.x; updatePanel(); draw(); });
+    el('inNum').addEventListener('input', function (e) { var v = parseFloat(e.target.value); if (isFinite(v)) { state.x = Math.round(v); updatePanel(); draw(); } });
+    el('submit').addEventListener('click', function () { state.sent = state.x; refresh(); });
+    // Тянем по графику — меняем длину крыла (то же можно ползунком или числом в приложении)
+    var dragging = false;
+    function fromCanvas(e) {
+      var x = sx.invert(MLViz.pointer(cv, e).x);
+      if (state.input === 'slider') { var b = bounds(); x = Math.min(b[1], Math.max(b[0], x)); }
+      setX(x);
+    }
+    cv.addEventListener('pointerdown', function (e) { if (state.mode !== 'explore') return; dragging = true; cv.setPointerCapture(e.pointerId); fromCanvas(e); });
+    cv.addEventListener('pointermove', function (e) { if (dragging) fromCanvas(e); });
+    cv.addEventListener('pointerup', function () { dragging = false; });
+    cv.addEventListener('pointercancel', function () { dragging = false; });
+    el('copyBtn').addEventListener('click', function () {
+      var b = el('copyBtn'), done = function () { b.textContent = T('copied'); setTimeout(function () { b.textContent = T('copy'); }, 1500); };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(code()).then(done, function () {});
+      else {   // file:// — через выделение текста
+        var r = document.createRange(); r.selectNodeContents(el('code'));
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        sel.removeAllRanges();
+      }
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    state.sent = state.x;
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Мини-проект «Предсказатель» · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Шаги проекта в панели: номер в кружке + содержимое */
+    .step { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+    .step > .num { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 15px;
+                   background: var(--card); border: 1px solid var(--line); color: var(--text); }
+    .step h3 { margin-top: 4px; }
+    .step .seg button { padding: 6px 10px; }
+    .exam-box { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: rgba(23, 19, 46, .5); }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--adelie)"></i>Adelie</span>
+            <span><i style="background:var(--chinstrap)"></i>Chinstrap</span>
+            <span><i style="background:var(--gentoo)"></i>Gentoo</span>
+            <span><i class="ring" style="border-color:var(--c-val)"></i><span data-i18n="legVal"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+          <p class="note" style="padding:0 4px" id="mapNote" data-i18n="mapNote" hidden></p>
+        </div>
+
+        <div class="stage viz-extra">
+          <p class="sub" data-i18n="barsTitle"></p>
+          <canvas id="bars"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--text)"></i><span data-i18n="legModel"></span></span>
+            <span><i style="background:var(--muted)"></i><span data-i18n="legBase"></span></span>
+            <span><i style="border-radius:0; height:2px; background:var(--text)"></i><span id="legMean"></span></span>
+          </div>
+          <p class="note" style="padding:0 4px" data-i18n="barsNote"></p>
+          <p style="margin:10px 4px 4px" class="sub" data-i18n="foldPick"></p>
+          <div class="seg" id="foldBtns" style="margin:0 4px"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Режим «Исследуй»: проект по пяти шагам -->
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:14px">
+          <div class="step"><span class="num">1</span><div>
+            <h3 data-i18n="s1Title"></h3>
+            <p class="note" data-i18n="s1Body"></p>
+          </div></div>
+
+          <div class="step"><span class="num">2</span><div>
+            <h3 data-i18n="s2Title"></h3>
+            <div class="seg" id="pairBtns" style="margin-top:6px"></div>
+          </div></div>
+
+          <div class="step"><span class="num">3</span><div>
+            <h3 data-i18n="s3Title"></h3>
+            <p class="note" id="baseLine"></p>
+          </div></div>
+
+          <div class="step"><span class="num">4</span><div>
+            <h3 data-i18n="s4Title"></h3>
+            <div class="seg" id="modelBtns" style="margin-top:6px">
+              <button type="button" data-m="knn">KNN</button>
+              <button type="button" data-m="tree" data-i18n="treeBtn"></button>
+            </div>
+            <p style="margin:8px 0 2px" id="paramLabel"></p>
+            <div class="seg" id="paramBtns"></div>
+            <div style="margin-top:8px">
+              <label class="toggle"><input type="checkbox" id="map"> <span data-i18n="showMap"></span></label>
+            </div>
+          </div></div>
+
+          <div class="step"><span class="num">5</span><div>
+            <h3 data-i18n="s5Title"></h3>
+            <div class="big-number" id="cvMean" style="margin-top:6px"></div>
+            <p class="note" id="cvNote"></p>
+            <p style="margin:8px 0 0" id="verdict"></p>
+          </div></div>
+
+          <div class="exam-box">
+            <h3 data-i18n="examTitle"></h3>
+            <p class="note" id="examNote"></p>
+            <div class="big-number" id="examNum" hidden></div>
+            <button type="button" id="examBtn" class="primary" style="margin-top:8px" data-i18n="examBtn"></button>
+            <button type="button" id="resetBtn" style="margin-top:8px" data-i18n="resetBtn" hidden></button>
+          </div>
+        </div>
+
+        <!-- Игра «Проверь проект одноклассника» -->
+        <div id="gamePanel" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameCase"></p>
+          <div class="choices" id="choiceBtns"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+          <div style="margin-top:12px"><div class="big-number" id="score">0</div><small data-i18n="scoreLbl"></small></div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/models.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 12 · Классические алгоритмы',
+        title: 'Мини-проект «Предсказатель»',
+        analogy: '<b>Baseline — как контрольная группа в опыте.</b> Чтобы понять, помогло ли удобрение, сажают и грядку без него. Так и с моделью: сначала смотрим, сколько угадывает «ленивая» модель, и только потом радуемся своим процентам. А проверяем не один раз, а пять — чтобы не повезло случайно.',
+        cvLabel: 'Пингвины из train на двух признаках. Обведены пингвины текущей проверки — на них модель экзаменуют.',
+        barsLabel: 'Точность модели и baseline в каждой из пяти проверок.',
+        barsTitle: 'Пять проверок (кросс-валидация)',
+        barsNote: 'Каждый столбик — одна проверка: модель учится на 4/5 train и отвечает про оставшуюся 1/5. Нажми на столбик, чтобы увидеть эту проверку на графике.',
+        legVal: 'проверяют сейчас (validation)',
+        legModel: 'твоя модель', legBase: 'baseline',
+        mapNote: 'Карта решений: каждая точка фона окрашена в вид, который модель назвала бы пингвину в этом месте. Модель — из текущей проверки.',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: проверь проект одноклассника',
+        s1Title: 'Задача',
+        s1Body: 'Вид пингвина по двум признакам. Ответ — категория: классификация.',
+        s2Title: 'Данные: признаки',
+        pair0: 'Длина + глубина клюва', pair1: 'Длина клюва + крыло',
+        s3Title: 'Baseline',
+        baseLine: '«Ленивая» модель (всегда самый частый вид): <b>{p}%</b> по 5 проверкам.',
+        s4Title: 'Модель в Pipeline',
+        treeBtn: 'Дерево',
+        kLabel: 'Число соседей K (масштаб — внутри конвейера):',
+        dLabel: 'Глубина дерева (max_depth):',
+        showMap: 'Показать карту решений',
+        s5Title: 'Вывод: кросс-валидация',
+        cvNote: 'Точность (accuracy) — доля верных ответов. Это среднее по 5 проверкам; отдельные проверки — от {lo}% до {hi}%.',
+        better: 'Модель заметно лучше baseline: <b>{m}%</b> против {b}% — она правда нашла закономерность.',
+        worse: 'Модель не лучше baseline — значит, она почти ничего не нашла.',
+        foldPick: 'Показать на графике проверку',
+        foldBtn: '{i}',
+        foldAria: 'Проверка {i}',
+        examTitle: 'Экзамен (test) — один раз в конце',
+        examReady: 'Выбери признаки и модель по кросс-валидации, а потом сдай экзамен на 69 пингвинах, которых модель не видела.',
+        examBtn: 'Сдать экзамен',
+        examDone: 'Экзамен сдан: {model}. Угадано <b>{c} из 69</b>. Кросс-валидация обещала {cv}% — разница в 1–2 пингвина нормальна: test маленький. «Ленивая» модель на test: 35 из 69 (51%).',
+        examLocked: 'Экзамен уже сдан моделью «{model}»: {c} из 69. Сдавать его снова другой моделью — значит подбирать модель по test. Хочешь честно — начни новый проект.',
+        resetBtn: 'Новый проект ↺',
+        hintExplore: 'Каждая точка — пингвин из train. Обведённые — проверка, которую ты выбрал: на них модель экзаменуют, а учится она на остальных.',
+        hintGame: 'Прочитай, что сделал одноклассник, и реши: проект честный или в нём ошибка?',
+        modelKnn: 'KNN, K = {k}', modelTree: 'дерево, глубина {d}',
+        gameStep: 'Проект {i} из {n}',
+        honest: 'Честно', mistake: 'Есть ошибка',
+        right: 'Верно!', wrong: 'Не совсем.',
+        next: 'Следующий проект →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        scoreLbl: 'верных ответов',
+        gameOver: 'Ты разобрал правильно <b>{s} из {n}</b> проектов. {v}',
+        goGood: 'Ты готов принимать защиту проектов!',
+        goMid: 'Неплохо. Перечитай «Как это работает» и сыграй ещё раз.',
+        goLow: 'Ловушки хитрые — загляни в «Типичные ошибки» внизу страницы.',
+        // Сценарии игры: числа берутся из настоящих расчётов этой страницы
+        c_base: 'Одноклассник пишет: «Моя модель угадывает {m}% по кросс-валидации, а baseline — {b}%». ',
+        e_base: 'Честно: результат сравнили с baseline, поэтому видно, чего он стоит.',
+        c_tuneTest: 'Одноклассник перебрал K от 1 до 15, для каждого посмотрел точность на test и взял лучший.',
+        e_tuneTest: 'Ошибка: подбирать по test нельзя — он перестаёт быть экзаменом. Подбирают по кросс-валидации, test открывают один раз.',
+        c_leak: 'Одноклассник обучил StandardScaler на всех 342 пингвинах, а потом разделил данные на train и test.',
+        e_leak: 'Ошибка: это утечка данных. Масштаб «подсмотрел» test. В Pipeline масштаб учится только на обучающей части.',
+        c_trainAcc: 'Одноклассник пишет: «KNN с K = 1 угадывает 100%!» Проверял на тех же пингвинах, на которых модель училась.',
+        e_trainAcc: 'Ошибка: на своих же примерах K = 1 угадывает 273 из 273 — ближайший сосед пингвина он сам. Честно — на кросс-валидации: {cv}%.',
+        c_bestFold: 'Одноклассник сделал 5 проверок и написал в отчёте лучшую: {best}%.',
+        e_bestFold: 'Ошибка: выбрал удачную проверку. Честный результат — среднее по всем пяти: {mean}%.',
+        c_cv: 'Одноклассник пишет: «Кросс-валидация, 5 проверок по 54–55 пингвинов: в среднем {mean}%, от {lo}% до {hi}%».',
+        e_cv: 'Честно: видно и среднее, и насколько результат прыгает от проверки к проверке.',
+        c_tiny: 'Одноклассник: «У меня на test 68 из 69, у соседа 67 из 69 — моя модель лучше!»',
+        e_tiny: 'Ошибка: разница в 1 пингвина из 69 — это случайность, а не победа.',
+        c_once: 'Одноклассник выбрал модель по кросс-валидации и в самом конце один раз проверил её на test.',
+        e_once: 'Честно: так и надо. Test — экзамен, его сдают один раз.',
+        c_drop: 'Одноклассник убрал из test пингвинов, на которых модель ошибалась, — «они странные».',
+        e_drop: 'Ошибка: подгонять экзамен под модель нельзя. Ошибки модели — часть честного результата.',
+        c_noBase: 'Одноклассник пишет: «Точность 52% — отличный результат!» С baseline не сравнивал.',
+        e_noBase: 'Ошибка: без baseline непонятно, хорошо ли это. Здесь «ленивая» модель даёт около {b}% — 52% почти ничего не стоит.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Задача.</b> Решаем, что предсказываем: вид пингвина — это категория, значит классификация.</li>' +
+          '<li><b>Данные.</b> Выбираем признаки. Test (69 пингвинов) сразу откладываем и не трогаем до конца — работаем только с train (273).</li>' +
+          '<li><b>Baseline.</b> Строим «ленивую» модель, которая всегда называет самый частый вид. Это точка отсчёта: модель, которая не лучше неё, ничего не нашла.</li>' +
+          '<li><b>Модель и кросс-валидация.</b> Train делим на 5 частей. По очереди одна часть — пробный экзамен (validation), на остальных четырёх модель учится. Получаем 5 оценок вместо одной: видно и среднее, и разброс. Масштаб внутри конвейера (Pipeline) каждый раз учится только на четырёх частях.</li>' +
+          '<li><b>Вывод и экзамен.</b> Выбираем модель по кросс-валидации, сравниваем с baseline и один раз сдаём экзамен на test. Этот результат и идёт в отчёт.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Посмотри на столбики при K = 1. Одинаковы ли все пять проверок? Что было бы, если бы ты сделал только одну — самую удачную?</li>' +
+          '<li>Сравни дерево глубины 1 и глубины 3. Насколько каждое лучше baseline?</li>' +
+          '<li>Какая пара признаков даёт лучшую кросс-валидацию? Почему, как думаешь?</li>' +
+          '<li>Выбери модель только по кросс-валидации и сдай экзамен. Совпал ли test с тем, что обещала кросс-валидация?</li>' +
+          '<li>Сыграй «Игра: проверь проект одноклассника». Какую ошибку было труднее всего заметить?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Кросс-валидация на 5 частей: точность считается 5 раз, итог — среднее <code>(a₁ + a₂ + a₃ + a₄ + a₅) / 5</code>. В sklearn части делит <code>StratifiedKFold</code>: в каждой части виды встречаются примерно в той же доле, что и во всём train.</p>' +
+          '<p>В Python это:</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split, cross_val_score<br>' +
+          'from sklearn.pipeline import make_pipeline<br>' +
+          'from sklearn.preprocessing import StandardScaler<br>' +
+          'from sklearn.neighbors import KNeighborsClassifier<br>' +
+          'from sklearn.dummy import DummyClassifier<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'bill_length_mm\', \'bill_depth_mm\']]&nbsp;&nbsp;# признаки<br>' +
+          'y = df[\'species\']&nbsp;&nbsp;# ответ: вид<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br><br>' +
+          'base = DummyClassifier(strategy=\'most_frequent\')&nbsp;&nbsp;# baseline<br>' +
+          'print(cross_val_score(base, X_train, y_train, cv=5).mean())<br><br>' +
+          'model = make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=5))<br>' +
+          'scores = cross_val_score(model, X_train, y_train, cv=5)&nbsp;&nbsp;# 5 проверок<br>' +
+          'print(scores, scores.mean())<br><br>' +
+          'model.fit(X_train, y_train)&nbsp;&nbsp;# в самом конце — один раз на test<br>' +
+          'print(model.score(X_test, y_test))</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина (без столбца sex, без пропусков). Разбиение как в Colab: <code>train_test_split(test_size=0.2, random_state=42)</code>, 273 train и 69 test. Кросс-валидация — <code>cross_val_score(model, X_train, y_train, cv=5)</code>: части по 55, 55, 55, 54, 54 пингвина. Все числа на странице совпадают с sklearn (<code>tools/check_project.py</code>). На странице только настройки без ничьих: у признаков «длина крыла» и «масса» (целые числа) и у глубоких деревьев sklearn разбивает ничьи по-разному, и с Colab не сверить.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «Проверь проект одноклассника» всем классом — голосуем руками «честно / ошибка». Потом каждый проходит пять шагов на странице и пишет вывод одной фразой: «модель X% против baseline Y%». Затем шаблон проекта в Colab на своём датасете.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему одна проверка может обмануть? Зачем сравнивать с baseline, если и так видно 95%? Почему после экзамена нельзя «чуть-чуть подправить» модель и сдать снова?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.',
+        axisLen: 'Длина клюва, мм', axisDep: 'Глубина клюва, мм', axisFlip: 'Длина крыла, мм',
+        barFold: 'Проверка {i}', barMean: 'среднее'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('bars').setAttribute('aria-label', T('barsLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];   // по алфавиту — важно для ничьих в голосовании
+    var COLORS = SPECIES.map(function (s) { return MLViz.cssVar('--' + s.toLowerCase()); });
+    var C_VAL = MLViz.cssVar('--c-val'), C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted');
+    var all = PENGUINS.rows.map(function (r) {
+      return { si: SPECIES.indexOf(r[0]), f: [r[2], r[3], r[4]], test: r[6] === 1, pos: r[7] };   // f: длина клюва, глубина клюва, крыло
+    });
+    var byPos = function (a, b) { return a.pos - b.pos; };
+    var train = all.filter(function (p) { return !p.test; }).sort(byPos);   // порядок строк X_train из sklearn
+    var test = all.filter(function (p) { return p.test; }).sort(byPos);
+
+    // Пары признаков и их оси. Только пары без ничьих (см. tools/check_project.py)
+    var PAIRS = [
+      { f: [0, 1], axes: ['axisLen', 'axisDep'], dom: [31, 61, 12.8, 22], ticks: [MLViz.range(35, 60, 5), MLViz.range(14, 21, 1)], yChars: 2 },
+      { f: [0, 2], axes: ['axisLen', 'axisFlip'], dom: [31, 61, 168, 235], ticks: [MLViz.range(35, 60, 5), MLViz.range(170, 230, 10)], yChars: 3 }
+    ];
+    var KS = [1, 3, 5, 11, 15], DS = [1, 2, 3];
+
+    // ======================= Кросс-валидация и модели (assets/models.js — так же, как в sklearn) =======================
+    // Части train: StratifiedKFold(5) без перемешивания, как cross_val_score(..., cv=5)
+    var FOLD = MLModels.folds(train.map(function (p) { return p.si; }), 5);
+    var parts = [0, 1, 2, 3, 4].map(function (i) {
+      return { fit: train.filter(function (_, j) { return FOLD[j] !== i; }), val: train.filter(function (_, j) { return FOLD[j] === i; }) };
+    });
+    function xy(p, pair) { var f = PAIRS[pair].f; return [p.f[f[0]], p.f[f[1]]]; }
+
+    // Обученная модель: предсказание для точки (a, b) в признаках пары. Кешируем — обучение не бесплатное.
+    var modelCache = {};
+    function model(cfg, fold) {    // fold = 0..4 — учимся на остальных частях; 'all' — на всём train
+      var key = [cfg.pair, cfg.model, cfg.model === 'knn' ? cfg.k : cfg.d, fold].join('|');
+      if (!modelCache[key]) {
+        var pts = fold === 'all' ? train : parts[fold].fit;
+        var X = pts.map(function (p) { return xy(p, cfg.pair); }), ys = pts.map(function (p) { return p.si; });
+        if (cfg.model === 'knn') { var knn = MLModels.knn(X, ys), k = cfg.k; modelCache[key] = function (a, b) { return knn(a, b, k); }; }
+        else modelCache[key] = MLModels.tree(X, ys, cfg.d);
+      }
+      return modelCache[key];
+    }
+    function correct(cfg, fold, set) {
+      var m = model(cfg, fold);
+      return set.filter(function (p) { var v = xy(p, cfg.pair); return m(v[0], v[1]) === p.si; }).length;
+    }
+    // Baseline (DummyClassifier most_frequent): самый частый вид обучающей части
+    function baseCorrect(fold) {
+      var b = MLModels.majority(MLModels.counts(parts[fold].fit.map(function (p) { return p.si; })));
+      return parts[fold].val.filter(function (p) { return p.si === b; }).length;
+    }
+    function cvOf(cfg) {
+      var acc = [0, 1, 2, 3, 4].map(function (i) { return correct(cfg, i, parts[i].val) / parts[i].val.length; });
+      var mean = acc.reduce(function (s, a) { return s + a; }, 0) / 5;
+      return { acc: acc, mean: mean, lo: Math.min.apply(null, acc), hi: Math.max.apply(null, acc) };
+    }
+    var BASE = [0, 1, 2, 3, 4].map(function (i) { return baseCorrect(i) / parts[i].val.length; });
+    var BASE_MEAN = BASE.reduce(function (s, a) { return s + a; }, 0) / 5;
+    var pct = function (a) { return (100 * a).toFixed(1).replace('.0', ''); };
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', pair: 0, model: 'knn', k: 5, d: 2, fold: 0, map: false, exam: null };
+    function cfg() { return { pair: state.pair, model: state.model, k: state.k, d: state.d }; }
+    function cfgKey(c) { return [c.pair, c.model, c.model === 'knn' ? c.k : c.d].join('|'); }
+    function cfgName(c) { return T(c.model === 'knn' ? 'modelKnn' : 'modelTree', { k: c.k, d: c.d }) + ', ' + T('pair' + c.pair).toLowerCase(); }
+
+    // ======================= Рисование: пингвины и карта решений =======================
+    var cv = el('cv'), bars = el('bars');
+    var g, PAD, sx, sy, mapCache = { key: '', img: null };
+    var gb, PB, barHit = [];
+
+    function resize() {
+      var narrow = cv.parentElement.clientWidth < 560;   // телефон: графики выше, иначе точки сливаются
+      g = MLViz.fitCanvas(cv, narrow ? 0.85 : 0.52);
+      gb = MLViz.fitCanvas(bars, narrow ? 0.6 : 0.36);
+      mapCache.key = '';
+      draw();
+    }
+
+    function draw() {
+      var P = PAIRS[state.pair], f = P.f, ctx = g.ctx;
+      PAD = MLViz.plotPad(g.w, P.yChars);
+      sx = MLViz.scale(P.dom[0], P.dom[1], PAD.l, g.w - PAD.r);
+      sy = MLViz.scale(P.dom[2], P.dom[3], g.h - PAD.b, PAD.t);
+      ctx.clearRect(0, 0, g.w, g.h);
+
+      if (state.map && state.mode === 'explore') {
+        var key = [cfgKey(cfg()), state.fold, g.w, g.h].join('|');
+        if (mapCache.key !== key) {
+          var off = document.createElement('canvas'), step = 7, m = model(cfg(), state.fold);
+          off.width = g.w; off.height = g.h;
+          var oc = off.getContext('2d');
+          oc.globalAlpha = 0.22;
+          for (var px = PAD.l; px < g.w - PAD.r; px += step) {
+            for (var py = PAD.t; py < g.h - PAD.b; py += step) {
+              oc.fillStyle = COLORS[m(sx.invert(px + step / 2), sy.invert(py + step / 2))];
+              oc.fillRect(px, py, step, step);
+            }
+          }
+          mapCache = { key: key, img: off };
+        }
+        ctx.drawImage(mapCache.img, 0, 0, g.w, g.h);
+      }
+      MLViz.drawAxes(ctx, { w: g.w, h: g.h, pad: PAD, sx: sx, sy: sy, xTicks: P.ticks[0], yTicks: P.ticks[1],
+        xLabel: T(P.axes[0]), yLabel: T(P.axes[1]) });
+
+      // Обучающая часть — залитые точки; текущая проверка — сверху, с зелёным кольцом validation
+      var val = state.mode === 'explore' ? parts[state.fold].val : [];
+      function dot(p, r) { ctx.beginPath(); ctx.arc(sx(p.f[f[0]]), sy(p.f[f[1]]), r, 0, Math.PI * 2); }
+      ctx.globalAlpha = val.length ? 0.55 : 0.85;
+      parts[state.mode === 'explore' ? state.fold : 0].fit.concat(val.length ? [] : parts[0].val).forEach(function (p) {
+        dot(p, 4); ctx.fillStyle = COLORS[p.si]; ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      val.forEach(function (p) {
+        dot(p, 5); ctx.fillStyle = COLORS[p.si]; ctx.fill();
+        ctx.strokeStyle = C_VAL; ctx.lineWidth = 2.5; ctx.stroke();
+      });
+      drawBars();
+    }
+
+    // Столбики пяти проверок: модель и baseline рядом, линия — среднее модели
+    function drawBars() {
+      var ctx = gb.ctx, fs = MLViz.fontPx(gb.w), c = cvOf(cfg());
+      PB = MLViz.plotPad(gb.w, 4);
+      PB.t += fs + 6;   // место над столбиком 100% под его подпись
+      var y = MLViz.scale(0, 1, gb.h - PB.b, PB.t), x0 = PB.l, w = (gb.w - PB.r - PB.l) / 5;
+      ctx.clearRect(0, 0, gb.w, gb.h);
+      MLViz.drawAxes(ctx, { w: gb.w, h: gb.h, pad: PB, sx: function (v) { return v; }, sy: y, xTicks: [], yTicks: [0, 0.25, 0.5, 0.75, 1],
+        xLabel: '', yLabel: '', yFmt: function (v) { return Math.round(v * 100) + '%'; } });
+      barHit = [];
+      ctx.font = fs + 'px Calibri, system-ui, sans-serif'; ctx.textAlign = 'center';
+      for (var i = 0; i < 5; i++) {
+        var bx = x0 + i * w, bw = w * 0.3, sel = state.mode === 'explore' && i === state.fold;
+        if (sel) { ctx.strokeStyle = C_VAL; ctx.lineWidth = 2; ctx.strokeRect(bx + 4, PB.t - 4, w - 8, gb.h - PB.b - PB.t + 8); }
+        ctx.fillStyle = C_TEXT; ctx.fillRect(bx + w * 0.16, y(c.acc[i]), bw, y(0) - y(c.acc[i]));
+        ctx.fillStyle = C_MUTED; ctx.fillRect(bx + w * 0.54, y(BASE[i]), bw, y(0) - y(BASE[i]));
+        ctx.fillStyle = C_TEXT; ctx.textBaseline = 'bottom';
+        ctx.fillText(Math.round(100 * c.acc[i]) + '%', bx + w * 0.16 + bw / 2, y(c.acc[i]) - 3);
+        ctx.textBaseline = 'top';
+        ctx.fillText(T('barFold', { i: i + 1 }), bx + w / 2, gb.h - PB.b + 6);
+        barHit.push([bx, bx + w]);
+      }
+      ctx.strokeStyle = C_TEXT; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x0, y(c.mean)); ctx.lineTo(gb.w - PB.r, y(c.mean)); ctx.stroke();
+      el('legMean').textContent = T('barMean') + ' ' + pct(c.mean) + '%';   // подпись в легенде: на графике она налезала на столбики
+    }
+
+    // ======================= Панель =======================
+    function updatePanel() {
+      var c = cfg(), cvr = cvOf(c);
+      MLViz.setPressed(el('pairBtns'), function (b) { return +b.dataset.p === state.pair; });
+      MLViz.setPressed(el('modelBtns'), function (b) { return b.dataset.m === state.model; });
+      var vals = state.model === 'knn' ? KS : DS, cur = state.model === 'knn' ? state.k : state.d;
+      el('paramLabel').textContent = T(state.model === 'knn' ? 'kLabel' : 'dLabel');
+      el('paramBtns').innerHTML = vals.map(function (v) { return '<button type="button" data-v="' + v + '">' + v + '</button>'; }).join('');
+      MLViz.setPressed(el('paramBtns'), function (b) { return +b.dataset.v === cur; });
+      MLViz.setPressed(el('foldBtns'), function (b) { return +b.dataset.f === state.fold; });
+
+      el('baseLine').innerHTML = T('baseLine', { p: pct(BASE_MEAN) });
+      el('cvMean').textContent = pct(cvr.mean) + '%';
+      el('cvNote').textContent = T('cvNote', { lo: pct(cvr.lo), hi: pct(cvr.hi) });
+      var d = 100 * (cvr.mean - BASE_MEAN);
+      el('verdict').innerHTML = d > 5 ? T('better', { m: pct(cvr.mean), b: pct(BASE_MEAN) }) : T('worse');
+
+      // Экзамен: один раз. После него другая модель тот же экзамен не сдаёт
+      var ex = state.exam;
+      el('examNum').hidden = !ex || ex.key !== cfgKey(c);   // результат старой модели рядом с новой путал бы
+      el('examBtn').hidden = !!ex;
+      el('resetBtn').hidden = !ex;
+      if (!ex) el('examNote').textContent = T('examReady');
+      else {
+        el('examNum').textContent = Math.round(100 * ex.c / test.length) + '%';
+        el('examNote').innerHTML = ex.key === cfgKey(c)
+          ? T('examDone', { model: ex.name, c: ex.c, cv: ex.cv })
+          : T('examLocked', { model: ex.name, c: ex.c });
+      }
+    }
+    function refresh() { updatePanel(); draw(); }
+
+    el('pairBtns').innerHTML = PAIRS.map(function (_, i) { return '<button type="button" data-p="' + i + '">' + T('pair' + i) + '</button>'; }).join('');
+    el('foldBtns').innerHTML = [0, 1, 2, 3, 4].map(function (i) {
+      return '<button type="button" data-f="' + i + '" aria-label="' + T('foldAria', { i: i + 1 }) + '">' + T('foldBtn', { i: i + 1 }) + '</button>';
+    }).join('');
+
+    // ======================= Игра «Проверь проект одноклассника» (общий компонент MLViz.quiz) =======================
+    // 8 проектов из 10: ученик решает «честно» или «есть ошибка». Числа в сценариях — из настоящих расчётов.
+    var REF = { pair: 0, model: 'knn', k: 5, d: 2 }, REF1 = { pair: 0, model: 'knn', k: 1, d: 2 };
+    function cases() {
+      var r = cvOf(REF), r1 = cvOf(REF1), b = pct(BASE_MEAN);
+      return [
+        { t: T('c_base', { m: pct(r.mean), b: b }), ok: true, e: T('e_base') },
+        { t: T('c_tuneTest'), ok: false, e: T('e_tuneTest') },
+        { t: T('c_leak'), ok: false, e: T('e_leak') },
+        { t: T('c_trainAcc'), ok: false, e: T('e_trainAcc', { cv: pct(r1.mean) }) },
+        { t: T('c_bestFold', { best: pct(r.hi) }), ok: false, e: T('e_bestFold', { mean: pct(r.mean) }) },
+        { t: T('c_cv', { mean: pct(r.mean), lo: pct(r.lo), hi: pct(r.hi) }), ok: true, e: T('e_cv') },
+        { t: T('c_tiny'), ok: false, e: T('e_tiny') },
+        { t: T('c_once'), ok: true, e: T('e_once') },
+        { t: T('c_drop'), ok: false, e: T('e_drop') },
+        { t: T('c_noBase'), ok: false, e: T('e_noBase', { b: b }) }
+      ];
+    }
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n, v: T(q.score >= 7 ? 'goGood' : q.score >= 5 ? 'goMid' : 'goLow') }); }
+      },
+      start: function (q) { q.data.list = MLViz.shuffle(cases(), Math.random).slice(0, 8); el('score').textContent = 0; },
+      round: function (q) {
+        var c = q.data.list[q.i];
+        el('gameCase').textContent = c.t;
+        q.choices(el('choiceBtns'), [T('honest'), T('mistake')], function (i) { return (i === 0) === c.ok; }, function (i, ok) {
+          q.answer(ok ? 1 : 0, '<b>' + T(ok ? 'right' : 'wrong') + '</b> ' + c.e);
+          el('score').textContent = q.score;
+        });
+      },
+      onEnd: function () { el('choiceBtns').innerHTML = ''; el('gameCase').textContent = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').style.display = m === 'explore' ? 'flex' : 'none';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      el('mapNote').hidden = !(state.map && m === 'explore');
+      if (m === 'game') quiz.start();
+      refresh();   // настройки проекта игра не трогает — после неё всё как было
+    }
+
+    // ======================= События =======================
+    el('pairBtns').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state.pair = +b.dataset.p; refresh(); } });
+    el('modelBtns').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state.model = b.dataset.m; refresh(); } });
+    el('paramBtns').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (state.model === 'knn') state.k = +b.dataset.v; else state.d = +b.dataset.v;
+      refresh();
+    });
+    el('foldBtns').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state.fold = +b.dataset.f; refresh(); } });
+    el('map').addEventListener('change', function (e) { state.map = e.target.checked; el('mapNote').hidden = !state.map; draw(); });
+    el('examBtn').addEventListener('click', function () {
+      var c = cfg();
+      state.exam = { key: cfgKey(c), name: cfgName(c), c: correct(c, 'all', test), cv: pct(cvOf(c).mean) };
+      refresh();
+    });
+    el('resetBtn').addEventListener('click', function () { state.exam = null; refresh(); });
+    // Нажатие на столбик выбирает проверку (то же — кнопками «Показать на графике проверку»)
+    bars.addEventListener('click', function (e) {
+      if (state.mode !== 'explore') return;
+      var x = MLViz.pointer(bars, e).x;
+      barHit.forEach(function (h, i) { if (x >= h[0] && x < h[1]) { state.fold = i; refresh(); } });
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

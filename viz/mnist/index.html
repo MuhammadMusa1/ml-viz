@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MNIST: нейросеть узнаёт цифры · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Десять кнопок-цифр в игре: в одну-две строки */
+    #digitBtns { grid-template-columns: repeat(5, 1fr); }
+    #digitBtns button { font-size: 20px; font-weight: 700; padding: 6px 0; }
+    .pred-digit { font-size: 64px; font-weight: 700; line-height: 1; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="pad" class="drag"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+        <div class="stage viz-extra">
+          <p class="sub" data-i18n="insideTitle"></p>
+          <canvas id="inside"></canvas>
+          <p class="note" style="padding:0 4px" id="cellNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Режим «Исследуй» -->
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:12px">
+          <div class="row">
+            <button type="button" id="clearBtn" data-i18n="clear"></button>
+            <button type="button" id="testBtn" data-i18n="fromTest"></button>
+            <button type="button" id="errBtn" data-i18n="fromErr"></button>
+            <button type="button" id="noiseBtn" data-i18n="noise"></button>
+          </div>
+          <p class="note" id="srcNote"></p>
+        </div>
+
+        <!-- Ответ сети — в обоих режимах (в игре — после ответа ученика) -->
+        <div id="answerBox">
+          <h3 data-i18n="netSays"></h3>
+          <div class="row" style="align-items:flex-end; gap:14px; margin-top:6px">
+            <div class="pred-digit" id="pred">–</div>
+            <p style="margin:0 0 6px" id="conf"></p>
+          </div>
+          <div class="bars" id="probBars" style="margin-top:10px"></div>
+          <p class="note" data-i18n="softmaxNote"></p>
+        </div>
+
+        <!-- Игра «Угадай раньше сети» -->
+        <div id="gamePanel" class="divider" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices" id="digitBtns"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+          <div class="row" style="margin-top:12px; justify-content:space-between">
+            <div><div class="big-number" id="scoreYou">0</div><small data-i18n="you"></small></div>
+            <div><div class="big-number" id="scoreNet">0</div><small data-i18n="net"></small></div>
+          </div>
+        </div>
+
+        <div class="divider">
+          <h3 data-i18n="accTitle"></h3>
+          <div class="big-number" id="acc" style="margin-top:6px"></div>
+          <p class="note" id="accNote"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/mnist.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 14 · Нейросети',
+        title: 'MNIST: нейросеть узнаёт цифры',
+        analogy: '<b>Раскраска по клеточкам.</b> Для нейросети картинка — не цифра, а таблица 28 × 28 из 784 чисел: насколько светлая каждая клеточка. Сеть ищет в узоре этих чисел то, что отличает семёрку от единицы. Нарисуй цифру — и посмотри, что она увидит.',
+        padLabel: 'Поле 28 × 28 клеток для рисования цифры. Сеть угадывает цифру по яркости клеток.',
+        insideLabel: 'Что видит сеть: 784 числа входа и 128 нейронов скрытого слоя.',
+        insideTitle: 'Внутри сети',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: угадай раньше сети',
+        clear: 'Очистить', fromTest: 'Цифра из test', fromErr: 'Ошибка сети', noise: 'Шум',
+        srcDraw: 'Рисуй мышкой или пальцем. Перед сетью рисунок подгоняется как в MNIST: уменьшается до 20 × 20 и ставится в центр.',
+        srcTest: 'Картинка test № {i}. На самом деле это <b>{y}</b>.',
+        srcErr: 'Одна из 12 картинок всего test, где сеть ошиблась увереннее всего (X_test[{i}]). На самом деле это <b>{y}</b>.',
+        srcNoise: 'Случайный шум — здесь нет никакой цифры. Посмотри, насколько сеть «уверена».',
+        netSays: 'Сеть думает, что это',
+        conf: 'уверена на <b>{p}%</b>',
+        empty: 'нарисуй цифру',
+        softmaxNote: 'Softmax превращает 10 выходов сети в вероятности: все вместе дают 100%. Ответ — цифра с самой большой.',
+        gameAsk: 'Какая это цифра? Ответь раньше, чем сеть покажет свой ответ.',
+        gameStep: 'Раунд {i} из {n}',
+        you: 'ты', net: 'сеть',
+        gameLine: 'На самом деле: <b>{y}</b>. Ты: {you} ({youOk}) · Сеть: {net} на {p}% ({netOk})',
+        right: 'верно', wrong: 'ошибка',
+        next: 'Следующая цифра →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: ты <b>{a}</b> : <b>{b}</b> сеть. {v} В игре были и 3 картинки, где сеть ошиблась увереннее всего, — ты их узнал?',
+        gWin: 'Ты точнее сети!', gTie: 'Ничья!', gLose: 'Сеть оказалась точнее.',
+        accTitle: 'Точность на 300 картинках test',
+        accNote: 'Сеть угадала {c} из {n}. Точность (accuracy) — доля верных ответов. «Ленивая» модель, которая всегда отвечает самой частой цифрой ({d}), угадала бы {l} из {n} ({lp}%).',
+        cellNote: 'Клетка: строка {r}, столбец {c}. Число: <b>{v}</b> из 255.',
+        cellHint: 'Нажми на клетку слева, чтобы увидеть её число. Справа — 128 нейронов скрытого слоя: чем светлее, тем сильнее нейрон «загорелся» на этой картинке.',
+        hintExplore: 'Нарисуй цифру от 0 до 9 на поле. Сеть отвечает сразу, пока ты рисуешь.',
+        hintGame: 'Сеть пока молчит. Какая это цифра?',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Картинка — это числа.</b> 28 × 28 клеток, в каждой число от 0 (пусто) до 255 (самый яркий штрих). Всего 784 числа — это и есть вход сети.</li>' +
+          '<li><b>Масштаб.</b> Числа делим на 255, чтобы они были от 0 до 1 — сети так легче учиться (как StandardScaler в фазе 2).</li>' +
+          '<li><b>Скрытый слой.</b> 128 нейронов. Каждый умножает 784 числа на свои веса, складывает и пропускает через ReLU: отрицательное превращается в 0. Нейроны «загораются» на разных узорах штрихов.</li>' +
+          '<li><b>Ответ.</b> 10 выходных нейронов — по одному на цифру. Softmax превращает их в вероятности, ответ — самая большая.</li>' +
+          '<li><b>Обучение.</b> Веса подбирались на 60 000 картинках train (5 эпох — 5 проходов по всем картинкам), как в Colab. Проверяем на test — цифрах других людей, которых сеть не видела.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Нарисуй 1 и 7. Что нужно изменить в рисунке, чтобы сеть перепутала их?</li>' +
+          '<li>Нарисуй цифру очень маленькой в углу поля. Почему сеть всё равно справляется? (Подсказка: подгонка как в MNIST.)</li>' +
+          '<li>Нажми «Шум». Насколько сеть уверена? Можно ли верить уверенности сети?</li>' +
+          '<li>Посмотри «Ошибки сети». Ты бы угадал эти цифры? Ошибки странные или понятные?</li>' +
+          '<li>Сыграй «Игра: угадай раньше сети». Кто точнее на трудных картинках?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Скрытый слой: <code>h = ReLU(x · W₁ + b₁)</code>, где <code>x</code> — 784 числа от 0 до 1, <code>W₁</code> — таблица 784 × 128, <code>ReLU(z) = max(0, z)</code>. Выход: <code>z = h · W₂ + b₂</code> (10 чисел), вероятности: <code>p = eᶻ / сумма eᶻ</code> — это softmax.</p>' +
+          '<p>В Python (Colab) это:</p>' +
+          '<p><code>import tensorflow as tf<br>' +
+          'from tensorflow.keras.datasets import mnist<br>' +
+          'from tensorflow.keras.models import Sequential<br>' +
+          'from tensorflow.keras.layers import Flatten, Dense<br><br>' +
+          '(X_train, y_train), (X_test, y_test) = mnist.load_data()<br>' +
+          'X_train, X_test = X_train / 255.0, X_test / 255.0&nbsp;&nbsp;# масштаб 0..1<br><br>' +
+          'model = Sequential([<br>' +
+          '&nbsp;&nbsp;Flatten(input_shape=(28, 28)),&nbsp;&nbsp;# картинка -> 784 числа<br>' +
+          '&nbsp;&nbsp;Dense(128, activation=\'relu\'),&nbsp;&nbsp;# скрытый слой<br>' +
+          '&nbsp;&nbsp;Dense(10, activation=\'softmax\'),&nbsp;&nbsp;# 10 цифр<br>' +
+          '])<br>' +
+          'model.compile(optimizer=\'adam\', loss=\'sparse_categorical_crossentropy\', metrics=[\'accuracy\'])<br>' +
+          'model.fit(X_train, y_train, epochs=5)<br>' +
+          'print(model.evaluate(X_test, y_test))&nbsp;&nbsp;# точность (accuracy) на test</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные и сеть.</b> MNIST — тот же файл, что грузит <code>mnist.load_data()</code> в Colab. Сеть того же устройства, что в главе 14: 784 → 128 (ReLU) → 10 (softmax), Adam, 5 эпох, пиксели / 255. Учили её в Python (<code>tools/export_mnist.py</code>, sklearn <code>MLPClassifier</code>, <code>random_state=42</code>): на всех 10 000 картинках test — 97.6%. Веса на сайте сжаты до целых чисел (так файл в 4 раза меньше), со сжатыми весами — 97.55%. Ответы сеть считает прямо в браузере; они совпадают с расчётом на numpy (<code>tools/check_mnist.py</code>).</p>' +
+          '<p><b>Почему число в Colab будет чуть другим.</b> Keras при каждом запуске начинает со случайных весов, поэтому точность в Colab получается около 97–98% и немного меняется от запуска к запуску. Это нормально: сравнивайте с «около 0,97» из книги, а не до последней цифры.</p>' +
+          '<p><b>Галерея ошибок.</b> Кнопка «Ошибка сети» показывает 12 картинок всего test, где сеть ошиблась увереннее всего. Это специальная подборка для обсуждения; точность считается только по первым 300 картинкам test.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: ученики по очереди рисуют цифры на проекторе, класс спорит, угадает ли сеть. Потом «Шум» и «Ошибки сети»: почему сеть уверенно ошибается? Затем Colab.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Сеть уверена на 99% — значит, она права? Чем 784 числа отличаются от картинки для человека? Где ещё сеть может уверенно ошибаться (медицина, распознавание лиц)?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: MNIST (LeCun, Cortes, Burges). Ответы сети считаются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    el('pad').setAttribute('aria-label', T('padLabel'));
+    el('inside').setAttribute('aria-label', T('insideLabel'));
+
+    // ======================= Данные и сеть =======================
+    function bytes(b64) { var s = atob(b64), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+    var W1 = new Int8Array(bytes(MNIST.w1).buffer), W2 = new Int8Array(bytes(MNIST.w2).buffer);
+    var TEST = bytes(MNIST.test), ERR = bytes(MNIST.err);
+    var N = MNIST.labels.length;
+    function image(src, k) { return src.subarray(k * 784, (k + 1) * 784); }
+
+    // Сеть 784 → 128 (ReLU) → 10 (softmax). Веса int8 × множитель слоя — как в tools/check_mnist.py
+    function forward(px) {                 // px — 784 числа 0..255
+      var h = new Float64Array(128), z = new Float64Array(10), i, j;
+      for (j = 0; j < 128; j++) h[j] = MNIST.b1[j];
+      for (i = 0; i < 784; i++) {
+        if (!px[i]) continue;              // пустые клетки ничего не добавляют
+        var x = px[i] / 255 * MNIST.s1, row = i * 128;
+        for (j = 0; j < 128; j++) h[j] += x * W1[row + j];
+      }
+      for (j = 0; j < 128; j++) if (h[j] < 0) h[j] = 0;   // ReLU
+      for (var k = 0; k < 10; k++) {
+        var s = MNIST.b2[k];
+        for (j = 0; j < 128; j++) s += h[j] * W2[j * 10 + k] * MNIST.s2;
+        z[k] = s;
+      }
+      var m = Math.max.apply(null, z), sum = 0, p = [];
+      for (k = 0; k < 10; k++) { p.push(Math.exp(z[k] - m)); sum += p[k]; }
+      p = p.map(function (v) { return v / sum; });
+      var best = 0; for (k = 1; k < 10; k++) if (p[k] > p[best]) best = k;
+      return { p: p, pred: best, h: h };
+    }
+
+    // Точность на 300 картинках test — честный расчёт при загрузке
+    var CORRECT = 0;
+    for (var t = 0; t < N; t++) if (forward(image(TEST, t)).pred === MNIST.labels[t]) CORRECT++;
+    var LAZY = (function () {
+      var c = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; MNIST.labels.forEach(function (y) { c[y]++; });
+      var d = 0; for (var k = 1; k < 10; k++) if (c[k] > c[d]) d = k;
+      return { d: d, n: c[d] };
+    })();
+
+    // ======================= Рисунок → вход как в MNIST =======================
+    // MNIST: цифру вписывают в 20 × 20 и ставят центром масс в центр поля 28 × 28. Без этого
+    // маленькая цифра в углу для сети — совсем другой узор.
+    function toMnist(raw) {
+      var x0 = 28, x1 = -1, y0 = 28, y1 = -1, r, c;
+      for (r = 0; r < 28; r++) for (c = 0; c < 28; c++) if (raw[r * 28 + c] > 0) {
+        if (c < x0) x0 = c; if (c > x1) x1 = c; if (r < y0) y0 = r; if (r > y1) y1 = r;
+      }
+      var out = new Uint8Array(784);
+      if (x1 < 0) return out;
+      var w = x1 - x0 + 1, h = y1 - y0 + 1, k = 20 / Math.max(w, h);
+      var nw = Math.max(1, Math.round(w * k)), nh = Math.max(1, Math.round(h * k));
+      var small = new Float64Array(nw * nh);
+      for (r = 0; r < nh; r++) for (c = 0; c < nw; c++) {     // уменьшение: среднее по накрытым клеткам
+        var sy = y0 + (r + 0.5) / k - 0.5, sx = x0 + (c + 0.5) / k - 0.5;
+        var ry = Math.max(y0, Math.min(y1, Math.round(sy))), rx = Math.max(x0, Math.min(x1, Math.round(sx)));
+        small[r * nw + c] = raw[ry * 28 + rx];
+      }
+      var mx = 0, my = 0, tot = 0;
+      for (r = 0; r < nh; r++) for (c = 0; c < nw; c++) { var v = small[r * nw + c]; mx += v * c; my += v * r; tot += v; }
+      var ox = Math.round(14 - (tot ? mx / tot : nw / 2) - 0.5), oy = Math.round(14 - (tot ? my / tot : nh / 2) - 0.5);
+      for (r = 0; r < nh; r++) for (c = 0; c < nw; c++) {
+        var R = r + oy, C = c + ox;
+        if (R >= 0 && R < 28 && C >= 0 && C < 28) out[R * 28 + C] = small[r * nw + c];
+      }
+      return out;
+    }
+
+    // ======================= Состояние =======================
+    var state = {
+      mode: 'explore', src: 'draw',            // draw | test | err | noise
+      raw: new Uint8Array(784),                // что нарисовано на поле
+      idx: 0, errIdx: -1, cell: null, game: null
+    };
+    function input() { return state.src === 'draw' ? toMnist(state.raw) : state.raw; }
+
+    // ======================= Рисование =======================
+    var pad = el('pad'), inside = el('inside'), gp, gi, cellPx, padX, padY;
+    function resize() {
+      gp = MLViz.fitCanvas(pad, 0.78);
+      gi = MLViz.fitCanvas(inside, 0.52);
+      draw();
+    }
+    function grayRect(ctx, x, y, s, v) {
+      var c = Math.round(23 + (238 - 23) * v / 255);   // от фона курса к светлому штриху
+      ctx.fillStyle = 'rgb(' + c + ',' + Math.round(19 + (234 - 19) * v / 255) + ',' + Math.round(46 + (251 - 46) * v / 255) + ')';
+      ctx.fillRect(x, y, s, s);
+    }
+    function draw() {
+      // Поле 28 × 28: квадрат по центру
+      var ctx = gp.ctx, size = Math.min(gp.w, gp.h) - 8;
+      cellPx = size / 28; padX = (gp.w - size) / 2; padY = (gp.h - size) / 2;
+      ctx.clearRect(0, 0, gp.w, gp.h);
+      ctx.fillStyle = '#17132E'; ctx.fillRect(padX, padY, size, size);
+      var hide = state.mode === 'game' && state.game && !state.game.answered;
+      for (var i = 0; i < 784; i++) if (state.raw[i]) grayRect(ctx, padX + (i % 28) * cellPx, padY + Math.floor(i / 28) * cellPx, cellPx + 0.5, state.raw[i]);
+      ctx.strokeStyle = 'rgba(169,162,204,.35)'; ctx.lineWidth = 1; ctx.strokeRect(padX, padY, size, size);
+      drawInside();
+      updateAnswer(hide);
+    }
+
+    // Внутри сети: слева 784 числа входа, справа 128 нейронов скрытого слоя (8 × 16)
+    var insideGeom = null;
+    function drawInside() {
+      var ctx = gi.ctx, x = input(), f = forward(x), fs = MLViz.fontPx(gi.w);
+      ctx.clearRect(0, 0, gi.w, gi.h);
+      var top = fs + 10, sz = Math.min(gi.h - top - 6, gi.w * 0.46), c = sz / 28;
+      ctx.fillStyle = '#C9C3E6'; ctx.font = fs + 'px Calibri, system-ui, sans-serif'; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      ctx.fillText('784 числа (28 × 28)', 0, 0);
+      ctx.fillStyle = '#17132E'; ctx.fillRect(0, top, sz, sz);
+      for (var i = 0; i < 784; i++) if (x[i]) grayRect(ctx, (i % 28) * c, top + Math.floor(i / 28) * c, c + 0.5, x[i]);
+      if (state.cell !== null) {
+        ctx.strokeStyle = MLViz.cssVar('--text'); ctx.lineWidth = 2;   // выбранная клетка — просто рамка, без смыслового цвета
+        ctx.strokeRect((state.cell % 28) * c, top + Math.floor(state.cell / 28) * c, c, c);
+      }
+      ctx.strokeStyle = 'rgba(169,162,204,.35)'; ctx.lineWidth = 1; ctx.strokeRect(0, top, sz, sz);
+      // 128 нейронов: яркость = сила, относительно самого сильного на этой картинке
+      var hx = sz + Math.max(16, gi.w * 0.06), hw = gi.w - hx, cols = 16, rows = 8, cs = Math.min(hw / cols, sz / rows);
+      ctx.fillStyle = '#C9C3E6'; ctx.fillText('128 нейронов', hx, 0);
+      var hmax = Math.max.apply(null, f.h) || 1;
+      for (var j = 0; j < 128; j++) {
+        var v = Math.round(255 * f.h[j] / hmax);
+        ctx.fillStyle = '#17132E'; ctx.fillRect(hx + (j % cols) * cs, top + Math.floor(j / cols) * cs, cs - 2, cs - 2);
+        if (v) grayRect(ctx, hx + (j % cols) * cs, top + Math.floor(j / cols) * cs, cs - 2, v);
+      }
+      insideGeom = { top: top, c: c, sz: sz };
+      el('cellNote').innerHTML = state.cell === null ? T('cellHint')
+        : T('cellNote', { r: Math.floor(state.cell / 28) + 1, c: state.cell % 28 + 1, v: x[state.cell] });
+    }
+
+    function updateAnswer(hide) {
+      var x = input(), empty = !x.some(function (v) { return v; }), f = forward(x);
+      var show = !hide && !(empty && state.src === 'draw');
+      el('pred').textContent = show ? f.pred : '–';
+      el('conf').innerHTML = show ? T('conf', { p: (100 * f.p[f.pred]).toFixed(1) }) : (hide ? '' : T('empty'));
+      el('probBars').innerHTML = f.p.map(function (p, k) {
+        var w = show ? 100 * p : 0;
+        return '<div class="bar"><span>' + k + '</span><div class="track"><div class="fill" style="width:' + w + '%;background:' +
+          (show && k === f.pred ? 'var(--text)' : 'var(--muted)') + '"></div></div><b>' + (show ? Math.round(100 * p) + '%' : '') + '</b></div>';
+      }).join('');
+      var srcKey = { draw: 'srcDraw', test: 'srcTest', err: 'srcErr', noise: 'srcNoise' }[state.src];
+      if (!srcKey) return;   // в игре подпись источника не нужна
+      el('srcNote').innerHTML = T(srcKey, {
+        i: state.src === 'test' ? state.idx : MNIST.errIndex[state.errIdx],
+        y: state.src === 'test' ? MNIST.labels[state.idx] : state.src === 'err' ? MNIST.errLabels[state.errIdx] : ''
+      });
+    }
+
+    function setImage(src, px) { state.src = src; state.raw = new Uint8Array(px); state.cell = null; draw(); }
+
+    // Кисть: мягкое пятно радиусом ~1.5 клетки, как штрих пером в MNIST; между событиями — отрезок без пропусков
+    var drawing = false, last = null;
+    function brush(cx, cy) {
+      for (var r = Math.floor(cy - 2); r <= Math.ceil(cy + 2); r++) for (var c = Math.floor(cx - 2); c <= Math.ceil(cx + 2); c++) {
+        if (r < 0 || r > 27 || c < 0 || c > 27) continue;
+        var d = Math.hypot(c + 0.5 - cx, r + 0.5 - cy), v = Math.round(255 * Math.max(0, Math.min(1, 1.9 - d)));
+        if (v > state.raw[r * 28 + c]) state.raw[r * 28 + c] = v;
+      }
+    }
+    function stroke(ev) {
+      var p = MLViz.pointer(pad, ev), cx = (p.x - padX) / cellPx, cy = (p.y - padY) / cellPx;
+      if (state.src !== 'draw') { state.src = 'draw'; state.raw = new Uint8Array(784); }
+      var steps = last ? Math.ceil(Math.hypot(cx - last[0], cy - last[1]) * 3) : 0;
+      for (var s = 1; s <= steps; s++) brush(last[0] + (cx - last[0]) * s / steps, last[1] + (cy - last[1]) * s / steps);
+      brush(cx, cy);
+      last = [cx, cy];
+      draw();
+    }
+    pad.addEventListener('pointerdown', function (e) {
+      if (state.mode !== 'explore') return;
+      drawing = true; last = null; pad.setPointerCapture(e.pointerId); stroke(e);
+    });
+    pad.addEventListener('pointermove', function (e) { if (drawing) stroke(e); });
+    pad.addEventListener('pointerup', function () { drawing = false; });
+    pad.addEventListener('pointercancel', function () { drawing = false; });
+
+    // Нажатие на клетку входа показывает её число
+    inside.addEventListener('click', function (e) {
+      var p = MLViz.pointer(inside, e), g = insideGeom;
+      if (!g || p.x > g.sz || p.y < g.top || p.y > g.top + g.sz) return;
+      state.cell = Math.floor((p.y - g.top) / g.c) * 28 + Math.floor(p.x / g.c);
+      drawInside();
+    });
+
+    // ======================= Игра «Угадай раньше сети» (общий компонент MLViz.quiz) =======================
+    // 10 раундов: 7 случайных картинок test и 3 из галереи уверенных ошибок сети.
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 10,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) {
+          var a = q.score, b = q.data.net;
+          return T('gameOver', { a: a, b: b, v: T(a > b ? 'gWin' : a === b ? 'gTie' : 'gLose') });
+        }
+      },
+      start: function (q) {
+        var ts = MLViz.shuffle(MLViz.range(0, N - 1, 1), Math.random).slice(0, 7).map(function (k) { return { px: image(TEST, k), y: MNIST.labels[k] }; });
+        var es = MLViz.shuffle(MLViz.range(0, MNIST.errLabels.length - 1, 1), Math.random).slice(0, 3).map(function (k) { return { px: image(ERR, k), y: MNIST.errLabels[k] }; });
+        q.data.list = MLViz.shuffle(ts.concat(es), Math.random);
+        q.data.net = 0;
+        el('scoreYou').textContent = 0; el('scoreNet').textContent = 0;
+      },
+      round: function (q) {
+        var cur = q.data.list[q.i];
+        state.game = { answered: false };
+        state.src = 'test-game'; state.raw = new Uint8Array(cur.px); state.cell = null;
+        q.choices(el('digitBtns'), MLViz.range(0, 9, 1).map(String), function (k) { return k === cur.y; }, function (k, ok) {
+          var f = forward(cur.px), netOk = f.pred === cur.y;
+          if (netOk) q.data.net++;
+          state.game.answered = true;
+          q.answer(ok ? 1 : 0, T('gameLine', { y: cur.y, you: k, youOk: T(ok ? 'right' : 'wrong'), net: f.pred, p: (100 * f.p[f.pred]).toFixed(1), netOk: T(netOk ? 'right' : 'wrong') }));
+          el('scoreYou').textContent = q.score; el('scoreNet').textContent = q.data.net;
+          draw();
+        });
+        draw();
+      },
+      onEnd: function () { el('digitBtns').innerHTML = ''; }
+    });
+
+    var saved = null;   // рисунок ученика на время игры
+    function setMode(m) {
+      if (m === 'game' && state.mode === 'explore') saved = { src: state.src, raw: state.raw, idx: state.idx, errIdx: state.errIdx };
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').style.display = m === 'explore' ? 'flex' : 'none';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') { quiz.start(); return; }
+      state.game = null;
+      if (saved) { state.src = saved.src; state.raw = saved.raw; state.idx = saved.idx; state.errIdx = saved.errIdx; saved = null; }
+      draw();
+    }
+
+    // ======================= Кнопки =======================
+    el('clearBtn').addEventListener('click', function () { setImage('draw', new Uint8Array(784)); });
+    el('testBtn').addEventListener('click', function () { state.idx = Math.floor(Math.random() * N); setImage('test', image(TEST, state.idx)); });
+    el('errBtn').addEventListener('click', function () { state.errIdx = (state.errIdx + 1) % MNIST.errLabels.length; setImage('err', image(ERR, state.errIdx)); });
+    el('noiseBtn').addEventListener('click', function () {
+      var px = new Uint8Array(784);
+      for (var i = 0; i < 784; i++) px[i] = Math.random() < 0.25 ? Math.floor(Math.random() * 256) : 0;
+      setImage('noise', px);
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    el('acc').textContent = Math.round(100 * CORRECT / N) + '%';
+    el('accNote').textContent = T('accNote', { c: CORRECT, n: N, d: LAZY.d, l: LAZY.n, lp: Math.round(100 * LAZY.n / N) });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    // Начинаем с первой картинки test — сразу видно, как это работает
+    state.idx = 0; state.src = 'test'; state.raw = new Uint8Array(image(TEST, 0));
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

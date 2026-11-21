@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoML: ускоряем работу · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .summary { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: rgba(23, 19, 46, .5); }
+    .tries { margin: 8px 0 0; padding-left: 20px; }
+    .tries li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--text)"></i><span data-i18n="legWin"></span></span>
+            <span><i style="background:var(--muted)"></i><span data-i18n="legOther"></span></span>
+            <span><i style="border-radius:0; width:2px; height:14px; background:var(--text)"></i><span data-i18n="legBase"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Режим «Исследуй»: AutoML перебирает модели -->
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:12px">
+          <button type="button" id="runBtn" class="primary" data-i18n="run"></button>
+          <div>
+            <label class="toggle"><input type="checkbox" id="leak"> <span data-i18n="leakLabel"></span></label>
+            <p class="note" data-i18n="leakNote"></p>
+          </div>
+          <div class="summary" id="summary"></div>
+        </div>
+
+        <!-- Игра «Обгони AutoML»: три попытки и один экзамен -->
+        <div id="gamePanel" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 8px" data-i18n="gameAsk"></p>
+          <div class="seg" id="pairBtns"></div>
+          <div class="seg" id="modelBtns" style="margin-top:6px">
+            <button type="button" data-m="knn">KNN</button>
+            <button type="button" data-m="tree" data-i18n="treeBtn"></button>
+          </div>
+          <p style="margin:8px 0 2px" id="paramLabel"></p>
+          <div class="seg" id="paramBtns"></div>
+          <div class="row" style="margin-top:10px">
+            <button type="button" id="tryBtn"></button>
+            <button type="button" id="examBtn" class="primary" data-i18n="exam" disabled></button>
+          </div>
+          <ol class="tries" id="tries"></ol>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/models.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 19 · AutoML и AI-инструменты',
+        title: 'AutoML: ускоряем работу',
+        analogy: '<b>AutoML — автопилот.</b> Он сам перебирает модели и настройки, сравнивает их и выдаёт лучшую. Но куда ехать и не везёт ли он не туда, решает водитель — то есть ты.',
+        cvLabel: 'Рейтинг моделей, которые перебрал AutoML: средняя точность по кросс-валидации.',
+        legWin: 'победитель', legOther: 'остальные модели', legBase: 'baseline',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: обгони AutoML',
+        run: 'Запустить AutoML',
+        rerun: 'Запустить ещё раз',
+        leakLabel: 'Добавить столбец «номер вида в базе»',
+        leakNote: 'Это и есть ответ, только записанный числом (Adelie = 0, Chinstrap = 1, Gentoo = 2). Такая утечка данных случается, когда в таблицу случайно попадает столбец «из будущего».',
+        sumEmpty: 'Нажми «Запустить AutoML»: он переберёт модели и настройки и выберет лучшую по кросс-валидации.',
+        sumRun: 'Перебираю… {i} из {n}',
+        sumDone: '<b>Победитель:</b> {model}.<br>Кросс-валидация: <b>{cv}%</b>. Baseline («ленивая» модель): {b}%.<br>Экзамен победителя на test (один раз): <b>{t} из 69</b>.<br><span class="note">Перебрал {n} моделей × 5 проверок = {fits} обучений за {ms} мс.</span>',
+        sumLeak: '<br><b>Подозрительно!</b> 100% — так не бывает в настоящих задачах. Столбец «номер вида» — это сам ответ. AutoML этого не заметил: он честно нашёл самый простой способ угадать.',
+        hintExplore: 'Каждая строка — модель, которую попробовал AutoML. Полоска — средняя точность (accuracy) по 5 проверкам; точность — доля верных ответов.',
+        hintGame: 'Подбери модель сам: у тебя 3 попытки проверить по кросс-валидации. Потом сдай экзамен лучшей попыткой.',
+        hintEmpty: 'Здесь появится рейтинг моделей',
+        modelKnn: 'KNN, K = {k}', modelTree: 'дерево, глубина {d}',
+        pair0: 'длина + глубина клюва', pair1: 'длина клюва + крыло', pair2: 'длина клюва + номер вида',
+        pairBtn0: 'Длина + глубина клюва', pairBtn1: 'Длина клюва + крыло',
+        treeBtn: 'Дерево',
+        kLabel: 'Число соседей K:', dLabel: 'Глубина дерева (max_depth):',
+        gameAsk: 'AutoML переберёт 16 моделей. Сможешь найти не хуже за 3 попытки?',
+        gameStep: 'Твоя модель против AutoML',
+        tryBtn: 'Проверить по кросс-валидации ({n} из 3)',
+        tryLine: '{model}: <b>{cv}%</b>',
+        exam: 'Сдать экзамен лучшей попыткой',
+        gameLine: 'Твоя лучшая попытка — {you}: на test <b>{yt} из 69</b>.<br>AutoML выбрал {auto}: на test <b>{at} из 69</b>.<br>{verdict}',
+        vWin: 'Ты обогнал AutoML!',
+        vTie: 'Ничья: разница в 0–1 пингвина из 69 — это случайность. Ты справился не хуже автопилота за 3 попытки вместо 16.',
+        vLose: 'AutoML оказался точнее — он перебрал все 16 вариантов.',
+        again: 'Сыграть ещё ↺',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Список кандидатов.</b> AutoML берёт несколько моделей (здесь KNN и дерево) и для каждой несколько настроек. Вместе с двумя парами признаков — 16 вариантов.</li>' +
+          '<li><b>Честное сравнение.</b> Каждый вариант проверяется кросс-валидацией на train: 5 проверок, как в уроке 12. Test не трогаем.</li>' +
+          '<li><b>Рейтинг.</b> Варианты сортируются по средней точности. При равенстве (до 0.1%) выше тот, что раньше в переборе.</li>' +
+          '<li><b>Экзамен победителя.</b> Только лучшая модель один раз сдаёт экзамен на test.</li>' +
+          '<li><b>Твоя работа.</b> AutoML не ставит задачу, не выбирает метрику и не замечает утечку данных. Проверить, что победитель честный, должен человек.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Запусти AutoML. Насколько победитель лучше baseline? А насколько лучше модели из урока 12 (KNN, K = 5, длина и глубина клюва)?</li>' +
+          '<li>Какие модели в самом низу рейтинга? Почему они проигрывают?</li>' +
+          '<li>Включи столбец «номер вида в базе» и запусти снова. Чему ты поверил бы, а чему нет?</li>' +
+          '<li>Сыграй «Игра: обгони AutoML». Удалось за 3 попытки найти модель не хуже?</li>' +
+          '<li>Если AutoML почти всегда не хуже ручной работы, зачем вообще учиться делать модели руками?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Мини-AutoML — это просто цикл: для каждого кандидата считаем <code>cross_val_score(..., cv=5).mean()</code> и сортируем. Настоящие инструменты (AutoGluon, H2O) делают то же, только кандидатов у них десятки, и они ещё объединяют лучшие модели.</p>' +
+          '<p>В Python это:</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split, cross_val_score<br>' +
+          'from sklearn.pipeline import make_pipeline<br>' +
+          'from sklearn.preprocessing import StandardScaler<br>' +
+          'from sklearn.neighbors import KNeighborsClassifier<br>' +
+          'from sklearn.tree import DecisionTreeClassifier<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'bill_length_mm\', \'bill_depth_mm\']]&nbsp;&nbsp;# признаки<br>' +
+          'y = df[\'species\']&nbsp;&nbsp;# ответ: вид<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br><br>' +
+          'candidates = {}<br>' +
+          'for k in [1, 3, 5, 11, 15]:<br>' +
+          '&nbsp;&nbsp;candidates[f\'KNN, K = {k}\'] = make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=k))<br>' +
+          'for d in [1, 2, 3]:<br>' +
+          '&nbsp;&nbsp;candidates[f\'дерево, глубина {d}\'] = DecisionTreeClassifier(max_depth=d, random_state=42)<br><br>' +
+          'board = sorted(((cross_val_score(m, X_train, y_train, cv=5).mean(), name) for name, m in candidates.items()), reverse=True)<br>' +
+          'for score, name in board:&nbsp;&nbsp;# рейтинг по кросс-валидации<br>' +
+          '&nbsp;&nbsp;print(f\'{name}: {score:.3f}\')<br><br>' +
+          'best = candidates[board[0][1]].fit(X_train, y_train)&nbsp;&nbsp;# победитель — один раз на test<br>' +
+          'print(best.score(X_test, y_test))</code></p>' +
+          '<p>Слово <code>pipeline</code> в Hugging Face (<code>from transformers import pipeline</code>) — это не sklearn <code>Pipeline</code>. Там это готовая обученная модель «из коробки», а в sklearn — цепочка «подготовка → модель».</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Palmer Penguins, 342 пингвина, разбиение как в Colab: <code>train_test_split(test_size=0.2, random_state=42)</code>. AutoML перебирает 16 вариантов — те же настройки, что в уроке 12 (там проверено, что у них нет ничьих). Рейтинг и экзамен победителя совпадают с sklearn (<code>tools/check_automl.py</code>).</p>' +
+          '<p><b>Отличие от книги.</b> В главе 19 AutoGluon показывает рейтинг на test (<code>leaderboard(test)</code>). Здесь рейтинг строится по кросс-валидации, а test открывается один раз — только для победителя: выбирать модель по test нельзя (урок 6).</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «Обгони AutoML» по командам. Потом запуск AutoML на проекторе и включение столбца-утечки: класс должен сам сказать, что 100% — подозрительно. Затем AutoGluon в Colab.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Что AutoML не сделает за тебя? Почему он не заметил утечку? Когда выгоднее взять готовую модель с Hugging Face, а когда обучать свою?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var all = PENGUINS.rows.map(function (r) {
+      var si = SPECIES.indexOf(r[0]);
+      return { si: si, f: [r[2], r[3], r[4], si], test: r[6] === 1, pos: r[7] };   // f[3] — «номер вида в базе»: утечка
+    });
+    var byPos = function (a, b) { return a.pos - b.pos; };
+    var train = all.filter(function (p) { return !p.test; }).sort(byPos);
+    var test = all.filter(function (p) { return p.test; }).sort(byPos);
+    var PAIRS = [[0, 1], [0, 2], [0, 3]];     // 2 — пара с утечкой
+    var KS = [1, 3, 5, 11, 15], DS = [1, 2, 3];
+
+    // ======================= Кросс-валидация (assets/models.js — как в sklearn) =======================
+    var FOLD = MLModels.folds(train.map(function (p) { return p.si; }), 5);
+    var parts = [0, 1, 2, 3, 4].map(function (i) {
+      return { fit: train.filter(function (_, j) { return FOLD[j] !== i; }), val: train.filter(function (_, j) { return FOLD[j] === i; }) };
+    });
+    function xy(p, pair) { return [p.f[PAIRS[pair][0]], p.f[PAIRS[pair][1]]]; }
+    function fit(cfg, pts) {
+      var X = pts.map(function (p) { return xy(p, cfg.pair); }), ys = pts.map(function (p) { return p.si; });
+      if (cfg.model === 'knn') { var m = MLModels.knn(X, ys); return function (a, b) { return m(a, b, cfg.k); }; }
+      return MLModels.tree(X, ys, cfg.d);
+    }
+    function correct(m, cfg, set) { return set.filter(function (p) { var v = xy(p, cfg.pair); return m(v[0], v[1]) === p.si; }).length; }
+    var cvCache = {};
+    function key(c) { return [c.pair, c.model, c.model === 'knn' ? c.k : c.d].join('|'); }
+    function cvOf(cfg) {
+      var k = key(cfg);
+      if (cvCache[k] === undefined) {
+        var s = 0;
+        for (var i = 0; i < 5; i++) s += correct(fit(cfg, parts[i].fit), cfg, parts[i].val) / parts[i].val.length;
+        cvCache[k] = s / 5;
+      }
+      return cvCache[k];
+    }
+    function testOf(cfg) { return correct(fit(cfg, train), cfg, test); }   // модель учится на всём train
+    var BASE = [0, 1, 2, 3, 4].reduce(function (s, i) {
+      var b = MLModels.majority(MLModels.counts(parts[i].fit.map(function (p) { return p.si; })));
+      return s + parts[i].val.filter(function (p) { return p.si === b; }).length / parts[i].val.length;
+    }, 0) / 5;
+    var pct = function (a) { return (100 * a).toFixed(1).replace('.0', ''); };
+    function name(c) { return T(c.model === 'knn' ? 'modelKnn' : 'modelTree', { k: c.k, d: c.d }) + ' · ' + T('pair' + c.pair); }
+
+    // Кандидаты в порядке перебора: пара → KNN по K → дерево по глубине
+    function candidates(leak) {
+      var out = [];
+      (leak ? [2] : [0, 1]).forEach(function (pair) {
+        KS.forEach(function (k) { out.push({ pair: pair, model: 'knn', k: k, d: 1 }); });
+        DS.forEach(function (d) { out.push({ pair: pair, model: 'tree', k: 1, d: d }); });
+      });
+      return out;
+    }
+    // Рейтинг: по точности, округлённой до 0.1%; при равенстве — порядок перебора (как в tools/check_automl.py)
+    function rank(rows) {
+      return rows.map(function (r, i) { return { r: r, i: i }; }).sort(function (a, b) {
+        var d = Math.round(1000 * b.r.cv) - Math.round(1000 * a.r.cv);
+        return d || a.i - b.i;
+      }).map(function (x) { return x.r; });
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', leak: false, run: null, game: null };
+    // run: { rows: [{cfg, cv}], shown: сколько уже показано, done, win: {cfg, cv, t}, ms }
+    var timer = null;
+
+    function runAutoML() {
+      clearTimeout(timer);
+      cvCache = {};   // каждый запуск учит модели заново — иначе время перебора было бы нечестным
+      var t0 = performance.now(), list = candidates(state.leak);
+      var rows = list.map(function (c) { return { cfg: c, cv: cvOf(c) }; });   // настоящий расчёт: 16 × 5 обучений
+      var ranked = rank(rows), best = ranked[0];
+      var run = { rows: rows, shown: 0, done: false, ms: Math.max(1, Math.round(performance.now() - t0)), leak: state.leak,
+                  win: { cfg: best.cfg, cv: best.cv, t: testOf(best.cfg) } };
+      state.run = run;
+      // Показываем по одной модели — видно, что это перебор
+      (function step() {
+        run.shown++;
+        if (run.shown >= rows.length) run.done = true;
+        refresh();
+        if (!run.done) timer = setTimeout(step, 140);
+      })();
+    }
+
+    // ======================= Рисование рейтинга =======================
+    var cv = el('cv'), g;
+    var ROWS = 16;
+    function rowH() { return MLViz.fontPx(cv.parentElement.clientWidth) + 20; }
+    function resize() {
+      var w = cv.parentElement.clientWidth - 20, h = ROWS * rowH() + 56;
+      g = MLViz.fitCanvas(cv, h / w);
+      draw();
+    }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), rh = rowH(), x0 = 8, x1 = g.w - 60, top = 8;
+      ctx.clearRect(0, 0, g.w, g.h);
+      var run = state.mode === 'explore' ? state.run : (state.game && state.game.done ? state.game.auto : null);
+      if (!run) {
+        ctx.fillStyle = '#C9C3E6'; ctx.font = fs + 'px Calibri, system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(T('hintEmpty'), g.w / 2, g.h / 2);
+        return;
+      }
+      var rows = rank(run.rows.slice(0, run.shown)), sx = MLViz.scale(0, 1, x0, x1);
+      var yourKey = state.mode === 'game' && state.game.best ? key(state.game.best.cfg) : null;
+      ctx.font = fs + 'px Calibri, system-ui, sans-serif'; ctx.textBaseline = 'top';
+      rows.forEach(function (r, i) {
+        var y = top + i * rh, win = run.done && i === 0;
+        ctx.fillStyle = win ? '#EEEAFB' : '#C9C3E6'; ctx.textAlign = 'left';
+        ctx.font = (win ? 'bold ' : '') + fs + 'px Calibri, system-ui, sans-serif';
+        ctx.fillText((i + 1) + '. ' + name(r.cfg), x0, y);
+        ctx.fillStyle = win ? C_TEXT : C_MUTED;
+        ctx.fillRect(x0, y + fs + 4, sx(r.cv) - x0, 8);
+        ctx.fillStyle = '#EEEAFB'; ctx.textAlign = 'left';
+        ctx.fillText(pct(r.cv) + '%', Math.min(sx(r.cv) + 6, g.w - 56), y + fs - 2);
+        if (yourKey && key(r.cfg) === yourKey) {   // твоя лучшая попытка — в рамке цвета validation
+          ctx.strokeStyle = C_VAL; ctx.lineWidth = 2; ctx.strokeRect(x0 - 4, y - 3, g.w - x0, rh - 2);
+        }
+      });
+      // Линия baseline через все строки
+      var bx = sx(BASE);
+      ctx.strokeStyle = C_TEXT; ctx.lineWidth = 1.5;
+      // Только на уровне полосок, чтобы линия не перечёркивала названия моделей
+      for (var i = 0; i < rows.length; i++) {
+        var yb = top + i * rh + fs + 1;
+        ctx.beginPath(); ctx.moveTo(bx, yb); ctx.lineTo(bx, yb + 14); ctx.stroke();
+      }
+      ctx.fillStyle = C_TEXT; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.font = fs + 'px Calibri, system-ui, sans-serif';
+      ctx.fillText('baseline ' + pct(BASE) + '%', bx, top + Math.max(1, rows.length) * rh + 4);
+    }
+    var C_TEXT = MLViz.cssVar('--text'), C_MUTED = MLViz.cssVar('--muted'), C_VAL = MLViz.cssVar('--c-val');
+
+    // ======================= Панель «Исследуй» =======================
+    function updateSummary() {
+      var run = state.run, s = el('summary');
+      el('runBtn').textContent = T(run && run.done ? 'rerun' : 'run');
+      if (!run) { s.innerHTML = T('sumEmpty'); return; }
+      if (!run.done) { s.innerHTML = T('sumRun', { i: run.shown, n: run.rows.length }); return; }
+      s.innerHTML = T('sumDone', { model: name(run.win.cfg), cv: pct(run.win.cv), b: pct(BASE), t: run.win.t,
+                                   n: run.rows.length, fits: run.rows.length * 5, ms: run.ms }) +
+        (run.leak && run.win.cv > 0.999 ? T('sumLeak') : '');
+    }
+    function refresh() { if (state.mode === 'explore') updateSummary(); else updateGame(); draw(); }
+
+    // ======================= Игра «Обгони AutoML» (общий компонент MLViz.quiz, 1 раунд = экзамен) =======================
+    var pick = { pair: 0, model: 'knn', k: 5, d: 2 };
+    el('pairBtns').innerHTML = [0, 1].map(function (i) { return '<button type="button" data-p="' + i + '">' + T('pairBtn' + i) + '</button>'; }).join('');
+    function updateGame() {
+      var gm = state.game; if (!gm) return;
+      MLViz.setPressed(el('pairBtns'), function (b) { return +b.dataset.p === pick.pair; });
+      MLViz.setPressed(el('modelBtns'), function (b) { return b.dataset.m === pick.model; });
+      var vals = pick.model === 'knn' ? KS : DS, cur = pick.model === 'knn' ? pick.k : pick.d;
+      el('paramLabel').textContent = T(pick.model === 'knn' ? 'kLabel' : 'dLabel');
+      el('paramBtns').innerHTML = vals.map(function (v) { return '<button type="button" data-v="' + v + '">' + v + '</button>'; }).join('');
+      MLViz.setPressed(el('paramBtns'), function (b) { return +b.dataset.v === cur; });
+      el('tryBtn').textContent = T('tryBtn', { n: Math.min(3, gm.tries.length + 1) });
+      el('tryBtn').disabled = gm.done || gm.tries.length >= 3;
+      el('examBtn').disabled = gm.done || !gm.tries.length;
+      el('tries').innerHTML = gm.tries.map(function (t) { return '<li>' + T('tryLine', { model: name(t.cfg), cv: pct(t.cv) }) + '</li>'; }).join('');
+    }
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 1,
+      text: { step: function () { return T('gameStep'); }, finishTitle: T('gameStep'), again: T('again') },
+      round: function () { state.game = { tries: [], done: false, best: null, auto: null }; refresh(); }
+    });
+    el('tryBtn').addEventListener('click', function () {
+      var gm = state.game; if (!gm || gm.done || gm.tries.length >= 3) return;
+      var c = { pair: pick.pair, model: pick.model, k: pick.k, d: pick.d };
+      gm.tries.push({ cfg: c, cv: cvOf(c) });
+      refresh();
+    });
+    el('examBtn').addEventListener('click', function () {
+      var gm = state.game; if (!gm || gm.done || !gm.tries.length) return;
+      // Лучшая попытка — по кросс-валидации (при равенстве — более ранняя); test — один раз
+      gm.best = gm.tries.reduce(function (b, t) { return Math.round(1000 * t.cv) > Math.round(1000 * b.cv) ? t : b; });
+      var rows = candidates(false).map(function (c) { return { cfg: c, cv: cvOf(c) }; }), win = rank(rows)[0];
+      gm.auto = { rows: rows, shown: rows.length, done: true, win: win };
+      var yt = testOf(gm.best.cfg), at = testOf(win.cfg), d = yt - at;
+      gm.done = true;
+      quiz.answer(d >= -1 ? 1 : 0, T('gameLine', { you: name(gm.best.cfg), yt: yt, auto: name(win.cfg), at: at,
+        verdict: T(Math.abs(d) <= 1 ? 'vTie' : d > 0 ? 'vWin' : 'vLose') }));
+      refresh();
+    });
+    el('pairBtns').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { pick.pair = +b.dataset.p; refresh(); } });
+    el('modelBtns').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { pick.model = b.dataset.m; refresh(); } });
+    el('paramBtns').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (pick.model === 'knn') pick.k = +b.dataset.v; else pick.d = +b.dataset.v;
+      refresh();
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').style.display = m === 'explore' ? 'flex' : 'none';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else { state.game = null; refresh(); }   // рейтинг «Исследуй» игра не трогает
+    }
+
+    // ======================= События =======================
+    el('runBtn').addEventListener('click', runAutoML);
+    el('leak').addEventListener('change', function (e) { state.leak = e.target.checked; clearTimeout(timer); state.run = null; refresh(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>
