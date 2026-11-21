@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проект «Классификатор моих картинок» · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .names { display: grid; gap: 6px; margin-top: 6px; }
+    .names input { font: inherit; width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); min-height: 44px; }
+    .names button { min-width: 44px; }
+    .names button[aria-pressed="true"] { border-color: var(--text); font-weight: 700; }
+    .pred-name { font-size: 34px; font-weight: 700; line-height: 1.1; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="pad" class="drag"></canvas>
+          <div class="row" style="margin-top:8px">
+            <button type="button" id="addBtn" class="primary"></button>
+            <button type="button" id="clearBtn" data-i18n="clear"></button>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <div class="stage viz-extra">
+          <p class="sub" data-i18n="dataTitle"></p>
+          <canvas id="gallery"></canvas>
+          <p class="note" style="padding:0 4px" data-i18n="dataNote"></p>
+        </div>
+        <div class="stage viz-extra">
+          <p class="sub" data-i18n="augTitle"></p>
+          <canvas id="aug"></canvas>
+          <p class="note" style="padding:0 4px" data-i18n="augNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:14px">
+          <div>
+            <h3 data-i18n="sData"></h3>
+            <div class="seg" id="countBtns" style="margin-top:6px">
+              <button type="button" data-v="2" data-i18n="two"></button>
+              <button type="button" data-v="3" data-i18n="three"></button>
+            </div>
+            <div class="names" id="names"></div>
+            <p class="note" data-i18n="classNote"></p>
+            <div class="row" style="margin-top:8px">
+              <button type="button" id="demoBtn" data-i18n="demo"></button>
+              <button type="button" id="resetBtn" data-i18n="reset"></button>
+            </div>
+          </div>
+          <div class="divider">
+            <h3 data-i18n="sModel"></h3>
+            <div class="seg" id="featBtns" style="margin-top:6px">
+              <button type="button" data-v="expert" data-i18n="expert"></button>
+              <button type="button" data-v="pixels" data-i18n="pixels"></button>
+            </div>
+            <p class="note" id="featNote"></p>
+            <label class="toggle" style="margin-top:8px"><input type="checkbox" id="augOn" checked> <span data-i18n="augOn"></span></label>
+          </div>
+        </div>
+
+        <div id="gamePanel" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameAsk"></p>
+          <button type="button" id="checkBtn" class="primary" style="margin-top:10px" data-i18n="check"></button>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+          <div style="margin-top:12px"><div class="big-number" id="score">0</div><small data-i18n="scoreLbl"></small></div>
+        </div>
+
+        <div class="divider">
+          <h3 data-i18n="predTitle"></h3>
+          <div class="pred-name" id="pred" style="margin-top:6px">—</div>
+          <p class="note" id="predNote"></p>
+        </div>
+
+        <div class="divider">
+          <h3 data-i18n="evalTitle"></h3>
+          <div class="big-number" id="evalNum" style="margin-top:6px">—</div>
+          <p class="note" id="evalNote"></p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/mnist.js"></script>
+  <script src="../../assets/digits.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 16 · Нейросети',
+        title: 'Проект «Классификатор моих картинок»',
+        analogy: '<b>Личный датасет.</b> До сих пор данные были чужие. Теперь ты сам решаешь, что модель будет различать, и сам рисуешь примеры. Хорошие примеры с простой моделью почти всегда лучше плохих примеров со сложной.',
+        padLabel: 'Поле 28 × 28 для рисования своих картинок.',
+        galleryLabel: 'Твой датасет: примеры каждого класса.',
+        augLabel: 'Аугментация: один рисунок и его сдвинутые и повёрнутые копии.',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: проверка от друга',
+        clear: 'Очистить',
+        addAs: 'Добавить как «{c}»',
+        sData: 'Шаг 1. Твои классы',
+        two: '2 класса', three: '3 класса',
+        classNote: 'Назови классы как хочешь. Выбери класс, нарисуй пример и нажми «Добавить». Нужно хотя бы 3 примера каждого класса.',
+        classAria: 'Название класса {i}',
+        pickAria: 'Добавлять в класс {c}',
+        demo: 'Нарисовать примеры за меня', reset: 'Удалить все примеры',
+        defaults: 'Круг|Квадрат|Треугольник',
+        sModel: 'Шаг 2–3. Модель',
+        expert: 'Готовый эксперт', pixels: 'Голые пиксели',
+        featExpert: 'Каждая картинка проходит через сеть из урока 14 (она училась на 60 000 цифр) и превращается в 128 чисел — что «увидели» её нейроны. Сеть заморожена: мы её не меняем, а сверху учим свой маленький классификатор. Это и есть transfer learning. Помогает ли эксперт по цифрам с твоими картинками? Сравни с «Голыми пикселями».',
+        featPixels: 'Без эксперта: модель сравнивает картинки по 784 пикселям напрямую. Поверни рисунок — и для неё это уже совсем другая картинка.',
+        augOn: 'Аугментация: сдвиги и повороты',
+        dataTitle: 'Твой датасет',
+        dataNote: 'Каждая строка — класс, каждая клетка — твой пример (так, как его видит модель: вписан в центр поля).',
+        augTitle: 'Аугментация: один рисунок → 9 примеров',
+        augNote: 'Модель учится на рисунке и его копиях: сдвинутых на 2 клетки и повёрнутых на ±12°. Так из 5 рисунков получается 45 примеров.',
+        predTitle: 'Модель думает, что это',
+        predNote: 'Самый похожий пример — из класса «{c}». Модель ищет среди всех примеров тот, что ближе всего.',
+        predNeed: 'Добавь хотя бы по 3 примера в каждый класс — и модель сможет отвечать.',
+        predEmpty: 'Нарисуй что-нибудь на поле.',
+        evalTitle: 'Честная проверка',
+        evalNote: 'Каждый твой пример по очереди прячем, учим модель на остальных и спрашиваем про спрятанный. Угадано {c} из {n}. Точность (accuracy) — доля верных ответов. «Ленивая» модель, которая всегда называет самый большой класс, угадала бы {l} из {n}.',
+        evalNeed: 'Проверка появится, когда в каждом классе будет хотя бы 3 примера.',
+        hintExplore: 'Рисуй мышкой или пальцем. Потом выбери класс в панели и нажми «Добавить».',
+        hintGame: 'Друг просит нарисовать картинку. Нарисуй и нажми «Проверить» — угадает ли твоя модель?',
+        gameAsk: 'Нарисуй: <b>{c}</b>. Постарайся не так, как в твоих примерах, — чуть иначе, как нарисовал бы друг.',
+        gameNeed: 'Сначала добавь хотя бы по 3 примера в каждый класс в режиме «Исследуй».',
+        gameStep: 'Проверка {i} из {n}',
+        check: 'Проверить',
+        gRight: 'Модель угадала: <b>{c}</b>.',
+        gWrong: 'Модель ошиблась: сказала «{p}», а это «{c}». Добавь похожие примеры — и она научится.',
+        gEmpty: 'Поле пустое — сначала нарисуй картинку.',
+        next: 'Следующая →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        scoreLbl: 'угадала модель',
+        gameOver: 'Твоя модель угадала <b>{s} из {n}</b> рисунков. {v}',
+        goGood: 'Отличный датасет!',
+        goMid: 'Неплохо. Добавь разнообразные примеры: побольше, поменьше, кривее.',
+        goLow: 'Модели не хватает примеров. Добавь разных рисунков и включи аугментацию.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Собери данные.</b> Реши, какие классы различать, и нарисуй по 5–10 примеров каждого. Разнообразие важнее количества.</li>' +
+          '<li><b>Аугментация.</b> Каждый пример слегка сдвигаем и поворачиваем — из одного рисунка получается 9. Модель видит объект «с разных сторон» и меньше запоминает конкретные рисунки.</li>' +
+          '<li><b>Готовый эксперт (transfer learning).</b> Сеть из урока 14 уже умеет замечать штрихи и изгибы. Мы её замораживаем и берём её 128 чисел как признаки картинки. Но эксперт по цифрам помогает не всегда: чем меньше твои картинки похожи на цифры, тем меньше пользы. Поэтому для фото берут MobileNetV2 — она училась на миллионе самых разных фотографий.</li>' +
+          '<li><b>Свой классификатор.</b> Сверху — простая модель: ищет среди твоих примеров самый похожий (KNN с K = 1).</li>' +
+          '<li><b>Честная проверка и приложение.</b> Проверяем на примерах, которых модель не видела. В Colab такую модель заворачивают в Gradio (урок 20) и отправляют ссылку друзьям.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Нажми «Нарисовать примеры за меня» несколько раз. Кто чаще точнее: «Готовый эксперт» или «Голые пиксели»? Почему эксперт по цифрам может не помочь с фигурами?</li>' +
+          '<li>Выключи аугментацию. Как изменилась честная проверка? Почему?</li>' +
+          '<li>Нарисуй круг очень маленьким в углу поля. Угадывает ли модель? Почему ей помогает подгонка картинки в центр?</li>' +
+          '<li>Придумай свои классы — например, «улыбка» и «грусть». Сколько примеров нужно, чтобы модель стала угадывать?</li>' +
+          '<li>Сыграй «Игра: проверка от друга». На каких рисунках модель ошибается?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Признаки картинки: <code>h = ReLU(x · W₁ + b₁)</code> — скрытый слой сети из урока 14 (128 чисел). Похожесть двух картинок — расстояние между их h. Ответ — класс ближайшего примера (KNN, K = 1).</p>' +
+          '<p>В Colab с фотографиями (как в главе 16) готовый эксперт — сеть MobileNetV2, обученная на миллионе фото. Положи фото в папки <code>my_photos/класс1</code>, <code>my_photos/класс2</code> и запусти:</p>' +
+          '<p><code>import tensorflow as tf<br>' +
+          'from tensorflow.keras import layers<br><br>' +
+          'train = tf.keras.utils.image_dataset_from_directory(\'my_photos\', image_size=(160, 160), validation_split=0.25, subset=\'training\', seed=42)<br>' +
+          'val = tf.keras.utils.image_dataset_from_directory(\'my_photos\', image_size=(160, 160), validation_split=0.25, subset=\'validation\', seed=42)<br><br>' +
+          'base = tf.keras.applications.MobileNetV2(input_shape=(160, 160, 3), include_top=False, weights=\'imagenet\')<br>' +
+          'base.trainable = False&nbsp;&nbsp;# заморозка: знания эксперта не трогаем<br><br>' +
+          'model = tf.keras.Sequential([<br>' +
+          '&nbsp;&nbsp;layers.RandomFlip(\'horizontal\'), layers.RandomRotation(0.1),&nbsp;&nbsp;# аугментация<br>' +
+          '&nbsp;&nbsp;layers.Rescaling(1 / 127.5, offset=-1),&nbsp;&nbsp;# масштаб, который ждёт MobileNetV2<br>' +
+          '&nbsp;&nbsp;base, layers.GlobalAveragePooling2D(),<br>' +
+          '&nbsp;&nbsp;layers.Dense(len(train.class_names), activation=\'softmax\'),&nbsp;&nbsp;# свой классификатор<br>' +
+          '])<br>' +
+          'model.compile(optimizer=\'adam\', loss=\'sparse_categorical_crossentropy\', metrics=[\'accuracy\'])<br>' +
+          'model.fit(train, validation_data=val, epochs=5)</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Что здесь настоящее.</b> «Готовый эксперт» — сеть урока 14 (784 → 128 → 10, обучена на MNIST); её 128 нейронов скрытого слоя служат признаками, как MobileNetV2 в главе 16. Классификатор — KNN с K = 1 по этим признакам. На примерах «Нарисовать за меня» (5 фигур каждого вида, в среднем по 20 генерациям) эксперт даёт около 66% без аугментации и 71% с ней, голые пиксели — 72% и 78%: аугментация помогает, а эксперт по цифрам на фигурах не лучше пикселей. Это честный результат — хороший повод обсудить, когда перенос знаний работает. Аугментация — 8 копий каждого примера (сдвиги на 2 клетки, повороты на ±12°). Честная проверка — «по одному» (leave-one-out): спрятанный пример и его копии в обучение не попадают. Всё считается в браузере; со sklearn сверять нечего — данные рисует сам ученик.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: класс придумывает два класса, трое учеников рисуют примеры на проекторе, остальные пытаются «обмануть» модель. Потом сравнение «эксперт / пиксели» и «с аугментацией / без». Затем проект с фото в Colab по главе 16.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему сеть, учившаяся на цифрах, помогает различать фигуры? Почему при проверке нельзя оставлять в обучении копии спрятанного примера? Сколько примеров нужно для хорошего датасета?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Готовый эксперт — сеть, обученная на MNIST (LeCun, Cortes, Burges). Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    el('pad').setAttribute('aria-label', T('padLabel'));
+    el('gallery').setAttribute('aria-label', T('galleryLabel'));
+    el('aug').setAttribute('aria-label', T('augLabel'));
+
+    // ======================= Состояние =======================
+    var NAMES = T('defaults').split('|');
+    var state = {
+      mode: 'explore', count: 3, cur: 0, feat: 'expert', aug: true,
+      classes: NAMES.map(function (n) { return { name: n, ex: [] }; }),   // ex — рисунки 28 × 28 после подгонки в центр
+      raw: new Uint8Array(784), game: null
+    };
+    function active() { return state.classes.slice(0, state.count); }
+    function ready() { return active().every(function (c) { return c.ex.length >= 3; }); }
+
+    // ======================= Аугментация: сдвиги и повороты =======================
+    function transform(img, dx, dy, deg) {
+      var out = new Uint8Array(784), a = deg * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+      for (var r = 0; r < 28; r++) for (var c = 0; c < 28; c++) {
+        var x = c - 13.5 - dx, y = r - 13.5 - dy;                       // обратное преобразование: откуда взять клетку
+        var sc = Math.round(ca * x + sa * y + 13.5), sr = Math.round(-sa * x + ca * y + 13.5);
+        if (sr >= 0 && sr < 28 && sc >= 0 && sc < 28) out[r * 28 + c] = img[sr * 28 + sc];
+      }
+      return out;
+    }
+    var AUG = [[2, 0, 0], [-2, 0, 0], [0, 2, 0], [0, -2, 0], [0, 0, 12], [0, 0, -12], [2, 2, 6], [-2, -2, -6]];
+    function variants(img) { return [img].concat(AUG.map(function (t) { return transform(img, t[0], t[1], t[2]); })); }
+
+    // ======================= Признаки и классификатор =======================
+    // Признаки: 128 нейронов замороженной сети урока 14 или голые 784 пикселя. Длина вектора = 1 — сравниваем форму, а не яркость.
+    var featCache = new WeakMap();
+    function feature(img) {
+      var key = state.feat, m = featCache.get(img) || {};
+      if (!m[key]) {
+        var v = key === 'expert' ? Array.from(MLDigits.forward(img).h) : Array.from(img, function (x) { return x / 255; });
+        var n = Math.sqrt(v.reduce(function (s, x) { return s + x * x; }, 0)) || 1;
+        m[key] = v.map(function (x) { return x / n; });
+        featCache.set(img, m);
+      }
+      return m[key];
+    }
+    function dist(a, b) { var s = 0; for (var i = 0; i < a.length; i++) { var d = a[i] - b[i]; s += d * d; } return s; }
+    var augCache = new WeakMap();
+    function trainSet(skip) {               // skip — пример, который прячем при проверке (вместе с его копиями)
+      var out = [];
+      active().forEach(function (c, ci) {
+        c.ex.forEach(function (img) {
+          if (img === skip) return;
+          var list = state.aug ? (augCache.get(img) || (augCache.set(img, variants(img)), augCache.get(img))) : [img];
+          list.forEach(function (v) { out.push({ f: feature(v), y: ci }); });
+        });
+      });
+      return out;
+    }
+    function nearest(img, set) {           // KNN, K = 1: класс самого похожего примера
+      var f = feature(img), best = null, bd = Infinity;
+      set.forEach(function (s) { var d = dist(f, s.f); if (d < bd) { bd = d; best = s.y; } });
+      return best;
+    }
+    // Честная проверка «по одному» (leave-one-out): спрятанный пример и все его копии не участвуют в обучении
+    function evaluate() {
+      var n = 0, ok = 0, sizes = active().map(function (c) { return c.ex.length; });
+      active().forEach(function (c, ci) { c.ex.forEach(function (img) { n++; if (nearest(img, trainSet(img)) === ci) ok++; }); });
+      return { ok: ok, n: n, lazy: Math.max.apply(null, sizes) };
+    }
+
+    // ======================= «Нарисовать примеры за меня»: круги, квадраты, треугольники с разбросом =======================
+    // Как рисуют дети: фигура повёрнута на случайный угол, вытянута, линии дрожат, иногда не до конца замкнута
+    function shape(kind) {
+      var raw = new Uint8Array(784), R = Math.random, cx = 14, cy = 14, s = 6 + R() * 4;
+      var sxk = 0.7 + R() * 0.6, rot = R() * Math.PI * 2, wob = function () { return (R() - 0.5) * 2.4; }, pts = [], i;
+      if (kind === 0) for (i = 0; i <= 20 - Math.floor(R() * 3); i++) { var a = i / 20 * Math.PI * 2; pts.push([s * Math.cos(a), s * Math.sin(a)]); }
+      else if (kind === 1) pts = [[-s, -s], [s, -s], [s, s], [-s, s], [-s, -s]];
+      else pts = [[0, -s], [s, s * 0.8], [-s, s * 0.8], [0, -s]];
+      pts = pts.map(function (p) {
+        var x = p[0] * sxk, y = p[1];
+        return [cx + x * Math.cos(rot) - y * Math.sin(rot) + wob(), cy + x * Math.sin(rot) + y * Math.cos(rot) + wob()];
+      });
+      for (i = 1; i < pts.length; i++) MLDigits.line(raw, pts[i - 1], pts[i]);
+      return MLDigits.toMnist(raw);
+    }
+
+    // ======================= Рисование =======================
+    var pad = el('pad'), gal = el('gallery'), augCv = el('aug'), gp, gg, ga, cellPx, padX, padY;
+    function resize() {
+      gp = MLViz.fitCanvas(pad, 0.6);
+      gg = MLViz.fitCanvas(gal, 0.42);
+      ga = MLViz.fitCanvas(augCv, 0.2);
+      draw();
+    }
+    function img28(ctx, img, x, y, size) {
+      ctx.fillStyle = '#17132E'; ctx.fillRect(x, y, size, size);
+      var c = size / 28;
+      for (var i = 0; i < 784; i++) if (img[i]) { ctx.fillStyle = MLDigits.gray(img[i]); ctx.fillRect(x + (i % 28) * c, y + Math.floor(i / 28) * c, c + 0.4, c + 0.4); }
+    }
+    function draw() {
+      var ctx = gp.ctx, size = Math.min(gp.w, gp.h) - 8;
+      cellPx = size / 28; padX = (gp.w - size) / 2; padY = (gp.h - size) / 2;
+      ctx.clearRect(0, 0, gp.w, gp.h);
+      img28(ctx, state.raw, padX, padY, size);
+      ctx.strokeStyle = 'rgba(169,162,204,.35)'; ctx.lineWidth = 1; ctx.strokeRect(padX, padY, size, size);
+      drawGallery(); drawAug(); updatePanel();
+    }
+    function drawGallery() {
+      var ctx = gg.ctx, fs = MLViz.fontPx(gg.w), rows = active(), rh = (gg.h - 8) / rows.length, t = Math.min(rh - fs - 10, 46);
+      ctx.clearRect(0, 0, gg.w, gg.h);
+      ctx.font = 'bold ' + fs + 'px Calibri, system-ui, sans-serif'; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      rows.forEach(function (c, ci) {
+        var y = 4 + ci * rh, per = Math.max(1, Math.floor(gg.w / (t + 4)));
+        ctx.fillStyle = ci === state.cur && state.mode === 'explore' ? '#EEEAFB' : '#C9C3E6';
+        ctx.fillText(c.name + ' — ' + c.ex.length, 0, y);
+        c.ex.slice(-per).forEach(function (img, k) { img28(ctx, img, k * (t + 4), y + fs + 6, t); });
+      });
+    }
+    function drawAug() {
+      var ctx = ga.ctx, src = MLDigits.toMnist(state.raw), t = Math.min(ga.h - 4, (ga.w - 8 * 6) / 9);
+      ctx.clearRect(0, 0, ga.w, ga.h);
+      if (!src.some(function (v) { return v; })) return;
+      variants(src).forEach(function (v, k) { img28(ctx, v, k * (t + 6), 2, t); });
+    }
+
+    // ======================= Панель =======================
+    function updatePanel() {
+      MLViz.setPressed(el('countBtns'), function (b) { return +b.dataset.v === state.count; });
+      MLViz.setPressed(el('featBtns'), function (b) { return b.dataset.v === state.feat; });
+      el('featNote').textContent = T(state.feat === 'expert' ? 'featExpert' : 'featPixels');
+      el('addBtn').textContent = T('addAs', { c: state.classes[state.cur].name });
+      el('addBtn').hidden = state.mode !== 'explore';
+      var img = MLDigits.toMnist(state.raw), empty = !img.some(function (v) { return v; });
+      var hideGame = state.mode === 'game' && !(state.game && state.game.checked);
+      if (!ready()) { el('pred').textContent = '—'; el('predNote').textContent = T('predNeed'); }
+      else if (empty || hideGame) { el('pred').textContent = '—'; el('predNote').textContent = empty ? T('predEmpty') : ''; }
+      else {
+        var p = active()[nearest(img, trainSet(null))].name;
+        el('pred').textContent = p; el('predNote').textContent = T('predNote', { c: p });
+      }
+      if (!ready()) { el('evalNum').textContent = '—'; el('evalNote').textContent = T('evalNeed'); }
+      else {
+        var e = evaluate();
+        el('evalNum').textContent = Math.round(100 * e.ok / e.n) + '%';
+        el('evalNote').textContent = T('evalNote', { c: e.ok, n: e.n, l: e.lazy });
+      }
+    }
+    function renderNames() {
+      el('names').innerHTML = active().map(function (c, i) {
+        return '<div class="row" style="flex-wrap:nowrap"><button type="button" data-i="' + i + '" aria-label="' + T('pickAria', { c: c.name }) + '">' + (i + 1) +
+          '</button><input type="text" maxlength="20" data-i="' + i + '" aria-label="' + T('classAria', { i: i + 1 }) + '"></div>';
+      }).join('');
+      el('names').querySelectorAll('input').forEach(function (inp) { inp.value = state.classes[+inp.dataset.i].name; });
+      MLViz.setPressed(el('names'), function (b) { return +b.dataset.i === state.cur; });
+    }
+
+    // Рисование на поле
+    var drawing = false, last = null;
+    function stroke(ev) {
+      if (state.game && state.game.checked) return;
+      var p = MLViz.pointer(pad, ev), cx = (p.x - padX) / cellPx, cy = (p.y - padY) / cellPx;
+      MLDigits.line(state.raw, last || [cx, cy], [cx, cy]);
+      last = [cx, cy];
+      draw();
+    }
+    pad.addEventListener('pointerdown', function (e) { drawing = true; last = null; pad.setPointerCapture(e.pointerId); stroke(e); });
+    pad.addEventListener('pointermove', function (e) { if (drawing) stroke(e); });
+    pad.addEventListener('pointerup', function () { drawing = false; });
+    pad.addEventListener('pointercancel', function () { drawing = false; });
+
+    // ======================= Игра «Проверка от друга» (общий компонент MLViz.quiz) =======================
+    // 5 раундов: просим нарисовать случайный класс, модель угадывает. Очко — если модель права.
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: function () { return ready() ? 5 : 1; },
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return q.data.blocked ? T('gameNeed') : T('gameOver', { s: q.score, n: q.n, v: T(q.score >= 4 ? 'goGood' : q.score >= 2 ? 'goMid' : 'goLow') }); }
+      },
+      start: function (q) { q.data.blocked = !ready(); el('score').textContent = 0; },
+      round: function (q) {
+        state.raw = new Uint8Array(784);
+        if (q.data.blocked) { state.game = null; el('gameAsk').textContent = T('gameNeed'); el('checkBtn').hidden = true; q.answer(0, ''); draw(); return; }
+        var ci = Math.floor(Math.random() * state.count);
+        state.game = { ci: ci, checked: false, q: q };
+        el('gameAsk').innerHTML = T('gameAsk', { c: active()[ci].name });
+        el('checkBtn').hidden = false;
+        draw();
+      },
+      onEnd: function () { el('checkBtn').hidden = true; }
+    });
+    el('checkBtn').addEventListener('click', function () {
+      var gm = state.game; if (!gm || gm.checked) return;
+      var img = MLDigits.toMnist(state.raw);
+      if (!img.some(function (v) { return v; })) { el('gameResult').textContent = T('gEmpty'); return; }
+      var p = nearest(img, trainSet(null)), ok = p === gm.ci;
+      gm.checked = true;
+      gm.q.answer(ok ? 1 : 0, ok ? T('gRight', { c: active()[gm.ci].name }) : T('gWrong', { p: active()[p].name, c: active()[gm.ci].name }));
+      el('score').textContent = gm.q.score;
+      draw();
+    });
+
+    var savedRaw = null;
+    function setMode(m) {
+      if (m === 'game' && state.mode === 'explore') savedRaw = state.raw;
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').style.display = m === 'explore' ? 'flex' : 'none';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') { quiz.start(); return; }
+      state.game = null;
+      if (savedRaw) { state.raw = savedRaw; savedRaw = null; }   // рисунок «Исследуй» после игры на месте
+      draw();
+    }
+
+    // ======================= События =======================
+    el('countBtns').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state.count = +b.dataset.v; if (state.cur >= state.count) state.cur = 0;
+      renderNames(); draw();
+    });
+    el('names').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state.cur = +b.dataset.i; renderNames(); draw(); } });
+    el('names').addEventListener('input', function (e) {
+      if (e.target.tagName !== 'INPUT') return;
+      state.classes[+e.target.dataset.i].name = e.target.value || ('#' + (+e.target.dataset.i + 1));
+      draw();
+    });
+    el('featBtns').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state.feat = b.dataset.v; draw(); } });
+    el('augOn').addEventListener('change', function (e) { state.aug = e.target.checked; draw(); });
+    el('addBtn').addEventListener('click', function () {
+      var img = MLDigits.toMnist(state.raw);
+      if (!img.some(function (v) { return v; })) return;
+      state.classes[state.cur].ex.push(img);
+      state.raw = new Uint8Array(784);
+      draw();
+    });
+    el('clearBtn').addEventListener('click', function () { if (state.game && state.game.checked) return; state.raw = new Uint8Array(784); draw(); });
+    el('demoBtn').addEventListener('click', function () {
+      state.count = 3;
+      NAMES.forEach(function (n, i) { state.classes[i].name = n; state.classes[i].ex = []; for (var k = 0; k < 5; k++) state.classes[i].ex.push(shape(i)); });
+      renderNames(); draw();
+    });
+    el('resetBtn').addEventListener('click', function () { active().forEach(function (c) { c.ex = []; }); draw(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    renderNames();
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

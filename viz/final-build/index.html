@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Финальный проект: модель и интерфейс · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .panel select { width: 100%; }
+    .readme input, .readme textarea { font: inherit; width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--line);
+                                       background: var(--bg-2); color: var(--text); min-height: 44px; }
+    .readme label { display: block; font-weight: 700; margin: 10px 0 4px; }
+    .code { background: #0F0C22; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; overflow-x: auto;
+            font-family: var(--mono); font-size: 14px; line-height: 1.5; white-space: pre-wrap; margin: 10px 0 0; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="sub" data-i18n="cmpTitle"></p>
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--muted)"></i><span data-i18n="legA"></span></span>
+            <span><i style="background:var(--text)"></i><span data-i18n="legB"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <div class="stage viz-extra readme">
+          <p class="sub" data-i18n="readmeTitle"></p>
+          <label for="rName" data-i18n="rName"></label><input type="text" id="rName" maxlength="60">
+          <label for="rWhat" data-i18n="rWhat"></label><input type="text" id="rWhat" maxlength="140">
+          <label for="rData" data-i18n="rData"></label><input type="text" id="rData" maxlength="140">
+          <label for="rModel" data-i18n="rModel"></label><input type="text" id="rModel" maxlength="140">
+          <label for="rLink" data-i18n="rLink"></label><input type="text" id="rLink" maxlength="140">
+          <pre class="code" id="readme"></pre>
+          <div class="row" style="margin-top:8px"><button type="button" id="copyBtn" data-i18n="copy"></button></div>
+          <p class="note" data-i18n="readmeNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:12px">
+          <div>
+            <h3 data-i18n="vA"></h3>
+            <select id="selA" style="margin-top:6px"></select>
+          </div>
+          <div>
+            <h3 data-i18n="vB"></h3>
+            <select id="selB" style="margin-top:6px"></select>
+          </div>
+          <div class="divider">
+            <h3 data-i18n="verdictTitle"></h3>
+            <p id="verdict" style="margin:6px 0 0"></p>
+          </div>
+        </div>
+
+        <div id="gamePanel" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameCase"></p>
+          <div class="choices" id="choiceBtns"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+          <div style="margin-top:12px"><div class="big-number" id="score">0</div><small data-i18n="scoreLbl"></small></div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/models.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 22 · Финальный проект',
+        title: 'Финальный проект: модель и интерфейс',
+        analogy: '<b>Улучшение — не «сделать число побольше любой ценой».</b> Каждый шаг проверяем по кросс-валидации: стало правда лучше или просто повезло на одном разбиении? А если точность вдруг взлетела до 100% — сначала ищем утечку, а не радуемся.',
+        cvLabel: 'Сравнение двух версий модели по пяти проверкам кросс-валидации.',
+        cmpTitle: 'Улучшение или шум? Две версии по 5 проверкам',
+        legA: 'версия A (было)', legB: 'версия B (стало)',
+        vA: 'Версия A — было', vB: 'Версия B — стало',
+        verdictTitle: 'Вывод',
+        vBetter: '<b>Похоже на настоящее улучшение:</b> B лучше в {w} из 5 проверок, в среднем {d}. Можно оставлять B — и в конце один раз проверить на test.',
+        vNoise: '<b>Похоже на шум:</b> за все 5 проверок разница — {n} из 273 пингвинов (в среднем {d}), и B лучше только в {w} из 5 проверок. Не называй это победой.',
+        vWorse: '<b>Стало хуже:</b> B уступает A в среднем {d}. Возвращайся к версии A.',
+        vLeak: '<b>Тревога!</b> {v} даёт {cv}% — так не бывает в настоящих задачах. Ищи утечку: столбец «номер вида» — это сам ответ.',
+        // Версии модели — проверенные настройки уроков 12 и 19 (tools/check_project.py, tools/check_automl.py)
+        m0: 'Baseline («ленивая» модель)',
+        m1: 'Дерево, глубина 1 · длина + глубина клюва',
+        m2: 'Дерево, глубина 3 · длина клюва + крыло',
+        m3: 'KNN, K = 5 · длина + глубина клюва',
+        m4: 'KNN, K = 3 · длина + глубина клюва',
+        m5: 'KNN, K = 5 · длина клюва + крыло',
+        m6: 'KNN, K = 5 · длина клюва + номер вида (утечка)',
+        readmeTitle: 'README — лицо проекта',
+        rName: 'Название проекта', rWhat: 'Что делает приложение', rData: 'Данные: откуда и сколько',
+        rModel: 'Модель и метрика (и сравнение с baseline)', rLink: 'Ссылка на приложение (Gradio / Hugging Face Spaces)',
+        phName: 'Угадай жанр песни', phWhat: 'По темпу и громкости песни называет её жанр.', phData: '3 000 песен с Kaggle, 4 признака.',
+        phModel: 'Случайный лес в Pipeline, F1 = 0.81 против 0.40 у baseline (кросс-валидация).', phLink: 'https://huggingface.co/spaces/имя/genre',
+        rmWhat: 'Что делает', rmData: 'Данные', rmModel: 'Модель и качество', rmRun: 'Как запустить', rmRunText: 'pip install -r requirements.txt\npython app.py', rmLink: 'Попробовать',
+        copy: 'Скопировать README', copied: 'Скопировано ✓',
+        readmeNote: 'README кладут рядом с кодом — на GitHub или в Hugging Face Space. Его читают те, кто ничего не знает о твоей модели. Текст хранится только в этом браузере.',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: какую метрику выбрать?',
+        hintExplore: 'Выбери две версии модели и посмотри, стала ли B правда лучше A — в каждой из 5 проверок.',
+        hintGame: 'Для каждого проекта выбери главную метрику. Подумай: что дороже — ложная тревога или пропуск?',
+        gameStep: 'Проект {i} из {n}',
+        right: 'Верно!', wrong: 'Не совсем.',
+        next: 'Следующий проект →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        scoreLbl: 'верных ответов',
+        gameOver: 'Ты выбрал метрику правильно в <b>{s} из {n}</b> проектов. {v}',
+        goGood: 'Ты выбираешь метрику осознанно — это признак зрелого специалиста.',
+        goMid: 'Неплохо. Повтори урок 11: precision — меткость тревог, recall — полнота поиска.',
+        goLow: 'Подсказка: если ответ — число, это MAE; если пропуск страшнее ложной тревоги — recall.',
+        mAcc: 'Accuracy', mPrec: 'Precision', mRec: 'Recall', mMae: 'MAE',
+        // Сценарии: правильная метрика и объяснение
+        s1: 'Модель ищет больных редкой болезнью по анализам. Пропустить больного очень опасно.', a1: 'mRec', e1: 'Recall: важно найти всех больных, лишняя проверка здоровых не так страшна.',
+        s2: 'Спам-фильтр: важное письмо, попавшее в спам, — большая беда.', a2: 'mPrec', e2: 'Precision: если модель сказала «спам», она должна быть права — ложные тревоги дороги.',
+        s3: 'Предсказать цену квартиры в рублях.', a3: 'mMae', e3: 'MAE: ответ — число, считаем, на сколько рублей модель ошибается в среднем.',
+        s4: 'Угадать вид пингвина; видов в данных примерно поровну.', a4: 'mAcc', e4: 'Accuracy: классы сбалансированы, и все ошибки одинаково неприятны.',
+        s5: 'Найти мошеннические платежи: их меньше 1%, пропущенный обман дорог.', a5: 'mRec', e5: 'Recall: мошенников мало (accuracy обманет — урок 11), а пропустить их дорого.',
+        s6: 'Предсказать, сколько минут ученик будет решать задачу.', a6: 'mMae', e6: 'MAE: ответ — число минут, смотрим среднюю ошибку.',
+        s7: 'Приложение советует фильм. Плохой совет раздражает, а пропустить один хороший фильм не страшно.', a7: 'mPrec', e7: 'Precision: каждый совет должен быть хорошим, пусть их будет меньше.',
+        s8: 'Угадать цифру 0–9 на картинке (MNIST), цифр поровну.', a8: 'mAcc', e8: 'Accuracy: десять сбалансированных классов, все ошибки равны.',
+        s9: 'Сигнализация о пожаре по датчикам в школе.', a9: 'mRec', e9: 'Recall: пропущенный пожар — катастрофа, лишняя тревога — неприятность.',
+        s10: 'Предсказать массу пингвина в граммах.', a10: 'mMae', e10: 'MAE: ответ — число граммов (урок 8).',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Шаг улучшения.</b> Меняем одно: признак, модель или параметр. Новый осмысленный признак часто даёт больше, чем новая модель.</li>' +
+          '<li><b>Проверка по кросс-валидации.</b> Сравниваем версии в каждой из 5 проверок. Если B лучше всего на 1 пингвина или не во всех проверках — это шум, а не улучшение.</li>' +
+          '<li><b>Тревога утечки.</b> Все преобразования — внутри Pipeline. Точность 99–100% там, где ждали 80%, — первым делом ищем утечку.</li>' +
+          '<li><b>Метрика под задачу.</b> Что дороже: ложная тревога (precision) или пропуск (recall)? Ответ — число (MAE)? Accuracy — только когда классы сбалансированы.</li>' +
+          '<li><b>Интерфейс и README.</b> Приложение в Gradio (урок 20) с понятными подписями и README, который поймёт человек со стороны.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Сравни «KNN, K = 5» и «KNN, K = 3» на длине и глубине клюва. Это улучшение или шум?</li>' +
+          '<li>Сравни «Дерево, глубина 1» и любую KNN. Почему тут вывод другой?</li>' +
+          '<li>Выбери версию с утечкой. Что подскажет тебе, что 100% — это обман?</li>' +
+          '<li>Сыграй «Игра: какую метрику выбрать?». Какой сценарий был самым коварным?</li>' +
+          '<li>Заполни README для своего проекта. Поймёт ли его человек, который не был на уроках?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: сравнение версий в Colab',
+        mathBody:
+          '<p>Одинаковое разбиение на 5 частей для обеих версий — тогда проверки можно сравнивать попарно.</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split, cross_val_score<br>' +
+          'from sklearn.pipeline import make_pipeline<br>' +
+          'from sklearn.preprocessing import StandardScaler<br>' +
+          'from sklearn.neighbors import KNeighborsClassifier<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X = df[[\'bill_length_mm\', \'bill_depth_mm\']]<br>' +
+          'y = df[\'species\']<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br><br>' +
+          'a = cross_val_score(make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=5)), X_train, y_train, cv=5)<br>' +
+          'b = cross_val_score(make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=3)), X_train, y_train, cv=5)<br>' +
+          'print(a.round(3), a.mean())<br>' +
+          'print(b.round(3), b.mean())<br>' +
+          'print(\'B лучше в проверках:\', (b > a).sum(), \'из 5\')</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Что здесь настоящее.</b> Версии модели — те же настройки, что в уроках 12 и 19, с кросс-валидацией <code>cv=5</code> на train пингвинов; числа совпадают с sklearn (<code>tools/check_project.py</code>, <code>tools/check_automl.py</code>). «Похоже на улучшение» — если B лучше во всех 5 проверках и в среднем больше чем на 1 процентный пункт; иначе «похоже на шум». Это простое школьное правило, а не статистический тест.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «Какую метрику выбрать?» всем классом. Потом каждый сравнивает версии своей модели в Colab по шаблону из «Для любопытных» и пишет README по образцу.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему разница в 1 пингвина — не победа? Где в твоём проекте может прятаться утечка? Почему README пишут для человека, который ничего не знает о модели?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Все расчёты выполняются прямо в браузере.',
+        barFold: 'Проверка {i}'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные и версии модели =======================
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var train = PENGUINS.rows.filter(function (r) { return r[6] === 0; }).sort(function (a, b) { return a[7] - b[7]; })
+      .map(function (r) { var si = SPECIES.indexOf(r[0]); return { si: si, f: [r[2], r[3], r[4], si] }; });   // f[3] — утечка
+    var FOLD = MLModels.folds(train.map(function (p) { return p.si; }), 5);
+    var parts = [0, 1, 2, 3, 4].map(function (i) {
+      return { fit: train.filter(function (_, j) { return FOLD[j] !== i; }), val: train.filter(function (_, j) { return FOLD[j] === i; }) };
+    });
+    var PAIRS = [[0, 1], [0, 2], [0, 3]];
+    var VERSIONS = [
+      { base: true }, { model: 'tree', d: 1, pair: 0 }, { model: 'tree', d: 3, pair: 1 },
+      { model: 'knn', k: 5, pair: 0 }, { model: 'knn', k: 3, pair: 0 }, { model: 'knn', k: 5, pair: 1 }, { model: 'knn', k: 5, pair: 2 }
+    ];
+    var foldCache = {};
+    function folds(vi) {           // точность в каждой из 5 проверок
+      if (foldCache[vi]) return foldCache[vi];
+      var v = VERSIONS[vi];
+      foldCache[vi] = parts.map(function (pt) {
+        var ys = pt.fit.map(function (p) { return p.si; });
+        if (v.base) { var b = MLModels.majority(MLModels.counts(ys)); return pt.val.filter(function (p) { return p.si === b; }).length / pt.val.length; }
+        var X = pt.fit.map(function (p) { return [p.f[PAIRS[v.pair][0]], p.f[PAIRS[v.pair][1]]]; });
+        var m = v.model === 'knn' ? (function () { var kn = MLModels.knn(X, ys); return function (a, b) { return kn(a, b, v.k); }; })() : MLModels.tree(X, ys, v.d);
+        return pt.val.filter(function (p) { return m(p.f[PAIRS[v.pair][0]], p.f[PAIRS[v.pair][1]]) === p.si; }).length / pt.val.length;
+      });
+      return foldCache[vi];
+    }
+    function mean(a) { return a.reduce(function (s, x) { return s + x; }, 0) / a.length; }
+    var pct = function (a) { return (100 * a).toFixed(1).replace('.0', ''); };
+
+    var state = { a: 3, b: 4 };
+    ['selA', 'selB'].forEach(function (id) {
+      el(id).innerHTML = VERSIONS.map(function (_, i) { return '<option value="' + i + '">' + T('m' + i) + '</option>'; }).join('');
+    });
+    el('selA').setAttribute('aria-label', T('vA')); el('selB').setAttribute('aria-label', T('vB'));
+
+    // ======================= Рисование: столбики A и B в каждой проверке =======================
+    var cv = el('cv'), g;
+    function resize() { g = MLViz.fitCanvas(cv, cv.parentElement.clientWidth < 560 ? 0.75 : 0.45); draw(); }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), A = folds(state.a), B = folds(state.b);
+      var PAD = MLViz.plotPad(g.w, 4); PAD.t += fs + 6;
+      var y = MLViz.scale(0, 1, g.h - PAD.b, PAD.t), w = (g.w - PAD.l - PAD.r) / 5;
+      ctx.clearRect(0, 0, g.w, g.h);
+      MLViz.drawAxes(ctx, { w: g.w, h: g.h, pad: PAD, sx: function (v) { return v; }, sy: y, xTicks: [], yTicks: [0, 0.25, 0.5, 0.75, 1],
+        xLabel: '', yLabel: '', yFmt: function (v) { return Math.round(v * 100) + '%'; } });
+      ctx.font = fs + 'px Calibri, system-ui, sans-serif'; ctx.textAlign = 'center';
+      for (var i = 0; i < 5; i++) {
+        var x = PAD.l + i * w, bw = w * 0.32;
+        [[A[i], '#A9A2CC', 0.14], [B[i], '#EEEAFB', 0.54]].forEach(function (s) {
+          ctx.fillStyle = s[1]; ctx.fillRect(x + w * s[2], y(s[0]), bw, y(0) - y(s[0]));
+          ctx.fillStyle = '#EEEAFB'; ctx.textBaseline = 'bottom';
+          ctx.fillText(Math.round(100 * s[0]) + '%', x + w * s[2] + bw / 2, y(s[0]) - 3);
+        });
+        ctx.textBaseline = 'top'; ctx.fillStyle = '#C9C3E6';
+        ctx.fillText(T('barFold', { i: i + 1 }), x + w / 2, g.h - PAD.b + 6);
+      }
+      updateVerdict(A, B);
+    }
+    function updateVerdict(A, B) {
+      var d = mean(B) - mean(A), wins = B.filter(function (b, i) { return b > A[i]; }).length;
+      var sign = (d >= 0 ? '+' : '−') + pct(Math.abs(d)) + '%';
+      var leak = [state.a, state.b].filter(function (i) { return mean(folds(i)) > 0.995; })[0];
+      var html = d < -0.01 ? T('vWorse', { d: sign }) : wins === 5 && d > 0.01 ? T('vBetter', { w: wins, d: sign })
+        : T('vNoise', { d: sign, w: wins, n: Math.abs(B.reduce(function (s, b, i) { return s + Math.round((b - A[i]) * parts[i].val.length); }, 0)) });
+      if (leak !== undefined) html = T('vLeak', { v: T('m' + leak), cv: pct(mean(folds(leak))) }) + '<br>' + html;
+      el('verdict').innerHTML = html;
+      el('selA').value = state.a; el('selB').value = state.b;
+    }
+    el('selA').addEventListener('change', function (e) { state.a = +e.target.value; draw(); });
+    el('selB').addEventListener('change', function (e) { state.b = +e.target.value; draw(); });
+
+    // ======================= README (сохраняется в этом браузере) =======================
+    var RF = [['rName', 'phName'], ['rWhat', 'phWhat'], ['rData', 'phData'], ['rModel', 'phModel'], ['rLink', 'phLink']], KEY = 'mlviz.readme';
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+    RF.forEach(function (f) { el(f[0]).placeholder = T(f[1]); el(f[0]).value = saved[f[0]] || ''; });
+    function v(id, ph) { return el(id).value.trim() || T(ph); }
+    function readme() {
+      return '# ' + v('rName', 'phName') + '\n\n## ' + T('rmWhat') + '\n' + v('rWhat', 'phWhat') + '\n\n## ' + T('rmData') + '\n' + v('rData', 'phData') +
+        '\n\n## ' + T('rmModel') + '\n' + v('rModel', 'phModel') + '\n\n## ' + T('rmRun') + '\n```\n' + T('rmRunText') + '\n```\n\n## ' + T('rmLink') + '\n' + v('rLink', 'phLink') + '\n';
+    }
+    function updateReadme() {
+      el('readme').textContent = readme();
+      var o = {}; RF.forEach(function (f) { o[f[0]] = el(f[0]).value; });
+      try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
+    }
+    RF.forEach(function (f) { el(f[0]).addEventListener('input', updateReadme); });
+    el('copyBtn').addEventListener('click', function () {
+      var b = el('copyBtn'), done = function () { b.textContent = T('copied'); setTimeout(function () { b.textContent = T('copy'); }, 1500); };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(readme()).then(done, function () {});
+      else {   // file:// — через выделение текста
+        var r = document.createRange(); r.selectNodeContents(el('readme'));
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        sel.removeAllRanges();
+      }
+    });
+
+    // ======================= Игра «Какую метрику выбрать?» (общий компонент MLViz.quiz) =======================
+    var METRICS = ['mAcc', 'mPrec', 'mRec', 'mMae'];
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n, v: T(q.score >= 7 ? 'goGood' : q.score >= 5 ? 'goMid' : 'goLow') }); }
+      },
+      start: function (q) { q.data.list = MLViz.shuffle(MLViz.range(1, 10, 1), Math.random).slice(0, 8); el('score').textContent = 0; },
+      round: function (q) {
+        var n = q.data.list[q.i], ans = T('a' + n);
+        el('gameCase').textContent = T('s' + n);
+        q.choices(el('choiceBtns'), METRICS.map(function (m) { return T(m); }), function (k) { return METRICS[k] === ans; }, function (k, ok) {
+          q.answer(ok ? 1 : 0, '<b>' + T(ok ? 'right' : 'wrong') + '</b> ' + T('e' + n));
+          el('score').textContent = q.score;
+        });
+      },
+      onEnd: function () { el('choiceBtns').innerHTML = ''; el('gameCase').textContent = ''; }
+    });
+
+    function setMode(m) {
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').style.display = m === 'explore' ? 'flex' : 'none';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start();   // выбранные версии и README игра не трогает
+    }
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize(); updateReadme();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

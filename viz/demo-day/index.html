@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo Day: презентация и защита · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="sub" data-i18n="rubricTitle"></p>
+          <canvas id="cv"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:12px">
+          <div id="criteria" style="display:flex; flex-direction:column; gap:12px"></div>
+          <div class="divider">
+            <h3 data-i18n="totalTitle"></h3>
+            <div class="big-number" id="total" style="margin-top:6px"></div>
+            <p id="award" style="margin:6px 0 0"></p>
+          </div>
+        </div>
+
+        <div id="gamePanel" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameCase"></p>
+          <div class="choices" id="choiceBtns" style="grid-template-columns:1fr"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+          <div style="margin-top:12px"><div class="big-number" id="score">0</div><small data-i18n="scoreLbl"></small></div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 24 · Финальный проект',
+        title: 'Demo Day: презентация и защита',
+        analogy: '<b>Это праздник, а не экзамен.</b> Ты показываешь то, что сделал своими руками: живое приложение по ссылке. Зал настроен доброжелательно и хочет увидеть твой успех.',
+        cvLabel: 'Баллы защиты по четырём критериям из 12 и пороги сертификатов.',
+        rubricTitle: 'Рубрика защиты: 12 баллов',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: ответь на вопрос жюри',
+        r1: 'End-to-end решение', r1n: 'Полный путь: данные → модель → приложение',
+        r2: 'Качество модели', r2n: 'Подходящая метрика, сравнение с baseline',
+        r3: 'Интерфейс и README', r3n: 'Работающее приложение и документация',
+        r4: 'Защита проекта', r4n: 'Ясный рассказ, ответы на вопросы, понимание',
+        critAria: '{c}: {v} балла',
+        totalTitle: 'Итого',
+        totalOf: '{t} из 12',
+        aHonor: '<b>Сертификат с отличием</b> (от 10 баллов).',
+        aPass: '<b>Сертификат о прохождении курса</b> (от 6 баллов). До отличия: {n}.',
+        aNot: 'До сертификата не хватает <b>{n}</b>. Преподаватель даст обратную связь и время доработать.',
+        lblPass: 'сертификат · 6', lblHonor: 'отличие · 10',
+        hintExplore: 'Оцени свою защиту по рубрике — честно, как жюри. Нажимай баллы по каждому критерию.',
+        hintGame: 'Жюри задаёт вопрос. Выбери самый честный и понятный ответ.',
+        gameStep: 'Вопрос {i} из {n}',
+        right: 'Хороший ответ!', wrong: 'Можно лучше.',
+        next: 'Следующий вопрос →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        scoreLbl: 'лучших ответов',
+        gameOver: 'Ты выбрал лучший ответ в <b>{s} из {n}</b> вопросов. {v}',
+        goGood: 'Жюри довольно: честно, понятно и по делу!',
+        goMid: 'Неплохо. Отвечай спокойно и признавай, чего не успел.',
+        goLow: 'Подсказка: лучший ответ честный, простой и опирается на проверку модели.',
+        // Вопросы жюри: a — лучший ответ (честный и понятный), b, c — слабее
+        q1: 'Почему вы выбрали recall, а не accuracy?',
+        q1a: 'Больных мало, и пропустить больного опаснее, чем лишний раз проверить здорового. Accuracy тут обманывает.', q1b: 'Recall получился выше, поэтому мы его и показали.', q1c: 'Так делают все профессионалы.',
+        q2: 'Насколько ваша модель лучше, чем просто угадывать?',
+        q2a: 'Baseline угадывает 51%, наша модель — 93% по кросс-валидации.', q2b: 'Модель очень точная, 93%!', q2c: 'Мы не сравнивали, но модель хорошая.',
+        q3: 'А вы добавили функцию поиска похожих песен?',
+        q3a: 'Я это не успел, но знаю, как бы сделал: искал бы ближайших соседей, как в KNN.', q3b: 'Это не нужно.', q3c: 'Да, почти доделали (хотя функции нет).',
+        q4: 'Почему точность на test ниже, чем на train?',
+        q4a: 'Test — новые примеры, которых модель не видела. На train она частично запомнила ответы, поэтому честный результат — test.', q4b: 'Test плохой, там странные данные.', q4c: 'Это случайность, на самом деле модель на 100%.',
+        q5: 'Откуда вы взяли данные?',
+        q5a: 'С Kaggle: 3 000 песен, 4 признака, жанр как ответ. Пропуски удалили, выбросы проверили.', q5b: 'Из интернета.', q5c: 'Данные — это неважно, главное модель.',
+        q6: 'Ваше приложение не открылось. Что будете делать?',
+        q6a: 'Спокойно покажу запасные скриншоты и запись работы и продолжу рассказ.', q6b: 'Попрошу отложить защиту.', q6c: 'Буду перезапускать, пока не заработает.',
+        q7: 'Как вы проверили, что нет утечки данных?',
+        q7a: 'Всё — масштаб и заполнение пропусков — внутри Pipeline, а test мы открыли один раз в конце.', q7b: 'Утечки не бывает, если модель хорошая.', q7c: 'Точность 99%, значит, всё честно.',
+        q8: 'Где ваша модель может ошибаться?',
+        q8a: 'На песнях смешанных жанров и на данных не похожих на наши — например, на старых записях.', q8b: 'Нигде, она точная.', q8c: 'Мы не проверяли.',
+        q9: 'Что бы вы улучшили дальше?',
+        q9a: 'Собрал бы больше примеров редких жанров и попробовал новый признак — длину песни, проверяя по кросс-валидации.', q9b: 'Взял бы нейросеть побольше.', q9c: 'Ничего, всё и так идеально.',
+        q10: 'Почему вы выбрали случайный лес?',
+        q10a: 'Сравнил по кросс-валидации три модели: лес был лучше KNN и дерева, а разница больше, чем шум.', q10b: 'Он самый модный.', q10c: 'Учитель сказал.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Защита по структуре.</b> 5 минут: проблема → данные → решение → демонстрация → вывод (урок 23).</li>' +
+          '<li><b>Живое приложение.</b> Самая сильная часть. Не открылось — спокойно показываешь запасные скриншоты.</li>' +
+          '<li><b>Вопросы жюри.</b> Это интерес, а не попытка завалить. «Я это не успел, но знаю, как бы сделал» — хороший, зрелый ответ.</li>' +
+          '<li><b>Рубрика.</b> 4 критерия, максимум 12 баллов: сертификат с отличием — от 10, сертификат о прохождении курса — от 6.</li>' +
+          '<li><b>Главная награда.</b> Не баллы, а ссылка на живой продукт, который ты сделал сам.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Оцени свою защиту по рубрике честно. Какой критерий проще всего поднять до защиты?</li>' +
+          '<li>Сыграй «Игра: ответь на вопрос жюри». Какие ответы звучат увереннее — честные или «мы молодцы»?</li>' +
+          '<li>Придумай три вопроса, которые жюри задаст именно про твой проект, и подготовь ответы.</li>' +
+          '<li>Вспомни урок 1. Что ты умеешь теперь, чего не умел тогда?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: что ты умеешь теперь',
+        mathBody:
+          '<p>За курс ты прошёл путь от «чем ML отличается от обычной программы» до своего приложения в интернете. Ты умеешь:</p>' +
+          '<ul><li>читать и чистить данные (Pandas, пропуски, выбросы);</li>' +
+          '<li>строить модели и честно их проверять (train / validation / test, кросс-валидация, baseline);</li>' +
+          '<li>выбирать метрику под задачу (accuracy, precision, recall, MAE);</li>' +
+          '<li>обучать нейросети и пользоваться готовыми (transfer learning);</li>' +
+          '<li>понимать, как устроены языковые модели (токены, эмбеддинги, attention, температура);</li>' +
+          '<li>ускоряться с AutoML и выкладывать приложение (Gradio, Hugging Face Spaces).</li></ul>' +
+          '<p>И главное — объяснить, что ты сделал, своими словами.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Рубрика</b> — из главы 24: end-to-end решение 0–3, качество модели 0–3, интерфейс и README 0–2, защита 0–4; максимум 12, сертификат с отличием — от 10, о прохождении курса — от 6. Калькулятор можно открыть на проекторе после каждой защиты и выставить баллы вместе с классом.</p>' +
+          '<p><b>Как использовать на уроке.</b> Перед защитами — игра «Ответь на вопрос жюри» (8 вопросов из 10), чтобы снять волнение. Во время защит — рубрика и таймер из урока 23.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему «я не успел, но знаю, как сделать» — хороший ответ? Чему ты научился, кроме кода?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Лаборатория ML. Финальный проект — главы 21–24 учебника.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Рубрика из главы 24 =======================
+    var CRIT = [['r1', 3], ['r2', 3], ['r3', 2], ['r4', 4]];
+    var marks = [2, 2, 1, 3];
+    el('criteria').innerHTML = CRIT.map(function (c, i) {
+      var btns = '';
+      for (var v = 0; v <= c[1]; v++) btns += '<button type="button" data-c="' + i + '" data-v="' + v + '" aria-label="' + T('critAria', { c: T(c[0]), v: v }) + '">' + v + '</button>';
+      return '<div><h3>' + T(c[0]) + ' · 0–' + c[1] + '</h3><p class="note" style="margin:2px 0 6px">' + T(c[0] + 'n') + '</p><div class="seg" data-c="' + i + '">' + btns + '</div></div>';
+    }).join('');
+    function total() { return marks.reduce(function (s, m) { return s + m; }, 0); }
+    function updatePanel() {
+      el('criteria').querySelectorAll('.seg').forEach(function (seg) {
+        var i = +seg.dataset.c;
+        MLViz.setPressed(seg, function (b) { return +b.dataset.v === marks[i]; });
+      });
+      var t = total();
+      el('total').textContent = T('totalOf', { t: t });
+      el('award').innerHTML = t >= 10 ? T('aHonor') : t >= 6 ? T('aPass', { n: 10 - t }) : T('aNot', { n: 6 - t });
+    }
+    el('criteria').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      marks[+b.dataset.c] = +b.dataset.v; updatePanel(); draw();
+    });
+
+    // Полоса из 12 клеток: баллы по критериям подряд, отметки порогов 6 и 10
+    var cv = el('cv'), g;
+    function resize() { g = MLViz.fitCanvas(cv, cv.parentElement.clientWidth < 560 ? 0.6 : 0.32); draw(); }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), x0 = 8, x1 = g.w - 8, cw = (x1 - x0) / 12, top = fs * 2 + 18, h = Math.min(60, g.h - top - fs * 3 - 20);
+      ctx.clearRect(0, 0, g.w, g.h);
+      var k = 0, shades = ['#EEEAFB', '#C9C3E6', '#A9A2CC', '#D9D3F2'];
+      CRIT.forEach(function (c, i) {
+        for (var v = 0; v < c[1]; v++, k++) {
+          ctx.fillStyle = v < marks[i] ? shades[i] : 'rgba(169,162,204,.18)';
+          ctx.fillRect(x0 + k * cw + 2, top, cw - 4, h);
+        }
+        // Подпись критерия под его клетками
+        ctx.fillStyle = '#C9C3E6'; ctx.font = Math.max(13, fs - 2) + 'px Calibri, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        var mid = x0 + (k - c[1] / 2) * cw;
+        ctx.fillText(marks[i] + '/' + c[1], mid, top + h + 8);
+        if (g.w > 520) ctx.fillText(T(c[0]), mid, top + h + 8 + fs + 4);
+      });
+      // Пороги сертификатов
+      [[6, 'lblPass'], [10, 'lblHonor']].forEach(function (p) {
+        var x = x0 + p[0] * cw;
+        ctx.strokeStyle = '#EEEAFB'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x, top - 8); ctx.lineTo(x, top + h + 4); ctx.stroke();
+        ctx.fillStyle = '#EEEAFB'; ctx.font = 'bold ' + Math.max(13, fs - 1) + 'px Calibri, system-ui, sans-serif';
+        ctx.textAlign = p[0] === 10 ? 'right' : 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(T(p[1]), p[0] === 10 ? x + 4 : x, top - 10);
+      });
+      ctx.fillStyle = '#EEEAFB'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.font = 'bold ' + (fs + 4) + 'px Calibri, system-ui, sans-serif';
+      ctx.fillText(T('totalOf', { t: total() }), x0, 0);
+    }
+
+    // ======================= Игра «Ответь на вопрос жюри» (общий компонент MLViz.quiz) =======================
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n, v: T(q.score >= 7 ? 'goGood' : q.score >= 5 ? 'goMid' : 'goLow') }); }
+      },
+      start: function (q) { q.data.list = MLViz.shuffle(MLViz.range(1, 10, 1), Math.random).slice(0, 8); el('score').textContent = 0; },
+      round: function (q) {
+        var n = q.data.list[q.i], opts = MLViz.shuffle(['a', 'b', 'c'], Math.random);
+        el('gameCase').innerHTML = '<b>' + T('q' + n) + '</b>';
+        q.choices(el('choiceBtns'), opts.map(function (o) { return T('q' + n + o); }), function (k) { return opts[k] === 'a'; }, function (k, ok) {
+          q.answer(ok ? 1 : 0, '<b>' + T(ok ? 'right' : 'wrong') + '</b> ' + T('q' + n + 'a'));
+          el('score').textContent = q.score;
+        });
+      },
+      onEnd: function () { el('choiceBtns').innerHTML = ''; el('gameCase').textContent = ''; }
+    });
+
+    function setMode(m) {
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').style.display = m === 'explore' ? 'flex' : 'none';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start();   // баллы рубрики игра не трогает
+    }
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    updatePanel(); resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

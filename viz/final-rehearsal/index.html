@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Финальный проект: репетиция · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow" data-i18n="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv"></canvas>
+          <div class="row" style="margin-top:8px; justify-content:center">
+            <button type="button" id="startBtn" class="primary"></button>
+            <button type="button" id="nextPart" data-i18n="nextPart"></button>
+            <button type="button" id="resetBtn" data-i18n="reset"></button>
+          </div>
+          <p style="margin:10px 4px 0" id="partTip"></p>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:10px">
+          <h3 data-i18n="checkTitle"></h3>
+          <div id="checklist" style="display:flex; flex-direction:column; gap:8px"></div>
+          <p id="checkVerdict" style="margin:4px 0 0"></p>
+          <p class="note" data-i18n="checkNote"></p>
+        </div>
+
+        <div id="gamePanel" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameCase"></p>
+          <div class="choices" id="choiceBtns" style="grid-template-columns:1fr"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+          <div style="margin-top:12px"><div class="big-number" id="score">0</div><small data-i18n="scoreLbl"></small></div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+      <div class="lesson-links" style="margin-top:10px">
+        <a class="btn" id="colabLink" href="" target="_blank" rel="noopener" data-i18n="colab" hidden></a>
+      </div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var STR = {
+      ru: {
+        eyebrow: 'Урок 23 · Финальный проект',
+        title: 'Финальный проект: репетиция',
+        analogy: '<b>Объясни бабушке.</b> Если человек, который ни разу не слышал слов «Pipeline» и «accuracy», понял, что делает твоё приложение и чем оно полезно, — значит, ты сам понял свой проект по-настоящему.',
+        cvLabel: 'Таймер защиты: 5 минут на пять частей.',
+        start: 'Старт ▶', pause: 'Пауза ❚❚', resume: 'Дальше ▶', reset: 'Сначала ↺', nextPart: 'Следующая часть ⏭',
+        p1: 'Проблема', p2: 'Данные', p3: 'Решение', p4: 'Демонстрация', p5: 'Вывод', done: 'Время вышло!',
+        t1: '<b>Проблема (30 с):</b> какую задачу решаешь и почему она интересна.',
+        t2: '<b>Данные (1 мин):</b> с чем работал, откуда взял, что в них было.',
+        t3: '<b>Решение (1.5 мин):</b> какая модель, какая метрика и почему, сравнение с baseline.',
+        t4: '<b>Демонстрация (1.5 мин):</b> живой показ приложения — самая важная часть! Держи запасные скриншоты.',
+        t5: '<b>Вывод (30 с):</b> что получилось, чему научился, что улучшить дальше.',
+        tDone: '<b>5 минут прошли.</b> Лучше короче, но чётко, чем долго и сумбурно.',
+        checkTitle: 'Финальный чек-лист проекта',
+        k1: 'Задача сформулирована и сделана целиком: данные → модель → приложение',
+        k2: 'Есть Pipeline для подготовки данных и модели',
+        k3: 'Есть метрика качества и сравнение с baseline',
+        k4: 'Есть работающее приложение и публичная ссылка',
+        k5: 'Есть README: задача, данные, как запустить',
+        k6: 'Я могу защитить проект и ответить на вопросы',
+        kAll: '<b>Все 6 пунктов готовы!</b> Проект можно нести на Demo Day.',
+        kLeft: 'Осталось пунктов: <b>{n}</b> из 6. Начни с самого первого невыполненного.',
+        checkNote: 'Отметки хранятся только в этом браузере.',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: объясни бабушке',
+        hintExplore: 'Нажми «Старт» и расскажи защиту вслух. Таймер подскажет, сколько времени у каждой части.',
+        hintGame: 'Выбери, как сказать то же самое простыми словами — чтобы поняла бабушка.',
+        gameStep: 'Фраза {i} из {n}',
+        gameCase: 'Как объяснить бабушке: <b>«{p}»</b>?',
+        right: 'Верно!', wrong: 'Не совсем.',
+        next: 'Следующая фраза →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        scoreLbl: 'верных ответов',
+        gameOver: 'Ты перевёл на простой язык <b>{s} из {n}</b> фраз. {v}',
+        goGood: 'Бабушка всё поняла!',
+        goMid: 'Неплохо. Прячь термины за словами из жизни.',
+        goLow: 'Подсказка: простая фраза говорит, что делает программа, а не как она устроена.',
+        // Фразы для игры: термин, простое объяснение (верное) и два непростых
+        j1: 'Классификатор на RandomForest с F1 = 0.82',
+        j1a: 'Программа угадывает жанр фильма по описанию и почти всегда попадает', j1b: 'Ансамбль решающих деревьев с хорошей F-мерой', j1c: 'Модель обучена на train и проверена на test',
+        j2: 'Модель переобучилась на train',
+        j2a: 'Программа зазубрила примеры, но плохо отвечает про новые', j2b: 'Ошибка на train низкая, а на test высокая из-за дисперсии', j2c: 'Модель имеет высокую сложность',
+        j3: 'Accuracy 51% — это уровень baseline',
+        j3a: 'Программа угадывает не лучше, чем если всегда называть самый частый ответ', j3b: 'DummyClassifier даёт ту же метрику', j3c: 'Половина предсказаний верна по most_frequent',
+        j4: 'Мы задеплоили модель на Hugging Face Spaces',
+        j4a: 'Программа работает в интернете — открыть её можно по ссылке с любого телефона', j4b: 'Сделали инференс модели на облачном хостинге', j4c: 'Запустили gradio.Interface на сервере Spaces',
+        j5: 'Признаки масштабированы StandardScaler внутри Pipeline',
+        j5a: 'Перед подсказкой программе все числа приводятся к одному размеру, чтобы граммы не перекрикивали миллиметры', j5b: 'Данные стандартизованы по train без утечки', j5c: 'Использована z-нормализация признаков',
+        j6: 'Recall модели 95%',
+        j6a: 'Из всех больных программа находит 95 из 100', j6b: 'TP / (TP + FN) = 0.95', j6c: 'Полнота классификатора высокая',
+        j7: 'Мы применили transfer learning с MobileNetV2',
+        j7a: 'Взяли готовую программу, которая уже умеет узнавать предметы на фото, и доучили её на наших картинках', j7b: 'Заморозили базовую сеть и обучили голову', j7c: 'Использовали предобученные веса ImageNet',
+        j8: 'Кросс-валидация на 5 фолдах дала 0.93',
+        j8a: 'Мы проверили программу пять раз на разных частях данных — она угадывает около 93 из 100', j8b: 'cross_val_score вернул среднее 0.93', j8c: 'Средняя метрика по StratifiedKFold равна 0.93',
+        j9: 'Аугментация данных',
+        j9a: 'Мы показали программе каждую картинку чуть повёрнутой и сдвинутой, чтобы она узнавала предмет с разных сторон', j9b: 'Расширили датасет RandomFlip и RandomRotation', j9c: 'Увеличили объём train синтетическими примерами',
+        j10: 'Мы обнаружили утечку данных',
+        j10a: 'Программа случайно подсмотрела ответ, поэтому её отличный результат был обманом', j10b: 'Признак коррелировал с таргетом на 100%', j10c: 'Scaler был обучен на всём датасете до split',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Структура на 5 минут.</b> Проблема (30 с) → данные (1 мин) → решение (1.5 мин) → демонстрация (1.5 мин) → вывод (30 с).</li>' +
+          '<li><b>Простыми словами.</b> Вместо «RandomForest с F1 = 0.82» — «программа угадывает жанр и почти всегда попадает». Термины можно назвать, но сразу объяснить.</li>' +
+          '<li><b>Живая демонстрация.</b> Самая сильная часть защиты. Проверь заранее, что приложение открывается, и подготовь запасные скриншоты на случай, если подведёт интернет.</li>' +
+          '<li><b>Обратная связь.</b> Прогони защиту перед группой: каждый задаёт один вопрос и называет одну вещь, которую улучшить.</li>' +
+          '<li><b>Чек-лист.</b> Проект готов, только если выполнены все 6 пунктов — по ним его и оценивают на Demo Day.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Нажми «Старт» и расскажи защиту вслух. Какая часть не уложилась во время?</li>' +
+          '<li>Расскажи проект кому-то, кто не знает ML. Понял ли он, что делает приложение?</li>' +
+          '<li>Сыграй «Игра: объясни бабушке». Какое слово труднее всего объяснить просто?</li>' +
+          '<li>Отметь чек-лист честно. Какой пункт обычно забывают в последний момент?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: проверка приложения перед защитой',
+        mathBody:
+          '<p>За день до защиты проверь, что приложение работает, а модель отвечает так же, как в блокноте. Например, для приложения из урока 20:</p>' +
+          '<p><code>from palmerpenguins import load_penguins<br>' +
+          'from sklearn.model_selection import train_test_split<br>' +
+          'from sklearn.linear_model import LinearRegression<br><br>' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)<br>' +
+          'X, y = df[[\'flipper_length_mm\']], df[\'body_mass_g\']<br>' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)<br>' +
+          'model = LinearRegression().fit(X_train, y_train)<br><br>' +
+          'for flipper in [180, 200, 220]:&nbsp;&nbsp;# те же числа должно показать приложение<br>' +
+          '&nbsp;&nbsp;print(flipper, round(float(model.predict(X_train.iloc[:1].assign(flipper_length_mm=flipper))[0])))</code></p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Что на странице.</b> Таймер защиты из главы 23 (5 частей, всего 5 минут) — можно включить на проекторе во время репетиций; кнопка «Следующая часть» переключает часть досрочно. Финальный чек-лист из главы 23 (отметки хранятся только в браузере). Игра «Объясни бабушке» — 8 фраз из 10: выбрать простое объяснение термина.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра всем классом. Потом репетиции защит по очереди под таймер на проекторе; группа после каждой — один вопрос и одно замечание.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Зачем объяснять «языком для бабушки», если слушают преподаватели? Почему живая демонстрация важнее красивых слайдов? Что делать, если на защите не открылось приложение?</p>',
+        colab: 'Открыть ноутбук урока в Colab',
+        footer: 'Лаборатория ML. Финальный проект — главы 21–24 учебника.'
+      }
+    };
+
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Таймер защиты: 5 частей =======================
+    var PARTS = [['p1', 't1', 30], ['p2', 't2', 60], ['p3', 't3', 90], ['p4', 't4', 90], ['p5', 't5', 30]], TOTAL = 300;
+    // Время считаем по часам (Date.now), а не по кадрам: если вкладку свернули, таймер всё равно идёт верно
+    var timer = { used: 0, running: false, last: 0, id: null };
+    function starts() { var acc = 0; return PARTS.map(function (p) { var s = acc; acc += p[2]; return s; }); }
+    function current() { var s = starts(); for (var i = PARTS.length - 1; i >= 0; i--) if (timer.used >= s[i]) return i; return 0; }
+    function tick() {
+      if (!timer.running) return;
+      var now = Date.now();
+      timer.used = Math.min(TOTAL, timer.used + (now - timer.last) / 1000);
+      timer.last = now;
+      if (timer.used >= TOTAL) { timer.running = false; clearInterval(timer.id); }
+      draw(); updateBtns();
+    }
+    function updateBtns() {
+      el('startBtn').textContent = T(timer.running ? 'pause' : timer.used > 0 ? 'resume' : 'start');
+      el('partTip').innerHTML = timer.used >= TOTAL ? T('tDone') : T(PARTS[current()][1]);
+    }
+
+    var cv = el('cv'), g;
+    function resize() { g = MLViz.fitCanvas(cv, 0.5); draw(); }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), cx = g.w / 2, cy = g.h / 2, R = Math.min(g.w, g.h) / 2 - 18, s = starts(), cur = current();
+      ctx.clearRect(0, 0, g.w, g.h);
+      PARTS.forEach(function (p, i) {
+        var a0 = -Math.PI / 2 + 2 * Math.PI * s[i] / TOTAL, a1 = a0 + 2 * Math.PI * p[2] / TOTAL;
+        ctx.lineWidth = i === cur && timer.used < TOTAL ? 22 : 16;
+        ctx.strokeStyle = 'rgba(169,162,204,.22)';
+        ctx.beginPath(); ctx.arc(cx, cy, R, a0 + 0.02, a1 - 0.02); ctx.stroke();
+        var fill = Math.min(p[2], Math.max(0, timer.used - s[i]));
+        if (fill > 0) { ctx.strokeStyle = '#EEEAFB'; ctx.beginPath(); ctx.arc(cx, cy, R, a0 + 0.02, a0 + 2 * Math.PI * fill / TOTAL - 0.02); ctx.stroke(); }
+        // Подпись части у кольца
+        var am = (a0 + a1) / 2, lr = R;
+        ctx.save(); ctx.fillStyle = i === cur ? '#EEEAFB' : '#C9C3E6'; ctx.font = (i === cur ? 'bold ' : '') + Math.max(13, fs - 2) + 'px Calibri, system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        if (g.w > 480) ctx.fillText(T(p[0]), cx + Math.cos(am) * (lr - 34), cy + Math.sin(am) * (lr - 34));
+        ctx.restore();
+      });
+      var left = Math.ceil(TOTAL - timer.used), mm = Math.floor(left / 60), ss = left % 60;
+      ctx.fillStyle = '#EEEAFB'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = 'bold ' + Math.round(R * 0.36) + 'px Calibri, system-ui, sans-serif';
+      ctx.fillText(mm + ':' + (ss < 10 ? '0' : '') + ss, cx, cy - fs * 0.5);
+      ctx.font = 'bold ' + (fs + 2) + 'px Calibri, system-ui, sans-serif';
+      ctx.fillText(timer.used >= TOTAL ? T('done') : T(PARTS[cur][0]), cx, cy + R * 0.28);
+    }
+    el('startBtn').addEventListener('click', function () {
+      if (timer.used >= TOTAL) return;
+      if (timer.running) tick();   // пауза: сначала досчитываем прошедшее время
+      timer.running = !timer.running;
+      clearInterval(timer.id);
+      if (timer.running) { timer.last = Date.now(); timer.id = setInterval(tick, 200); }
+      updateBtns();
+    });
+    el('nextPart').addEventListener('click', function () {
+      var s = starts(), c = current();
+      timer.used = c + 1 < PARTS.length ? s[c + 1] : TOTAL;
+      if (timer.running) timer.last = Date.now();
+      draw(); updateBtns();
+    });
+    el('resetBtn').addEventListener('click', function () { timer.running = false; clearInterval(timer.id); timer.used = 0; draw(); updateBtns(); });
+
+    // ======================= Чек-лист (отметки — в этом браузере) =======================
+    var KEY = 'mlviz.checklist', marks = [];
+    try { marks = JSON.parse(localStorage.getItem(KEY) || '[]') || []; } catch (e) { marks = []; }
+    el('checklist').innerHTML = [1, 2, 3, 4, 5, 6].map(function (i) {
+      return '<label class="toggle"><input type="checkbox" data-i="' + i + '"' + (marks.indexOf(i) !== -1 ? ' checked' : '') + '> <span>' + T('k' + i) + '</span></label>';
+    }).join('');
+    function updateCheck() {
+      var on = Array.prototype.filter.call(el('checklist').querySelectorAll('input'), function (c) { return c.checked; });
+      marks = on.map(function (c) { return +c.dataset.i; });
+      try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch (e) {}
+      el('checkVerdict').innerHTML = marks.length === 6 ? T('kAll') : T('kLeft', { n: 6 - marks.length });
+    }
+    el('checklist').addEventListener('change', updateCheck);
+
+    // ======================= Игра «Объясни бабушке» (общий компонент MLViz.quiz) =======================
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 8,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n, v: T(q.score >= 7 ? 'goGood' : q.score >= 5 ? 'goMid' : 'goLow') }); }
+      },
+      start: function (q) { q.data.list = MLViz.shuffle(MLViz.range(1, 10, 1), Math.random).slice(0, 8); el('score').textContent = 0; },
+      round: function (q) {
+        var n = q.data.list[q.i], opts = MLViz.shuffle(['a', 'b', 'c'], Math.random);
+        el('gameCase').innerHTML = T('gameCase', { p: T('j' + n) });
+        q.choices(el('choiceBtns'), opts.map(function (o) { return T('j' + n + o); }), function (k) { return opts[k] === 'a'; }, function (k, ok) {
+          q.answer(ok ? 1 : 0, '<b>' + T(ok ? 'right' : 'wrong') + '</b> ' + T('j' + n + 'a') + '.');
+          el('score').textContent = q.score;
+        });
+      },
+      onEnd: function () { el('choiceBtns').innerHTML = ''; el('gameCase').textContent = ''; }
+    });
+
+    function setMode(m) {
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').style.display = m === 'explore' ? 'flex' : 'none';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start();   // таймер и чек-лист игра не трогает
+    }
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var colab = el('colabLink');
+    if (colab.getAttribute('href')) colab.hidden = false;
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize(); updateBtns(); updateCheck();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>
