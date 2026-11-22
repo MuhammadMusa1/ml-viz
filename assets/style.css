@@ -175,45 +175,43 @@
 [hidden] { display: none !important; }   /* иначе display у кнопок перебивает атрибут hidden */
 html, body { margin: 0; }
 body {
+  /* Ровный фон без цветного свечения: цвет на странице — только у данных на графиках */
   background-color: var(--bg);
-  /* Мягкое свечение в углах: глубина без картинок, работает офлайн */
-  background-image:
-    radial-gradient(900px 500px at 8% -10%, rgba(167, 139, 250, .16), transparent 60%),
-    radial-gradient(800px 500px at 100% 0%, rgba(34, 211, 238, .09), transparent 60%);
-  background-repeat: no-repeat;
   color: var(--text);
   font-size: var(--fs-body); line-height: var(--lh-body); font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
-a { color: var(--cyan); text-underline-offset: 3px; }
-::selection { background: rgba(167, 139, 250, .4); }
-code, kbd { font-family: var(--mono); font-size: .9em; background: rgba(23, 19, 46, .7); border: 1px solid var(--line-soft); padding: 1px 6px; border-radius: 6px; }
+/* Ссылка — светлая и подчёркнутая: голубой занят видом Chinstrap */
+a { color: var(--text-strong); text-decoration-color: var(--n-400); text-underline-offset: 4px; }
+a:hover { text-decoration-color: var(--text-strong); }
+::selection { background: rgba(245, 240, 228, .3); }
+code, kbd { font-family: var(--mono); font-size: .9em; background: var(--n-950); border: 1px solid var(--line); padding: 1px 6px; border-radius: var(--r-xs); }
+/* Иконки — линии в цвет текста (рисует core.js) */
+.ic { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; }
 
 .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
 
 /* ---------- Шапка ---------- */
 .site-header {
   position: sticky; top: 0; z-index: 10;
-  background: rgba(23, 19, 46, .78);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
 }
-.site-header .wrap { display: flex; align-items: center; gap: 16px; height: 60px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--text); text-decoration: none; letter-spacing: .2px; white-space: nowrap; }
-.brand .logo { width: 40px; height: 40px; flex: none; transition: transform .25s; }
-.brand:hover .logo { transform: rotate(-8deg) scale(1.06); }
-.brand b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.site-header nav { display: flex; gap: 14px; margin-left: auto; flex-wrap: wrap; }
-.site-header nav a { color: var(--muted); text-decoration: none; font-size: 15px; padding: 6px 12px; border-radius: 99px; transition: background .15s, color .15s; }
-.site-header nav a:hover { color: var(--text); background: var(--line-soft); }
-.site-header nav { align-items: center; }
-.site-header nav a.lesson-step { border: 1px solid var(--line); color: var(--text); font-weight: 700; }
-.site-header nav a.lesson-step:hover { border-color: var(--violet); }
-.lang-switch { display: flex; gap: 4px; }
-.lang-switch button { padding: 3px 9px; font-size: 13px; }
-.lang-switch button[aria-pressed="true"] { background: var(--violet); color: #17132E; border-color: var(--violet); }
+.site-header .wrap { display: flex; align-items: center; gap: 16px; min-height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; color: var(--text-strong); text-decoration: none; white-space: nowrap; }
+.brand .logo { width: 36px; height: 36px; flex: none; }
+.brand b { font-weight: inherit; }
+.site-header nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; align-items: center; }
+.site-header nav a { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--text); text-decoration: none; font-size: var(--fs-small); font-weight: 700; padding: 0 12px; border-radius: var(--r-s); transition: background-color .15s; }
+.site-header nav a:hover { background: var(--surface-2); }
+.site-header nav a.lesson-step { border: 1px solid var(--control-line); margin-left: 4px; }
+.site-header nav a.lesson-step:hover { border-color: var(--n-400); }
+/* «Рус / Тоҷ» — тот же сегментный переключатель, что и режимы на страницах */
+.lang-switch { display: inline-flex; gap: 4px; padding: 4px; background: var(--n-950); border: 1px solid var(--line); border-radius: var(--r-m); }
+.lang-switch button { min-height: 36px; padding: 0 12px; font-size: var(--fs-label); background: transparent; border: 0; border-radius: 9px; color: var(--text-2); }
+.lang-switch button:hover:not(:disabled) { background: var(--surface-2); }
+.lang-switch button[aria-pressed="true"] { background: var(--surface-3); color: var(--text-strong); box-shadow: inset 0 -3px 0 var(--accent); }
 
 /* ---------- Типографика ---------- */
 h1, h2, h3 { color: var(--text-strong); }
@@ -222,23 +220,28 @@ h2 { font-size: var(--fs-h2); line-height: var(--lh-h2); margin: 40px 0 16px; }
 h3 { font-size: var(--fs-h3); line-height: var(--lh-h3); margin: 0 0 8px; }
 .lead { color: var(--muted); font-size: var(--fs-lead); line-height: var(--lh-lead); max-width: 760px; margin: 0; }
 .eyebrow {
-  display: inline-flex; align-items: center; gap: 8px; margin: 34px 0 0;
-  color: var(--teal); font-size: 13px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
-  background: rgba(45, 212, 191, .1); border: 1px solid rgba(45, 212, 191, .25);
-  padding: 4px 12px; border-radius: 99px;
+  /* Бирка полевого журнала — фирменная деталь курса: бумага, кружок «наблюдения», обычный регистр */
+  display: inline-flex; align-items: center; gap: 8px; margin: 32px 0 0;
+  background: var(--paper); color: var(--ink); border-radius: var(--r-xs);
+  font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 700;
+  padding: 5px 12px 5px 10px;
 }
+.eyebrow:empty { display: none; }
+.eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; flex: none; }
 
 /* ---------- Кнопки и контролы ---------- */
 button, .btn {
-  font: inherit; font-size: 15px; line-height: 1.3;
-  color: var(--text); background: var(--bg-2);
-  border: 1px solid var(--line); border-radius: var(--radius-sm);
-  padding: 9px 15px; cursor: pointer; text-decoration: none; display: inline-block;
-  transition: border-color .15s, background .15s, transform .1s, box-shadow .15s;
+  font: inherit; font-size: var(--fs-small); line-height: 1.3; font-weight: 700;
+  color: var(--text-strong); background: transparent;
+  border: 1.5px solid var(--control-line); border-radius: var(--r-m);
+  padding: 9px 16px; cursor: pointer; text-decoration: none; display: inline-block;
+  transition: border-color .15s, background-color .15s;
 }
-button:hover:not(:disabled), .btn:hover { border-color: var(--violet); background: var(--card-2); }
-button:active:not(:disabled), .btn:active { transform: translateY(1px); }
-button:disabled { opacity: .45; cursor: not-allowed; }
+.btn { display: inline-flex; align-items: center; gap: 8px; }
+/* Наведение и нажатие — ступень поверхности, без прыжков и цвета */
+button:hover:not(:disabled), .btn:hover { border-color: var(--n-400); background: var(--surface-2); }
+button:active:not(:disabled), .btn:active { background: var(--surface-3); }
+button:disabled { background: var(--disabled-bg); color: var(--disabled-text); border-color: transparent; cursor: not-allowed; }
 /* Главная кнопка действия — светлая и нейтральная: фиолетовый и голубой заняты видами Adelie и Chinstrap */
 button.primary, .btn.primary {
   background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 700;
@@ -247,21 +250,21 @@ button.primary:hover:not(:disabled), .btn.primary:hover { background: var(--acce
 button.primary:active:not(:disabled), .btn.primary:active { background: var(--accent-press); }
 
 /* Переключатель режимов и видов (сегменты). Выбранный пункт — светлая рамка и галочка, а не «кнопка действия» */
-.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: rgba(23, 19, 46, .6); border: 1px solid var(--line); border-radius: 12px; }
-.seg button { background: transparent; border-color: transparent; color: var(--muted); }
-.seg button:hover:not(:disabled) { background: var(--line-soft); border-color: transparent; color: var(--text); }
-.seg button[aria-pressed="true"] { background: var(--card-2); border-color: rgba(238, 234, 251, .55); color: var(--text); font-weight: 700; }
-.seg button[aria-pressed="true"]::before { content: "✓ "; color: var(--c-val); }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--n-950); border: 1px solid var(--line); border-radius: var(--r-m); }
+.seg button { background: transparent; border-color: transparent; border-radius: 9px; color: var(--text-2); }
+.seg button:hover:not(:disabled) { background: var(--surface-2); border-color: transparent; color: var(--text-strong); }
+/* Выбранное — поверхность светлее и полоса снизу: видно не только цветом, но и формой */
+.seg button[aria-pressed="true"] { background: var(--surface-3); border-color: transparent; color: var(--text-strong); box-shadow: inset 0 -3px 0 var(--accent); }
 .seg.modes { display: flex; flex-wrap: nowrap; }
 .seg.modes button { flex: 1 1 0; min-width: 0; white-space: normal; line-height: 1.25; padding: 8px 8px; }
-.note { color: var(--muted); font-size: 13px; margin: 4px 0 0; line-height: 1.45; }
+.note { color: var(--muted); font-size: 14px; margin: 4px 0 0; line-height: 1.45; }
 button:focus-visible, .btn:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px; }
 
 /* Ползунок: толстая дорожка и крупный бегунок — удобно пальцем и видно на проекторе.
    Цвета нейтральные: фиолетовый и голубой — это виды пингвинов */
 input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 26px; background: transparent; cursor: pointer; margin: 4px 0 0; }
-input[type="range"]::-webkit-slider-runnable-track { height: 8px; border-radius: 99px; background: rgba(238, 234, 251, .3); }
-input[type="range"]::-moz-range-track { height: 8px; border-radius: 99px; background: rgba(238, 234, 251, .3); }
+input[type="range"]::-webkit-slider-runnable-track { height: 8px; border-radius: 99px; background: var(--n-600); }
+input[type="range"]::-moz-range-track { height: 8px; border-radius: 99px; background: var(--n-600); }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; width: 22px; height: 22px; margin-top: -7px; border-radius: 50%;
   background: #fff; border: 4px solid var(--bg); box-shadow: 0 0 0 2px #fff, 0 2px 10px rgba(0, 0, 0, .45);
@@ -269,7 +272,7 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 4px solid var(--bg); box-shadow: 0 0 0 2px #fff, 0 2px 10px rgba(0, 0, 0, .45); }
 
 label.toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
-label.toggle input { accent-color: var(--text); width: 19px; height: 19px; margin: 0; flex: none; }
+label.toggle input { accent-color: var(--accent); width: 20px; height: 20px; margin: 0; flex: none; }
 
 /* ---------- Каталог на главной ---------- */
 .phase { margin-top: 44px; }
@@ -300,12 +303,13 @@ a.card:hover::after { transform: translateX(4px); }
 
 /* ---------- Страница визуализации ---------- */
 .analogy-box {
+  /* Запись в журнале: лампочка-«идея» слева, спокойная поверхность */
   position: relative;
-  background: linear-gradient(135deg, rgba(167, 139, 250, .16), rgba(34, 211, 238, .08));
-  border: 1px solid rgba(167, 139, 250, .3); border-radius: var(--radius);
-  padding: 18px 22px 18px 26px; margin: 18px 0 26px; font-size: 18px;
+  background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-l);
+  padding: 20px 24px 20px 60px; margin: 20px 0 28px; font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text);
 }
-.analogy-box::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--grad); }
+.analogy-box b { color: var(--text-strong); }
+.analogy-box::before { content: ""; position: absolute; left: 22px; top: 24px; width: 22px; height: 22px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23BAB4D6' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'/%3E%3Cpath d='M9 18h6'/%3E%3Cpath d='M10 22h4'/%3E%3C/svg%3E") no-repeat center / contain; }
 .viz-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
 .viz-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 /* Телефон: сначала главный график, сразу под ним управление, а дополнительные графики — ниже */
@@ -316,80 +320,89 @@ a.card:hover::after { transform: translateX(4px); }
   .viz-layout > .panel { order: 2; }
   .viz-main > .viz-extra { order: 3; }
 }
-.stage { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; box-shadow: var(--shadow); }
+.stage { background: var(--plot-bg); border: 1px solid var(--line); border-radius: var(--r-l); padding: 10px; }
 /* По умолчанию палец на графике листает страницу. Класс .drag — только у графиков, где что-то тянут */
 .stage canvas { display: block; width: 100%; border-radius: 10px; cursor: pointer; touch-action: pan-y; }
 .stage canvas.drag { cursor: crosshair; touch-action: none; }
 .stage .hint { color: var(--muted); font-size: 14px; padding: 6px 4px 2px; }
 .panel {
-  background: linear-gradient(180deg, var(--card-2), var(--card));
-  border: 1px solid var(--line); border-radius: var(--radius); padding: 18px;
-  display: flex; flex-direction: column; gap: 16px; box-shadow: var(--shadow);
+  background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--r-l); padding: 20px;
+  display: flex; flex-direction: column; gap: 16px; box-shadow: 0 8px 20px rgba(0, 0, 0, .35);
 }
 @media (min-width: 901px) { .panel { position: sticky; top: 76px; } }
-.panel h3 { font-size: 13px; color: var(--muted); font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: .06em; }
+.panel h3 { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text-2); font-weight: 700; margin: 0; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.big-number { font-size: 38px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.5px; color: var(--text); }
+.big-number { font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
 .legend i.dash { background: transparent; border: 1.5px dashed var(--muted); }
 .legend i.ring { background: transparent; border: 2px solid var(--muted); }
 .legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
 .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 
 /* Подзаголовок блока под графиком — как заголовки панели */
-.sub { font-size: 13px; color: var(--muted); font-weight: 700; margin: 0 0 6px; text-transform: uppercase; letter-spacing: .06em; }
+.sub { font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text-2); font-weight: 700; margin: 0 0 6px; }
 /* Разделитель внутри панели */
 .divider { border-top: 1px solid var(--line); padding-top: 12px; }
 .game-box { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
 /* Дополнительные блоки не должны распирать страницу на телефоне */
 .viz-extra { min-width: 0; }
 /* Широкая таблица прокручивается внутри своей рамки, а не двигает страницу */
-.tbl-wrap { overflow: auto; width: 0; min-width: 100%; border-radius: 10px; border: 1px solid var(--line-soft); }
+.tbl-wrap { overflow: auto; width: 0; min-width: 100%; border-radius: var(--r-m); border: 1px solid var(--line); }
 .panel select { font: inherit; font-size: 15px; color: var(--text); background: var(--bg-2); border: 1px solid var(--line);
                 border-radius: 8px; padding: 8px 6px; min-height: 44px; min-width: 0; }
 /* Ответы в играх: верный и неверный отмечены не только цветом, но и значком */
 .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
-button.right { border-color: var(--green); background: rgba(74, 222, 128, .14); }
-button.wrong { border-color: var(--red); background: rgba(248, 113, 113, .14); }
-button.right::before { content: "✓ "; color: var(--green); }
-button.wrong::before { content: "✕ "; color: var(--red); }
-button.right:disabled, button.wrong:disabled { opacity: 1; }
+/* Верно — рамка и подсветка акцентом + ✓. Неверно — пунктир, зачёркнуто + ✕, без красного:
+   зелёный занят validation, красно-розовый — «подозрительными» данными */
+button.right, button.right:disabled { border-color: var(--accent); background: var(--accent-soft); color: var(--text-strong); }
+button.wrong, button.wrong:disabled { border-style: dashed; border-color: var(--n-300); background: transparent; color: var(--text-2); text-decoration: line-through; text-decoration-thickness: 2px; }
+button.right::before { content: "✓ "; color: var(--accent-text); }
+button.wrong::before { content: "✕ "; color: var(--text-2); display: inline-block; margin-right: .3em; text-decoration: none; }
+button.right:disabled, button.wrong:disabled { opacity: 1; cursor: default; }
+/* Остальные варианты после ответа — просто приглушены, без серой заливки */
+.choices button:disabled:not(.right):not(.wrong) { background: transparent; border-color: var(--line); color: var(--text-muted); cursor: default; }
 
 .bars { display: flex; flex-direction: column; gap: 8px; }
 .bar { display: grid; grid-template-columns: 82px 1fr 28px; gap: 8px; align-items: center; font-size: 14px; }
-.bar .track { height: 12px; background: rgba(23, 19, 46, .7); border-radius: 6px; overflow: hidden; }
+.bar .track { height: 12px; background: var(--n-950); border-radius: 6px; overflow: hidden; }
 .bar .fill { height: 100%; border-radius: 6px; transition: width .25s; }
 
 /* ---------- Текстовые блоки ---------- */
 .section { margin-top: 36px; max-width: 900px; }
+main { counter-reset: sec; }
+.section { counter-increment: sec; }
 .section h2 { display: flex; align-items: center; gap: 12px; }
-.section h2::before { content: ""; width: 6px; height: 24px; border-radius: 3px; background: var(--grad); flex: none; }
+/* Номер раздела — бирка «§ N», как пункт в журнале наблюдений */
+.section h2::before {
+  content: "§ " counter(sec); flex: none; font-family: var(--font-code); font-size: var(--fs-label); font-weight: 700;
+  color: var(--text-2); border: 1.5px solid var(--control-line); border-radius: var(--r-xs); padding: 1px 8px;
+}
 .section ul { padding-left: 22px; }
 .section li { margin: 8px 0; }
-.section li::marker { color: var(--violet); }
+.section li::marker { color: var(--n-400); }
 /* Шаги «Как это работает»: номера в кружках */
 .section ol { list-style: none; counter-reset: step; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
 .section ol li {
   counter-increment: step; position: relative; margin: 0;
-  background: rgba(38, 31, 74, .55); border: 1px solid var(--line-soft); border-radius: 12px;
-  padding: 12px 16px 12px 58px;
+  padding: 4px 0 4px 56px; min-height: 40px;
 }
 .section ol li::before {
-  content: counter(step); position: absolute; left: 14px; top: 11px;
-  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--grad); color: #17132E; font-weight: 700; font-size: 15px;
+  content: counter(step); position: absolute; left: 0; top: 0;
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  border: 2px solid var(--control-line); color: var(--text-strong); font-weight: 700; font-size: 18px;
 }
 
-details.box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 0 20px; margin-top: 12px; max-width: 900px; transition: border-color .15s; }
-details.box:hover { border-color: rgba(167, 139, 250, .5); }
-details.box summary { cursor: pointer; font-weight: 700; padding: 16px 0; list-style: none; display: flex; align-items: center; gap: 10px; }
+details.box { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-m); padding: 0 20px; margin-top: 12px; max-width: 900px; transition: border-color .15s; }
+details.box:hover { border-color: var(--line-strong); }
+details.box summary { cursor: pointer; font-weight: 700; color: var(--text-strong); min-height: 60px; list-style: none; display: flex; align-items: center; gap: 12px; }
 details.box summary::-webkit-details-marker { display: none; }
-details.box summary::before { content: "›"; color: var(--violet); font-size: 22px; line-height: 1; width: 14px; transition: transform .2s; }
+details.box summary::before { content: "›"; color: var(--text-2); font-size: 24px; line-height: 1; width: 14px; transition: transform .2s; }
 details.box[open] summary::before { transform: rotate(90deg); }
-details.box[open] { padding-bottom: 16px; }
-details.box > div { color: #DCD6F5; }
+details.box[open] { padding-bottom: 20px; }
+details.box > div { color: var(--text); }
 .lesson-links { display: flex; gap: 10px; flex-wrap: wrap; }
 
-.site-footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--line-soft); margin-top: 60px; padding: 22px 0 40px; }
+.site-footer { color: var(--muted); font-size: 15px; border-top: 1px solid var(--line); margin-top: 64px; padding: 24px 0 40px; }
 
 /* Под палец: цели касания не меньше 44 px */
 @media (max-width: 900px), (pointer: coarse) {
@@ -402,10 +415,14 @@ details.box > div { color: #DCD6F5; }
   .brand { font-size: 16px; }
   .sub-page .brand > span { display: none; }   /* на странице урока — только пингвин, чтобы влезли «‹ Урок N · Урок N ›» */
   .in-lesson .all-link { display: none; }        /* на главную ведёт пингвин — место отдаём кнопкам уроков */
-  .site-header nav { gap: 6px; }
-  .site-header nav a { padding: 8px 9px; font-size: 14px; }
+  .site-header .wrap { gap: 8px; }
+  .brand { gap: 6px; }
+  .brand .logo { width: 30px; height: 30px; }
+  .site-header nav { gap: 2px; }
+  .site-header nav a { padding: 0 6px; font-size: 15px; }
+  .lang-switch { padding: 2px; gap: 2px; }
+  .lang-switch button { padding: 0 9px; }
   .big-number { font-size: 32px; }
-  .section ol li { padding-left: 52px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -422,27 +439,37 @@ details.box > div { color: #DCD6F5; }
 
 /* ---------- Прогресс на главной ---------- */
 .progress { margin-top: 20px; max-width: 520px; }
-.progress .track { height: 10px; background: rgba(238, 234, 251, .12); border-radius: 99px; overflow: hidden; margin: 8px 0 6px; }
-.progress .fill { height: 100%; background: var(--green); border-radius: 99px; transition: width .3s; }
+.progress .track { height: 12px; background: var(--n-750); border-radius: 99px; overflow: hidden; margin: 8px 0 6px; }
+.progress .fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
 .progress .row { justify-content: space-between; }
 
 /* ---------- Термины словаря: подчёркнутое слово в тексте, по нажатию — подсказка ---------- */
 button.term {
-  display: inline; font: inherit; color: inherit; background: none; border: 0; border-bottom: 1.5px dotted var(--muted);
+  display: inline; font: inherit; color: var(--text-strong); background: none; border: 0; border-bottom: 2px dotted var(--n-400);
   border-radius: 0; padding: 0; margin: 0; min-height: 0; line-height: inherit; cursor: help; text-align: inherit;
 }
-button.term:hover:not(:disabled), button.term[aria-expanded="true"] { background: none; border-color: transparent; border-bottom: 1.5px solid var(--text); }
+button.term:hover:not(:disabled), button.term[aria-expanded="true"] { background: none; border-color: transparent; border-bottom: 2px solid var(--text-strong); }
 button.term:active:not(:disabled) { transform: none; }
 .term-pop {
   position: absolute; z-index: 60; max-width: min(340px, calc(100vw - 16px));
-  background: var(--card-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
-  padding: 10px 12px; font-size: 15px; line-height: 1.45; box-shadow: var(--shadow);
+  /* Подсказка термина — листок бумаги журнала поверх страницы */
+  background: var(--paper); color: var(--ink); border: 0; border-radius: var(--r-m);
+  padding: 14px 18px; font-size: 16px; line-height: 1.5; box-shadow: var(--e-3);
 }
+.term-pop b { display: block; font-size: 17px; margin-bottom: 2px; }
+.term-pop b + br { display: none; }
 
 /* ---------- «Типичные ошибки» и «Что дальше» внизу урока ---------- */
-.myths li { margin: 12px 0; }
-.bridge { background: rgba(38, 31, 74, .55); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 20px 18px; }
-.bridge h2 { margin-top: 16px; }
+/* «Кажется | На самом деле» — две колонки, правая на ступень светлее: там правда */
+.myth-list { display: flex; flex-direction: column; gap: 12px; }
+.myth { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: var(--r-m); overflow: hidden; }
+.myth > div { padding: 16px 20px; }
+.myth .seems { background: var(--surface-1); color: var(--text-2); }
+.myth .really { background: var(--surface-2); color: var(--text-strong); }
+.myth .k { display: block; font-size: var(--fs-label); font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
+@media (max-width: 600px) { .myth { grid-template-columns: 1fr; } }
+.bridge .row { gap: 12px; }
+.bridge .next-row { justify-content: space-between; margin-top: 16px; }
 
 /* ---------- Учебник (страницы book/*, собираются tools/build_book.py) ---------- */
 .book-page h1 { max-width: 900px; }

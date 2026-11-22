@@ -56,9 +56,9 @@
           nextTitle: 'Что дальше', nextGo: 'Дальше: {l} · {t} ›', toHome: 'На главную ›',
           doneYes: '✓ Урок пройден: ты доиграл игру до конца. Отметка видна на главной.',
           doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.',
-          book: 'Учебник', readChapter: '📖 Глава {n} учебника', colab: 'Открыть ноутбук в Colab', warmup: '🐍 Python-разминка к уроку',
-          bookLinksTitle: 'К этой главе', vizLink: '🧪 Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓' },
-    tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"📖 Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"🐍 Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"🧪 Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓"}
+          book: 'Учебник', readChapter: 'Глава {n} учебника', colab: 'Открыть ноутбук в Colab', warmup: 'Python-разминка к уроку',
+          bookLinksTitle: 'К этой главе', vizLink: 'Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓' },
+    tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓"}
   };
 
   // Номер страницы в уроке: на один урок курса бывает несколько страниц (урок 17 — три).
@@ -116,6 +116,18 @@
     if (n && id) n.textContent = t(UI, doneList().indexOf(id) !== -1 ? 'doneYes' : 'doneNo');
   }
 
+  // ---------- Значки ----------
+  // Линейные значки (как lucide): одна толщина, цвет текста. Эмодзи в интерфейсе не используем:
+  // на старых Windows они чёрно-белые или квадратики, и каждый «кричит» своим цветом.
+  var ICONS = {
+    book: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
+    external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    flask: '<path d="M10 2v7.5L4.5 19A2 2 0 0 0 6.2 22h11.6a2 2 0 0 0 1.7-3L14 9.5V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>',
+    arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'
+  };
+  function icon(name) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + '</svg>'; }
+
   // ---------- Учебник и Colab ----------
   // Глава N книги «Машинное обучение для начинающих» = урок N курса; ноутбук главы — notebooks/chNN.ipynb.
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
@@ -130,10 +142,10 @@
     if (main && box && main.dataset.book === 'ml') {
       var n = +main.dataset.chapter, links = [];
       readyItems().forEach(function (it) {
-        if (it.lesson === n) links.push('<a class="btn" href="../../viz/' + it.id + '/index.html">' + t(UI, 'vizLink', { l: lessonLabel(it), t: tx(it.title) }) + '</a>');
+        if (it.lesson === n) links.push('<a class="btn" href="../../viz/' + it.id + '/index.html">' + icon('flask') + t(UI, 'vizLink', { l: lessonLabel(it), t: tx(it.title) }) + '</a>');
       });
       var c = colabUrl(n);
-      if (c) links.push('<a class="btn" href="' + c + '" target="_blank" rel="noopener">' + t(UI, 'colab') + ' ↗</a>');
+      if (c) links.push('<a class="btn" href="' + c + '" target="_blank" rel="noopener">' + icon('external') + t(UI, 'colab') + '</a>');
       if (links.length) box.innerHTML = '<div class="book-links"><span class="sub">' + t(UI, 'bookLinksTitle') + '</span><div class="row">' + links.join('') + '</div></div>';
     }
     // Кнопка «Скопировать» у каждого блока кода: код из книги вставляют в Colab
@@ -171,9 +183,11 @@
     if (myths && myths.length) {
       var sec = document.createElement('section');
       sec.className = 'section myths';
-      sec.innerHTML = '<h2>' + t(UI, 'mythsTitle') + '</h2><ul>' + myths.map(function (m) {
-        return '<li><b>' + t(UI, 'mythSeems') + '</b> ' + m[0] + '<br><b>' + t(UI, 'mythTruth') + '</b> ' + m[1] + '</li>';
-      }).join('') + '</ul>';
+      var k = function (key) { return t(UI, key).replace(/:\s*$/, ''); };
+      sec.innerHTML = '<h2>' + t(UI, 'mythsTitle') + '</h2><div class="myth-list">' + myths.map(function (m) {
+        return '<div class="myth"><div class="seems"><span class="k">' + k('mythSeems') + '</span>' + m[0] + '</div>' +
+          '<div class="really"><span class="k">' + k('mythTruth') + '</span>' + m[1] + '</div></div>';
+      }).join('') + '</div>';
       var firstDetails = main.querySelector(':scope > details');
       main.insertBefore(sec, firstDetails || null);
     }
@@ -181,13 +195,14 @@
     br.className = 'section bridge';
     br.innerHTML = '<h2>' + t(UI, 'nextTitle') + '</h2>' +
       (it.bridge ? '<p>' + tx(it.bridge) + '</p>' : '') +
-      '<p class="row" style="margin:10px 0 0"><a class="btn" href="' + chapterUrl(root, it.lesson) + '">' + t(UI, 'readChapter', { n: it.lesson }) + '</a>' +
-        (colabUrl(it.lesson) ? '<a class="btn" href="' + colabUrl(it.lesson) + '" target="_blank" rel="noopener">' + t(UI, 'colab') + ' ↗</a>' : '') +
-        (hasWarmup(it.lesson) ? '<a class="btn" href="' + root + 'warmup/index.html?lesson=' + it.lesson + '">' + t(UI, 'warmup') + '</a>' : '') + '</p>' +
-      '<p class="note" id="doneNote"></p>' +
-      '<p style="margin:12px 0 0">' + (next
-        ? '<a class="btn" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
-        : '<a class="btn" href="' + root + 'index.html">' + t(UI, 'toHome') + '</a>') + '</p>';
+      '<div class="row next-row"><div class="row">' +
+        '<a class="btn" href="' + chapterUrl(root, it.lesson) + '">' + icon('book') + t(UI, 'readChapter', { n: it.lesson }) + '</a>' +
+        (colabUrl(it.lesson) ? '<a class="btn" href="' + colabUrl(it.lesson) + '" target="_blank" rel="noopener">' + icon('external') + t(UI, 'colab') + '</a>' : '') +
+        (hasWarmup(it.lesson) ? '<a class="btn" href="' + root + 'warmup/index.html?lesson=' + it.lesson + '">' + icon('code') + t(UI, 'warmup') + '</a>' : '') +
+      '</div>' + (next
+        ? '<a class="btn primary" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
+        : '<a class="btn primary" href="' + root + 'index.html">' + t(UI, 'toHome') + '</a>') + '</div>' +
+      '<p class="note" id="doneNote"></p>';
     main.appendChild(br);
     updateDoneNote();
     var cl = document.getElementById('colabLink');
