@@ -377,5 +377,429 @@ window.WARMUP = {
     ]
    ]
   }
+ ],
+ "7": [
+  {
+   "id": "l7a",
+   "type": "out",
+   "topic": "elif",
+   "code": "bill = 46\nmass = 3800\nif bill < 42:\n    print(\"Adelie\")\nelif mass > 4500:\n    print(\"Gentoo\")\nelse:\n    print(\"Chinstrap\")",
+   "choices": [
+    "Chinstrap",
+    "Adelie",
+    "Gentoo",
+    "Gentoo\nChinstrap"
+   ]
+  },
+  {
+   "id": "l7b",
+   "type": "out",
+   "topic": "none",
+   "code": "for depth in [1, 3, None]:\n    print(depth)",
+   "choices": [
+    "1\n3\nNone",
+    "1\n3",
+    "1 3 None",
+    "!err"
+   ]
+  },
+  {
+   "id": "l7c",
+   "type": "bug",
+   "topic": "elif",
+   "code": "mass = 5000\nif mass > 4500:\n    print(\"Gentoo\")\nelse if mass > 3500:\n    print(\"Chinstrap\")",
+   "line": 4,
+   "err": "SyntaxError"
+  },
+  {
+   "id": "l7d",
+   "type": "parsons",
+   "topic": "elif",
+   "lines": [
+    "for f in [190, 200, 220]:",
+    "    if f < 195:",
+    "        print(\"Adelie\")",
+    "    elif f < 210:",
+    "        print(\"Chinstrap\")",
+    "    else:",
+    "        print(\"Gentoo\")"
+   ],
+   "out": "Adelie\nChinstrap\nGentoo",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ]
+   ]
+  }
+ ],
+ "8": [
+  {
+   "id": "l8a",
+   "type": "out",
+   "topic": "func",
+   "code": "def predict(x):\n    return 10 * x + 15\n\nprint(predict(4))",
+   "choices": [
+    "55",
+    "40",
+    "415",
+    "10 * 4 + 15"
+   ]
+  },
+  {
+   "id": "l8b",
+   "type": "out",
+   "topic": "math",
+   "code": "errors = [4, -2, 3]\ntotal = 0\nfor e in errors:\n    total = total + abs(e)\nprint(total / len(errors))",
+   "choices": [
+    "3.0",
+    "1.6666666666666667",
+    "3",
+    "9"
+   ]
+  },
+  {
+   "id": "l8c",
+   "type": "bug",
+   "topic": "fmt",
+   "code": "errors = [3, 4]\nmse = (3 ** 2 + 4 ** 2) / 2\nprint(\"MSE: \" + mse)",
+   "line": 3,
+   "err": "TypeError"
+  },
+  {
+   "id": "l8d",
+   "type": "parsons",
+   "topic": "math",
+   "lines": [
+    "errors = [2, -4]",
+    "total = 0",
+    "for e in errors:",
+    "    total = total + e ** 2",
+    "print(total / len(errors))"
+   ],
+   "out": "10.0",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4
+    ]
+   ]
+  }
+ ],
+ "9": [
+  {
+   "id": "l9a",
+   "type": "out",
+   "topic": "list",
+   "code": "votes = [\"Adelie\", \"Gentoo\", \"Adelie\"]\nprint(votes.count(\"Adelie\"))",
+   "choices": [
+    "2",
+    "1",
+    "3",
+    "!err"
+   ]
+  },
+  {
+   "id": "l9b",
+   "type": "out",
+   "topic": "dict",
+   "code": "scores = {\"KNN\": 0.97, \"Forest\": 0.96}\nfor name, acc in scores.items():\n    print(name, acc)",
+   "choices": [
+    "KNN 0.97\nForest 0.96",
+    "KNN\nForest",
+    "0.97\n0.96",
+    "KNN: 0.97\nForest: 0.96"
+   ]
+  },
+  {
+   "id": "l9c",
+   "type": "bug",
+   "topic": "dict",
+   "code": "votes = {\"Adelie\": 5, \"Gentoo\": 3}\nprint(votes[\"Adelie\"])\nprint(votes[\"Chinstrap\"])",
+   "line": 3,
+   "err": "KeyError"
+  },
+  {
+   "id": "l9d",
+   "type": "parsons",
+   "topic": "loop",
+   "lines": [
+    "votes = [\"Adelie\", \"Gentoo\", \"Gentoo\"]",
+    "best = votes[0]",
+    "for v in votes:",
+    "    if votes.count(v) > votes.count(best):",
+    "        best = v",
+    "print(best)"
+   ],
+   "out": "Gentoo",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   ]
+  }
+ ],
+ "10": [
+  {
+   "id": "l10a",
+   "type": "out",
+   "topic": "tuple",
+   "code": "step = (\"scale\", 2)\nname, k = step\nprint(name)",
+   "choices": [
+    "scale",
+    "2",
+    "('scale', 2)",
+    "!err"
+   ]
+  },
+  {
+   "id": "l10b",
+   "type": "out",
+   "topic": "func",
+   "code": "def double(x):\n    return x * 2\n\ndef add_one(x):\n    return x + 1\n\nprint(add_one(double(5)))",
+   "choices": [
+    "11",
+    "12",
+    "10",
+    "6"
+   ]
+  },
+  {
+   "id": "l10c",
+   "type": "bug",
+   "topic": "func",
+   "code": "def scale(x, mean, std):\n    return (x - mean) / std\n\nprint(scale(50))",
+   "line": 4,
+   "err": "TypeError"
+  },
+  {
+   "id": "l10d",
+   "type": "parsons",
+   "topic": "tuple",
+   "lines": [
+    "steps = [(\"double\", 2), (\"add\", 3)]",
+    "x = 5",
+    "for name, k in steps:",
+    "    if name == \"double\":",
+    "        x = x * k",
+    "    else:",
+    "        x = x + k",
+    "print(x)"
+   ],
+   "out": "13",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ]
+   ]
+  }
+ ],
+ "11": [
+  {
+   "id": "l11a",
+   "type": "out",
+   "topic": "zip",
+   "code": "truth = [\"yes\", \"no\", \"yes\"]\npred = [\"yes\", \"yes\", \"no\"]\nfor t, p in zip(truth, pred):\n    print(t == p)",
+   "choices": [
+    "True\nFalse\nFalse",
+    "True",
+    "1",
+    "True\nTrue\nFalse"
+   ]
+  },
+  {
+   "id": "l11b",
+   "type": "out",
+   "topic": "math",
+   "code": "tp = 6\nfp = 2\nprint(tp / (tp + fp))",
+   "choices": [
+    "0.75",
+    "3.0",
+    "0.25",
+    "8"
+   ]
+  },
+  {
+   "id": "l11c",
+   "type": "bug",
+   "topic": "math",
+   "code": "tp = 0\nfp = 0\nprecision = tp / (tp + fp)\nprint(precision)",
+   "line": 3,
+   "err": "ZeroDivisionError"
+  },
+  {
+   "id": "l11d",
+   "type": "parsons",
+   "topic": "zip",
+   "lines": [
+    "truth = [\"yes\", \"no\", \"yes\"]",
+    "pred = [\"yes\", \"yes\", \"yes\"]",
+    "tp = 0",
+    "for t, p in zip(truth, pred):",
+    "    if t == \"yes\" and p == \"yes\":",
+    "        tp = tp + 1",
+    "print(tp)"
+   ],
+   "out": "2",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     0,
+     2,
+     1,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     1,
+     2,
+     0,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     2,
+     0,
+     1,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     2,
+     1,
+     0,
+     3,
+     4,
+     5,
+     6
+    ]
+   ]
+  }
+ ],
+ "12": [
+  {
+   "id": "l12a",
+   "type": "out",
+   "topic": "math",
+   "code": "scores = [0.9, 1.0, 0.8]\nprint(round(sum(scores) / len(scores), 2))",
+   "choices": [
+    "0.9",
+    "2.7",
+    "0.8",
+    "1.0"
+   ]
+  },
+  {
+   "id": "l12b",
+   "type": "out",
+   "topic": "list",
+   "code": "species = [\"Adelie\", \"Gentoo\", \"Adelie\", \"Chinstrap\"]\nbest = max(species, key=species.count)\nprint(best)",
+   "choices": [
+    "Adelie",
+    "Gentoo",
+    "Chinstrap",
+    "2"
+   ]
+  },
+  {
+   "id": "l12c",
+   "type": "bug",
+   "topic": "var",
+   "code": "model = 0.95\nbaseline = 0.44\nprint(model - basline)",
+   "line": 3,
+   "err": "NameError"
+  },
+  {
+   "id": "l12d",
+   "type": "parsons",
+   "topic": "if",
+   "lines": [
+    "model = 0.95",
+    "baseline = 0.44",
+    "if model > baseline:",
+    "    print(\"better\")",
+    "else:",
+    "    print(\"no better\")"
+   ],
+   "out": "better",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4,
+     5
+    ]
+   ]
+  }
  ]
 };

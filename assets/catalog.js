@@ -247,7 +247,7 @@ window.GLOSSARY = [
 window.COURSE = {
   colab: 'https://colab.research.google.com/github/MuhammadMusa1/ml-viz/blob/main/notebooks/',
   // Уроки, к которым есть Python-разминка (warmup/index.html, задания — tools/build_warmup.py, он сверяет этот список)
-  warmup: [1, 2, 3, 4, 5, 6]
+  warmup: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 };
 
 /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
