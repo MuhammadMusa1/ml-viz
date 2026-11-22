@@ -27,7 +27,7 @@
   "send": "Отправить пингвина из test ➜",
   "step2": "Станция 2: подготовка",
   "scalerOn": "Масштаб (StandardScaler)",
-  "leak": "<span style=\"color:var(--red); font-weight:700\">Утечка данных:</span> подсмотреть в test при масштабировании",
+  "leak": "<span style=\"color:var(--c-odd); font-weight:700\">Утечка данных:</span> подсмотреть в test при масштабировании",
   "leakNote": "Среднее и стандартное отклонение взяты из {src}: клюв {mx} ± {sx} мм, масса {my} ± {sy} г",
   "srcTrain": "train",
   "srcAll": "всех 342 пингвинов (test подсмотрен!)",

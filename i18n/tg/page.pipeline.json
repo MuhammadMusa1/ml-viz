@@ -28,7 +28,7 @@
   "send": "Фиристодани пингвин аз test ➜",
   "step2": "Истгоҳи 2: омодасозӣ",
   "scalerOn": "Миқёс (StandardScaler)",
-  "leak": "<span style=\"color:var(--red); font-weight:700\">Рахнаи маълумот:</span> ҳангоми миқёсбандӣ ба test нигоҳ кардан",
+  "leak": "<span style=\"color:var(--c-odd); font-weight:700\">Рахнаи маълумот:</span> ҳангоми миқёсбандӣ ба test нигоҳ кардан",
   "leakNote": "Миёна ва инҳирофи стандартӣ аз {src} гирифта шудаанд: нӯл {mx} ± {sx} мм, вазн {my} ± {sy} г",
   "srcTrain": "train",
   "srcAll": "ҳамаи 342 пингвин (test дида шуд!)",
