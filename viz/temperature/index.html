@@ -364,7 +364,7 @@
       return { fs: fs, rowH: rowH, head: Math.round(fs * 1.8), bars: (TOP + 1) * rowH, strip: Math.round(fs * 5.2) };
     }
     function resize() {
-      var w0 = cv.parentElement.clientWidth - 28;
+      var w0 = (cv.parentElement.clientWidth - 28) / MLViz.zoom();   // в координатах графика (на проекторе он увеличен)
       L = layout(w0);
       g = MLViz.fitCanvas(cv, (L.head + L.bars + L.strip) / w0);
       L = layout(g.w);

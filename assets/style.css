@@ -302,6 +302,26 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 label.toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
 label.toggle input { accent-color: var(--accent); width: 20px; height: 20px; margin: 0; flex: none; }
 
+/* Ползунок с кнопками «−» и «+» по бокам (добавляет core.js) */
+.stepper-row { display: flex; align-items: center; gap: 8px; }
+.stepper-row input[type="range"] { flex: 1; min-width: 0; margin: 0; }
+.step-btn { flex: none; width: 40px; min-height: 40px; height: 40px; padding: 0; font-size: 22px; line-height: 1; font-weight: 400; display: inline-grid; place-items: center; }
+@media (max-width: 900px), (pointer: coarse) { .step-btn { width: 44px; height: 44px; } }
+.projector .step-btn { width: 56px; height: 56px; font-size: 30px; padding: 0; }
+/* Номер варианта в игре — подсказка, что можно нажать клавишу 1, 2, 3 */
+button .key { display: inline-block; margin-left: 10px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: var(--r-xs);
+  font-family: var(--font-code); font-size: 13px; font-weight: 400; color: var(--text-muted); line-height: 18px; vertical-align: 1px; }
+@media (pointer: coarse) { button .key { display: none; } }
+
+/* Сравнение с точкой отсчёта: модель (полоса акцента) и «ленивая» модель (нейтральная) */
+.compare { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.compare-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text-2); }
+.compare-row b { color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.compare-row .track { grid-column: 1 / -1; height: 10px; border-radius: 10px; background: var(--n-750); overflow: hidden; }
+.compare-row .fill { height: 100%; border-radius: 10px; background: var(--n-400); transition: width .25s; }
+.compare-row.main .fill { background: var(--accent); }
+.projector .compare-row .track { height: 14px; }
+
 /* ---------- Главная: каталог уроков ---------- */
 .phase { margin-top: 48px; }
 .phase-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
@@ -472,11 +492,11 @@ details.box > div { color: var(--text); }
 
 /* Компьютер и проектор: пояснения и подписи крупнее, чтобы их было видно с задней парты */
 @media (min-width: 901px) {
-  .note { font-size: 15px; }
-  .stage .hint, .legend { font-size: 15px; }
-  .panel h3, .sub { font-size: 15px; }
-  .eyebrow { font-size: 14px; }
+  .note, .stage .hint, .legend, .panel h3, .sub { font-size: var(--fs-label); }
 }
+/* Проектор: мелкие подписи и таблицы в панелях страниц — не меньше размера подписи (20 px).
+   max(…, 1em) не уменьшает то, что уже крупнее (числа в спанах внутри крупных блоков) */
+.projector :is(.panel, .viz-extra) :is(td, th, small, label, figcaption, p, pre, .num, .val, .cm-h, .cm-r, .eq, span:not(.key)) { font-size: max(var(--fs-label), 1em); }
 
 /* ---------- Прогресс на главной ---------- */
 .progress-card { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-l); padding: 20px 24px; }

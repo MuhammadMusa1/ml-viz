@@ -72,8 +72,8 @@
           doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.',
           book: 'Учебник', readChapter: 'Глава {n} учебника', colab: 'Открыть ноутбук в Colab', warmup: 'Python-разминка к уроку',
           bookLinksTitle: 'К этой главе', vizLink: 'Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓',
-          projector: 'Проектор', projectorTip: 'Режим проектора: всё крупнее и контрастнее' },
-    tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓","projector":"Проектор","projectorTip":"Реҷаи проектор: ҳама калонтар ва равшантар"}
+          projector: 'Проектор', projectorTip: 'Режим проектора: всё крупнее и контрастнее', less: 'Меньше', more: 'Больше' },
+    tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓","projector":"Проектор","projectorTip":"Реҷаи проектор: ҳама калонтар ва равшантар","less":"Камтар","more":"Бештар"}
   };
 
   // Номер страницы в уроке: на один урок курса бывает несколько страниц (урок 17 — три).
@@ -354,22 +354,51 @@
       b.addEventListener('click', function () { setLang(b.dataset.lang); });
     });
     if (root) renderLessonExtras(root);
+    addSteppers();
+  }
+
+  // Кнопки «−» и «+» рядом с каждым ползунком страницы: шаг ползунка, событие input — как при движении мышью
+  function addSteppers() {
+    document.querySelectorAll('main input[type="range"]').forEach(function (r) {
+      if (r.closest('.stepper-row')) return;
+      var row = document.createElement('div');
+      row.className = 'stepper-row';
+      r.parentNode.insertBefore(row, r);
+      function btn(sign) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'step-btn'; b.textContent = sign > 0 ? '+' : '−';
+        b.setAttribute('aria-label', t(UI, sign > 0 ? 'more' : 'less'));
+        b.addEventListener('click', function () {
+          var before = r.value;
+          if (sign > 0) r.stepUp(); else r.stepDown();
+          if (r.value === before) return;
+          r.dispatchEvent(new Event('input', { bubbles: true }));
+          r.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        return b;
+      }
+      row.appendChild(btn(-1)); row.appendChild(r); row.appendChild(btn(1));
+    });
   }
 
   // ---------- Canvas ----------
   // Подгоняет canvas под ширину контейнера и плотность пикселей экрана (чётко на проекторе и телефоне).
+  // На проекторе график «приближается» целиком: точки, линии и подписи крупнее в одинаковой пропорции.
+  // Страница рисует в своих координатах (w, h из fitCanvas), увеличение делает преобразование холста.
+  function zoom() { return isProjector() ? 1.35 : 1; }
   function fitCanvas(canvas, aspect) {
-    var dpr = window.devicePixelRatio || 1;
+    var dpr = window.devicePixelRatio || 1, z = zoom();
     var w = canvas.parentElement.clientWidth - 20; // минус padding .stage
     var h = Math.round(w * aspect);
     canvas.style.height = h + 'px';
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
+    canvas._zoom = z;   // нужно MLViz.pointer: клик переводим в координаты страницы
     // Картинка для программ экранного доступа: без роли многие из них не читают aria-label у canvas
     if (!canvas.hasAttribute('role')) canvas.setAttribute('role', 'img');
     var ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    return { ctx: ctx, w: w, h: h };
+    ctx.setTransform(dpr * z, 0, 0, dpr * z, 0, 0);
+    return { ctx: ctx, w: w / z, h: h / z };
   }
 
   // Линейная шкала: данные -> пиксели и обратно
@@ -381,8 +410,8 @@
 
   // Координаты указателя внутри canvas в CSS-пикселях (мышь и тач)
   function pointer(canvas, ev) {
-    var r = canvas.getBoundingClientRect();
-    return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+    var r = canvas.getBoundingClientRect(), z = canvas._zoom || 1;
+    return { x: (ev.clientX - r.left) / z, y: (ev.clientY - r.top) / z };
   }
 
   // Детерминированный генератор случайных чисел (аналог random_state=42)
@@ -408,9 +437,7 @@
 
   // ---------- Оси графиков (общие для всех страниц) ----------
   // Размер шрифта растёт с шириной графика: на проекторе 15–16 px, на телефоне не меньше 13 px.
-  function fontPx(w) {
-    return isProjector() ? Math.round(Math.max(18, Math.min(22, w / 40))) : Math.round(Math.max(13, Math.min(16, w / 50)));
-  }
+  function fontPx(w) { return Math.round(Math.max(13, Math.min(16, w / 50))); }
   function range(a, b, step) {
     var r = [];
     for (var v = a; v <= b + 1e-9; v += step) r.push(Math.round(v * 1e6) / 1e6);
@@ -520,6 +547,7 @@
       labels.forEach(function (label, k) {
         var b = document.createElement('button');
         b.type = 'button'; b.innerHTML = label;
+        if (labels.length <= 9) b.insertAdjacentHTML('beforeend', '<span class="key" aria-hidden="true">' + (k + 1) + '</span>');
         b.addEventListener('click', function () {
           if (q.answered || q.over) return;
           var ok = isRight(k);
@@ -532,7 +560,18 @@
         });
         container.appendChild(b);
       });
+      choiceBox = container;
     };
+    var choiceBox = null;
+    document.addEventListener('keydown', function (e) {
+      if (!choiceBox || q.answered || q.over || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '')) || !box.offsetParent) return;
+      var k = '123456789'.indexOf(e.key);
+      var btns = choiceBox.querySelectorAll(':scope > button');
+      if (k === -1 || k >= btns.length || btns[k].disabled) return;
+      e.preventDefault();
+      btns[k].click();
+    });
     next.addEventListener('click', function () {
       if (q.over) { q.start(); return; }
       if (q.i < q.n - 1) { q.i++; begin(); return; }
@@ -549,6 +588,6 @@
   window.MLViz = {
     lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, icon: icon, lessonPart: lessonPart, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
-    fontPx: fontPx, isProjector: isProjector, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, quiz: quiz
+    fontPx: fontPx, isProjector: isProjector, zoom: zoom, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, quiz: quiz
   };
 })();

@@ -41,6 +41,8 @@
           <h3 data-i18n="accTitle"></h3>
           <div class="big-number" id="acc"></div>
           <small style="color:var(--muted)" id="accNote"></small>
+          <!-- Рядом с точностью — точка отсчёта: «ленивая» модель (правило курса) -->
+          <div class="compare" id="compare"></div>
         </div>
 
         <div>
@@ -145,6 +147,8 @@
         gameTie: 'Ничья!',
         gameLose: 'Модель оказалась точнее.',
         accTitle: 'Точность (accuracy) на новых пингвинах',
+        cmpModel: 'Модель KNN, K = {k}',
+        cmpLazy: '«Ленивая» модель: всегда {sp}',
         accNote: 'Модель угадала {c} из {n} пингвинов, которых не видела при обучении. Точность (accuracy) — доля верных ответов.',
         howTitle: 'Как это работает',
         howBody:
@@ -220,6 +224,8 @@
         "gameTie": "Мусовӣ!",
         "gameLose": "Модел саҳеҳтар баромад.",
         "accTitle": "Саҳеҳӣ (accuracy) дар пингвинҳои нав",
+        "cmpModel": "Модели KNN, K = {k}",
+        "cmpLazy": "Модели «танбал»: ҳамеша {sp}",
         "accNote": "Модел {c} аз {n} пингвинеро ёфт, ки ҳангоми омӯзиш надида буд. Саҳеҳӣ (accuracy) — ҳиссаи ҷавобҳои дуруст.",
         "howTitle": "Ин чӣ тавр кор мекунад",
         "howBody": "<ol><li><b>Дар хотир мегирем.</b> Дар KNN «омӯзиш» ба маънои маъмулӣ нест: модел танҳо ҳамаи пингвинҳои маълумро бо намудҳояшон нигоҳ медорад.</li><li><b>Масофаро чен мекунем.</b> Барои пингвини нав ҳисоб мекунем, ки вай аз ҳар як пингвини маълум аз рӯи ду <b>аломат</b> (хусусиятҳои пингвин): дарозӣ ва чуқурии нӯл чӣ қадар дур аст. «Ҳамсояҳо» дар ин ҷо — на аз рӯи кӯча, балки аз рӯи монандии нӯланд.</li><li><b>K наздиктаринро мегирем.</b> Аз рӯи масофа мураттаб мекунем ва K-тои аввалро мемонем.</li><li><b>Овоз медиҳем.</b> Ҳар як ҳамсоя ба тарафдории намуди худ овоз медиҳад. Намуде ғолиб меояд, ки овозҳои бештар дорад. Агар овозҳо баробар бошанд — ҳамоне, ки аз рӯи алифбо пештар аст (sklearn ҳамин тавр мекунад).</li></ol>",
@@ -251,6 +257,13 @@
     var byPos = function (a, b) { return a.pos - b.pos; };
     var train = all.filter(function (p) { return !p.test; }).sort(byPos);
     var test = all.filter(function (p) { return p.test; }).sort(byPos);
+
+    // «Ленивая» модель: всегда называет вид, которого больше всего в train (ничья — раньше по алфавиту, как в sklearn)
+    var LAZY = SPECIES.reduce(function (best, sp) {
+      var c = train.filter(function (p) { return p.sp === sp; }).length;
+      return c > best.c ? { sp: sp, c: c } : best;
+    }, { sp: null, c: -1 }).sp;
+    var LAZY_OK = test.filter(function (p) { return p.sp === LAZY; }).length;
 
     // Параметры масштабирования считаем ТОЛЬКО по train — без утечки данных
     function meanStd(key) {
@@ -394,6 +407,13 @@
       var correct = test.filter(function (p) { return predict(p.x, p.y, state.k, state.scaled) === p.sp; }).length;
       document.getElementById('acc').textContent = Math.round(100 * correct / test.length) + '%';
       document.getElementById('accNote').textContent = T('accNote', { c: correct, n: test.length });
+      var row = function (cls, label, c) {
+        var p = Math.round(100 * c / test.length);
+        return '<div class="compare-row ' + cls + '"><span>' + label + '</span><b>' + p + '%</b>' +
+          '<div class="track"><div class="fill" style="width:' + p + '%"></div></div></div>';
+      };
+      document.getElementById('compare').innerHTML =
+        row('main', T('cmpModel', { k: state.k }), correct) + row('', T('cmpLazy', { sp: LAZY }), LAZY_OK);
     }
 
     function refresh() { updatePanel(); draw(); }

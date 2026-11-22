@@ -338,9 +338,11 @@
     // ======================= Рисование рейтинга =======================
     var cv = el('cv'), g;
     var ROWS = 16;
-    function rowH() { return MLViz.fontPx(cv.parentElement.clientWidth) + 20; }
+    // Ширина в координатах графика: на проекторе он увеличен (MLViz.zoom)
+    function plotW() { return (cv.parentElement.clientWidth - 20) / MLViz.zoom(); }
+    function rowH() { return MLViz.fontPx(plotW()) + 20; }
     function resize() {
-      var w = cv.parentElement.clientWidth - 20, h = ROWS * rowH() + 56;
+      var w = plotW(), h = ROWS * rowH() + 56;
       g = MLViz.fitCanvas(cv, h / w);
       draw();
     }

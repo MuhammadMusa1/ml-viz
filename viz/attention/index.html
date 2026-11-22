@@ -335,7 +335,7 @@
     }
     function resize() {
       var n = SENTS[cur().s].tokens.length;
-      var w0 = cv.parentElement.clientWidth - 20;
+      var w0 = (cv.parentElement.clientWidth - 20) / MLViz.zoom();   // в координатах графика (на проекторе он увеличен)
       g = MLViz.fitCanvas(cv, layout(n).h / w0);
       L = layout(n);
       if (Math.abs(L.h - g.h) > 2) g = MLViz.fitCanvas(cv, L.h / g.w);
