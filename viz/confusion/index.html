@@ -19,6 +19,11 @@
     .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
     .metrics small { display: block; font-weight: 700; }
     .metrics .big-number { font-size: 32px; margin: 2px 0; }
+    /* Проектор: числа в клетках матрицы и метрики крупнее, клетки выше, колонка подписей шире */
+    .projector .cm { grid-template-columns: minmax(0, 150px) 1fr 1fr; gap: 8px; }
+    .projector .cm button { min-height: 104px; }
+    .projector .cm button b { font-size: 48px; }
+    .projector .metrics .big-number { font-size: 44px; }
     .metrics .note { margin: 0; }
   </style>
 </head>
