@@ -1,16 +1,110 @@
 /* Лаборатория ML — общие стили.
    Палитра курса: тёмный индиго + фиолетовый / циан / бирюзовый.
-   Шрифты системные (Calibri / Consolas с запасными) — никаких CDN, всё работает офлайн. */
+   Шрифты системные (Calibri / Consolas с запасными) — никаких CDN, всё работает офлайн.
+
+   Токены дизайн-системы v1 (Claude Design): нейтрали «ночные чернила», бумага журнала, шкалы
+   шрифта / отступов / радиусов, режим проектора. Старые имена (--bg-2, --card, --muted…) ниже
+   ссылаются на новые токены: страницы и canvas читают их через MLViz.cssVar, переписывать их не нужно. */
 
 :root {
-  --bg: #17132E;
-  --bg-2: #201A3F;
-  --card: #261F4A;
-  --card-2: #2C2456;
-  --line: #3A3168;
+  /* ---------- Нейтрали: «ночные чернила» (лёгкий фиолетовый подтон) ---------- */
+  --n-950: #0F0C21;   /* поле графика, код */
+  --n-900: #17132E;   /* фон страницы */
+  --n-850: #1D1838;   /* поверхность 1: карточки */
+  --n-800: #241F43;   /* поверхность 2: панели, поднятые блоки */
+  --n-750: #2D2751;   /* поверхность 3: hover, выбранное */
+  --n-700: #3A3363;   /* разделители, тихие рамки */
+  --n-600: #4D4579;   /* рамки при наведении */
+  --n-500: #6B6396;   /* рамки полей и контролов (3.3:1 к фону) */
+  --n-400: #958DBA;   /* приглушённый текст (≥ 4.5:1 на поверхностях 1–2) */
+  --n-300: #BAB4D6;   /* вторичный текст, подписи осей */
+  --n-200: #DAD6EC;   /* основной текст */
+  --n-100: #F2F0F9;   /* заголовки, крупные числа */
+
+  /* ---------- Бумага журнала: подсказки, бирки, этикетки на графике ---------- */
+  --paper: #F5F0E4;
+  --paper-2: #E9E2D0;
+  --ink: #1A1530;
+
+  /* ---------- Акцент интерфейса: тёплый белый (бумага журнала) ----------
+     Не цветной: все яркие оттенки заняты видами пингвинов и частями данных.
+     Акцент — это ЗАЛИВКА (главная кнопка, прогресс, выбранное) с тёмным текстом. Как цвет слов он почти
+     не отличается от обычного текста (1.25:1), поэтому выделять им текст нельзя — только вес или подчёркивание. */
+  --accent: #F5F0E4;
+  --accent-hover: #FFFCF5;
+  --accent-press: #E9E2D0;
+  --accent-ink: #1A1530;      /* текст на акценте: 15.5:1 */
+  --accent-text: #F5F0E4;     /* акцент на тёмном фоне (рамка, галочка): 15.8:1 */
+  --accent-soft: rgba(245, 240, 228, .12);
+
+  /* ---------- Роли ---------- */
+  --surface-1: var(--n-850);
+  --surface-2: var(--n-800);
+  --surface-3: var(--n-750);
+  --plot-bg: var(--n-950);
+  --line-strong: var(--n-600);
+  --control-line: var(--n-500);
+  --text-strong: var(--n-100);
+  --text-2: var(--n-300);
+  --text-muted: var(--n-400);
+
+  /* ---------- Типографика: размер / межстрочный. Calibri мелкий — базовый текст 18 px ---------- */
+  --fs-display: 44px; --lh-display: 48px;
+  --fs-h1: 36px;      --lh-h1: 42px;
+  --fs-h2: 28px;      --lh-h2: 34px;
+  --fs-h3: 22px;      --lh-h3: 28px;
+  --fs-lead: 21px;    --lh-lead: 30px;
+  --fs-body: 18px;    --lh-body: 28px;
+  --fs-small: 16px;   --lh-small: 24px;
+  --fs-label: 15px;   --lh-label: 20px;   /* минимум для интерфейса */
+  --fs-metric: 64px;  --lh-metric: 64px;
+  --fs-code: 16px;    --lh-code: 26px;
+  --fs-plot: 14px;    /* подписи на canvas, минимум 13 */
+
+  /* ---------- Отступы: сетка 4 px ---------- */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px; --s-5: 20px;
+  --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px; --s-20: 80px;
+
+  /* ---------- Размеры контролов ---------- */
+  --tap: 44px;        /* минимальная цель нажатия */
+  --btn-h: 48px;
+  --btn-h-lg: 56px;
+
+  /* ---------- Радиусы ---------- */
+  --r-xs: 4px;   /* бирка, строка кода */
+  --r-s: 8px;    /* поля, чипы */
+  --r-m: 12px;   /* кнопки, карточки уроков */
+  --r-l: 16px;   /* панели, график */
+  --r-pill: 999px;
+
+  /* ---------- Глубина на тёмном: ступени поверхности + рамка, без цветных теней ---------- */
+  --e-1: 0 0 0 1px var(--line);
+  --e-2: 0 0 0 1px var(--line), 0 8px 20px rgba(0, 0, 0, .35);
+  --e-3: 0 0 0 1px rgba(0, 0, 0, .25), 0 12px 32px rgba(0, 0, 0, .5);
+
+  /* ---------- Состояния ---------- */
+  --focus-ring: 0 0 0 3px var(--bg), 0 0 0 6px var(--paper);
+  --disabled-bg: var(--n-750);
+  --disabled-text: var(--n-400);
+
+  /* ---------- Стиль графиков (для canvas через MLViz.cssVar; страницы переходят на них на этапе 5) ---------- */
+  --plot-grid: rgba(255, 255, 255, .07);
+  --plot-axis: var(--n-500);
+  --plot-tick: var(--n-300);
+  --plot-dot-r: 7px;
+  --plot-dot-stroke: var(--n-950);
+  --plot-ring-w: 2.5px;
+  --plot-region-alpha: .12;
+
+  /* ---------- Старые имена → новые токены ---------- */
+  --bg: var(--n-900);
+  --bg-2: var(--surface-1);
+  --card: var(--surface-2);
+  --card-2: var(--surface-3);
+  --line: var(--n-700);
   --line-soft: rgba(169, 162, 204, .14);
-  --text: #EEEAFB;
-  --muted: #A9A2CC;
+  --text: var(--n-200);
+  --muted: var(--text-2);     /* подсказки и подписи читаются на проекторе: светлее, чем --text-muted */
   --violet: #A78BFA;
   --cyan: #22D3EE;
   --teal: #2DD4BF;
@@ -29,11 +123,52 @@
   /* Смысловые цвета, тоже не из цветов видов: отрицательные числа и «подозрительное / необычное» */
   --c-neg: #FB923C;
   --c-odd: #F43F5E;
-  --radius: 16px;
-  --radius-sm: 10px;
-  --shadow: 0 10px 30px -12px rgba(0, 0, 0, .55);
-  --font: Calibri, "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
-  --mono: Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", monospace;
+  --radius: var(--r-l);
+  --radius-sm: var(--r-m);
+  --shadow: var(--e-2);
+  /* Carlito — бесплатная копия Calibri с теми же размерами (Linux в школах) */
+  --font: Calibri, Carlito, "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --font-code: Consolas, "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Courier New", monospace;
+  --mono: var(--font-code);
+}
+
+/* Режим проектора: крупнее и на ступень светлее (тусклый проектор, последняя парта).
+   Включается классом .projector на <html> — переключатель появится на этапе 4. */
+.projector {
+  --fs-display: 64px; --lh-display: 68px;
+  --fs-h1: 52px;      --lh-h1: 58px;
+  --fs-h2: 40px;      --lh-h2: 46px;
+  --fs-h3: 30px;      --lh-h3: 36px;
+  --fs-lead: 30px;    --lh-lead: 40px;
+  --fs-body: 26px;    --lh-body: 36px;
+  --fs-small: 22px;   --lh-small: 30px;
+  --fs-label: 20px;   --lh-label: 26px;
+  --fs-metric: 104px; --lh-metric: 104px;
+  --fs-code: 24px;    --lh-code: 36px;
+  --fs-plot: 20px;
+  --text: var(--n-100);
+  --text-2: var(--n-200);
+  --text-muted: var(--n-300);
+  --line: var(--n-600);
+  --plot-grid: rgba(255, 255, 255, .14);
+  --plot-dot-r: 11px;
+  --plot-ring-w: 4px;
+  --plot-region-alpha: .2;
+  --btn-h: 64px; --btn-h-lg: 72px;
+}
+
+/* Телефон: шрифты на ступень меньше (кроме режима проектора) */
+@media (max-width: 600px) {
+  :root:not(.projector) {
+    --fs-display: 32px; --lh-display: 38px;
+    --fs-h1: 28px;      --lh-h1: 34px;
+    --fs-h2: 24px;      --lh-h2: 30px;
+    --fs-h3: 20px;      --lh-h3: 26px;
+    --fs-lead: 19px;    --lh-lead: 28px;
+    --fs-body: 17px;    --lh-body: 26px;
+    --fs-metric: 52px;  --lh-metric: 52px;
+    --fs-code: 15px;    --lh-code: 24px;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -47,7 +182,7 @@ body {
     radial-gradient(800px 500px at 100% 0%, rgba(34, 211, 238, .09), transparent 60%);
   background-repeat: no-repeat;
   color: var(--text);
-  font: 17px/1.6 var(--font);
+  font-size: var(--fs-body); line-height: var(--lh-body); font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
@@ -81,10 +216,11 @@ code, kbd { font-family: var(--mono); font-size: .9em; background: rgba(23, 19, 
 .lang-switch button[aria-pressed="true"] { background: var(--violet); color: #17132E; border-color: var(--violet); }
 
 /* ---------- Типографика ---------- */
-h1 { font-size: clamp(30px, 4.4vw, 46px); line-height: 1.12; margin: 14px 0 12px; letter-spacing: -.5px; }
-h2 { font-size: 25px; margin: 40px 0 14px; letter-spacing: -.2px; }
-h3 { font-size: 19px; margin: 0 0 8px; }
-.lead { color: var(--muted); font-size: 20px; max-width: 760px; margin: 0; }
+h1, h2, h3 { color: var(--text-strong); }
+h1 { font-size: var(--fs-h1); line-height: var(--lh-h1); margin: 14px 0 12px; }
+h2 { font-size: var(--fs-h2); line-height: var(--lh-h2); margin: 40px 0 16px; }
+h3 { font-size: var(--fs-h3); line-height: var(--lh-h3); margin: 0 0 8px; }
+.lead { color: var(--muted); font-size: var(--fs-lead); line-height: var(--lh-lead); max-width: 760px; margin: 0; }
 .eyebrow {
   display: inline-flex; align-items: center; gap: 8px; margin: 34px 0 0;
   color: var(--teal); font-size: 13px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
@@ -105,10 +241,10 @@ button:active:not(:disabled), .btn:active { transform: translateY(1px); }
 button:disabled { opacity: .45; cursor: not-allowed; }
 /* Главная кнопка действия — светлая и нейтральная: фиолетовый и голубой заняты видами Adelie и Chinstrap */
 button.primary, .btn.primary {
-  background: var(--text); color: #17132E; border-color: transparent; font-weight: 700;
-  box-shadow: 0 6px 18px -8px rgba(238, 234, 251, .55);
+  background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 700;
 }
-button.primary:hover:not(:disabled), .btn.primary:hover { background: #FFFFFF; border-color: transparent; }
+button.primary:hover:not(:disabled), .btn.primary:hover { background: var(--accent-hover); border-color: transparent; }
+button.primary:active:not(:disabled), .btn.primary:active { background: var(--accent-press); }
 
 /* Переключатель режимов и видов (сегменты). Выбранный пункт — светлая рамка и галочка, а не «кнопка действия» */
 .seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: rgba(23, 19, 46, .6); border: 1px solid var(--line); border-radius: 12px; }
@@ -119,7 +255,7 @@ button.primary:hover:not(:disabled), .btn.primary:hover { background: #FFFFFF; b
 .seg.modes { display: flex; flex-wrap: nowrap; }
 .seg.modes button { flex: 1 1 0; min-width: 0; white-space: normal; line-height: 1.25; padding: 8px 8px; }
 .note { color: var(--muted); font-size: 13px; margin: 4px 0 0; line-height: 1.45; }
-button:focus-visible, .btn:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+button:focus-visible, .btn:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px; }
 
 /* Ползунок: толстая дорожка и крупный бегунок — удобно пальцем и видно на проекторе.
    Цвета нейтральные: фиолетовый и голубой — это виды пингвинов */
@@ -262,7 +398,6 @@ details.box > div { color: #DCD6F5; }
 }
 
 @media (max-width: 520px) {
-  body { font-size: 16px; }
   .wrap { padding: 0 16px; }
   .brand { font-size: 16px; }
   .sub-page .brand > span { display: none; }   /* на странице урока — только пингвин, чтобы влезли «‹ Урок N · Урок N ›» */
