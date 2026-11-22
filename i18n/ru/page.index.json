@@ -5,6 +5,7 @@
   "planned": "Скоро",
   "bookLink": "Учебники и Colab",
   "warmupLink": "Python-разминки",
+  "roadmapLink": "Дорога в ML-инженеры",
   "done": "Пройден",
   "current": "Дальше",
   "progress": "Пройдено уроков: <b>{d} из {n}</b>",

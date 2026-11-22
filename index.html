@@ -19,6 +19,7 @@
         <div class="row home-actions" id="homeActions">
           <a class="btn" href="book/index.html" id="bookBtn"><span data-i18n="bookLink"></span></a>
           <a class="btn" href="warmup/index.html" id="warmupBtn"><span data-i18n="warmupLink"></span></a>
+          <a class="btn" href="roadmap/index.html" id="roadmapBtn"><span data-i18n="roadmapLink"></span></a>
         </div>
       </div>
       <!-- Прогресс ученика: сколько уроков доиграно до конца (хранится только в этом браузере) -->
@@ -42,6 +43,7 @@
         planned: 'Скоро',
         bookLink: 'Учебники и Colab',
         warmupLink: 'Python-разминки',
+        roadmapLink: 'Дорога в ML-инженеры',
         done: 'Пройден',
         current: 'Дальше',
         progress: 'Пройдено уроков: <b>{d} из {n}</b>',
@@ -167,6 +169,7 @@
     // Значки у кнопок учебника и разминок
     document.getElementById('bookBtn').insertAdjacentHTML('afterbegin', MLViz.icon('book'));
     document.getElementById('warmupBtn').insertAdjacentHTML('afterbegin', MLViz.icon('code'));
+    document.getElementById('roadmapBtn').insertAdjacentHTML('afterbegin', MLViz.icon('map'));
     renderProgress();
     renderCatalog();
   </script>

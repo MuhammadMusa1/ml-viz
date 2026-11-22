@@ -33,7 +33,7 @@ function evalObject(text) { return new Function('return (' + text + ');')(); }
 
 // Все страницы со STR: главная, библиотека учебников, уроки
 function pages() {
-  const list = [['index', 'index.html'], ['book', 'book/index.html'], ['warmup', 'warmup/index.html']];
+  const list = [['index', 'index.html'], ['book', 'book/index.html'], ['warmup', 'warmup/index.html'], ['roadmap', 'roadmap/index.html']];
   fs.readdirSync(path.join(ROOT, 'viz')).sort().forEach(d => {
     const f = path.join('viz', d, 'index.html');
     if (fs.existsSync(path.join(ROOT, f))) list.push([d, f]);

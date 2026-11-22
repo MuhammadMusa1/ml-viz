@@ -72,7 +72,7 @@
           doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.',
           book: 'Учебник', readChapter: 'Глава {n} учебника', colab: 'Открыть ноутбук в Colab', warmup: 'Python-разминка к уроку',
           bookLinksTitle: 'К этой главе', vizLink: 'Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓',
-          projector: 'Проектор', projectorTip: 'Режим проектора: всё крупнее и контрастнее', less: 'Меньше', more: 'Больше' },
+          projector: 'Проектор', projectorTip: 'Режим проектора: всё крупнее и контрастнее', less: 'Меньше', more: 'Больше', roadmap: 'Что учить дальше: дорога в ML-инженеры ›' },
     tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓","projector":"Проектор","projectorTip":"Реҷаи проектор: ҳама калонтар ва равшантар","less":"Камтар","more":"Бештар"}
   };
 
@@ -140,7 +140,8 @@
     external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     flask: '<path d="M10 2v7.5L4.5 19A2 2 0 0 0 6.2 22h11.6a2 2 0 0 0 1.7-3L14 9.5V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>',
     arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
-    monitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>'
+    monitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
+    map: '<path d="M14.1 5.9 9 3.3a2 2 0 0 0-1.8 0L3.6 5.1A1 1 0 0 0 3 6v13.4a1 1 0 0 0 1.4.9l3.7-1.9a2 2 0 0 1 1.8 0l5.1 2.6a2 2 0 0 0 1.8 0l3.6-1.8a1 1 0 0 0 .6-.9V4.9a1 1 0 0 0-1.4-.9l-3.7 1.9a2 2 0 0 1-1.8 0z"/><path d="M15 5.8v15"/><path d="M9 3.2v15"/>'
   };
   function icon(name) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + '</svg>'; }
 
@@ -219,7 +220,7 @@
         (hasWarmup(it.lesson) ? '<a class="btn" href="' + root + 'warmup/index.html?lesson=' + it.lesson + '">' + icon('code') + t(UI, 'warmup') + '</a>' : '') +
       '</div>' + (next
         ? '<a class="btn primary" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
-        : '<a class="btn primary" href="' + root + 'index.html">' + t(UI, 'toHome') + '</a>') + '</div>' +
+        : '<a class="btn primary" href="' + root + 'roadmap/index.html">' + icon('map') + t(UI, 'roadmap') + '</a>') + '</div>' +
       '<p class="note" id="doneNote"></p>';
     main.appendChild(br);
     updateDoneNote();

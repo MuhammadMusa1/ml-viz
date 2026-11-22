@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Дорога в ML-инженеры · Лаборатория ML</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <style>
+    /* Только для этой страницы: маршрут из шагов. Слева бирка шага, справа — что учить и где */
+    .route { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-direction: column; gap: 16px; max-width: 980px; }
+    .step { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 20px; padding: 20px 24px; border-radius: var(--r-l);
+      background: var(--surface-1); border: 1px solid var(--line); }
+    .step.done { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .step.next { border-style: dashed; border-color: var(--n-300); }
+    .step-tag { display: inline-flex; align-items: center; gap: 8px; align-self: start; background: var(--paper); color: var(--ink);
+      border-radius: var(--r-xs); padding: 5px 10px; font-weight: 700; font-size: var(--fs-label); white-space: nowrap; }
+    .step-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; }
+    .step h3 { margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+    .step .time { color: var(--text-2); font-size: var(--fs-small); margin: 4px 0 0; }
+    .step .link { margin: 12px 0 0; color: var(--text); }
+    .step .link b { color: var(--text-strong); }
+    .step ul { margin: 10px 0 0; padding-left: 22px; }
+    .step li { margin: 4px 0; }
+    .step li::marker { color: var(--n-400); }
+    .step .res { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .step .res .btn { font-weight: 400; }
+    .step label.toggle { margin-top: 14px; }
+    @media (max-width: 600px) {
+      .step { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
+    }
+    .road-top { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 40px; align-items: end; }
+    @media (max-width: 900px) { .road-top { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <div class="road-top">
+      <div>
+        <p class="eyebrow" data-i18n="eyebrow"></p>
+        <h1 data-i18n="title"></h1>
+        <div class="analogy-box" data-i18n-html="analogy" style="margin-bottom:0"></div>
+      </div>
+      <!-- Где я на дороге: отметки «Я это уже умею» хранятся только в этом браузере -->
+      <aside class="progress-card" id="progress"></aside>
+    </div>
+
+    <ol class="route" id="route"></ol>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../assets/core.js"></script>
+  <script src="../assets/catalog.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    // Шаг N: sN_title, sN_time, sN_link (связь с курсом), sN_learn (что учить, html-список). Ссылки на ресурсы — в STEPS ниже.
+    var STR = {
+      ru: {
+        title: 'Дорога в ML-инженеры',
+        eyebrow: 'После курса',
+        analogy: '<b>Курс — это первая вершина, а не вся гора.</b> Дальше дорога из девяти шагов. Каждый опирается на предыдущий, и почти на каждый ты уже ступал на уроках лаборатории.',
+        stepTag: 'Шаг {n}',
+        done: 'Я это уже умею',
+        progressTitle: 'Пройдено шагов',
+        progressCount: '<b>{d}</b> из {n}',
+        nextLine: 'Твой следующий шаг — <b>{n}. {t}</b>.',
+        allDone: 'Все шаги отмечены. Дальше — свои проекты и задачи, которых до тебя никто не решал.',
+        progressHint: 'Отмечай честно: «умею» — это когда можешь сделать сам, без подсказки. Отметки хранятся только в этом браузере.',
+        reset: 'Сбросить отметки',
+        resetAsk: 'Сбросить все отметки на этой странице?',
+
+        s1_title: 'Python уверенно',
+        s1_time: 'Примерно 2–4 месяца',
+        s1_link: '<b>Ты уже видел:</b> Python-разминки и ноутбуки Colab к каждому уроку.',
+        s1_learn: '<ul><li>Списки, словари, функции, циклы — без подглядывания.</li><li>Файлы, ошибки и <code>try / except</code>, свои классы.</li><li>По одной небольшой задаче каждый день: важна привычка, а не скорость.</li></ul>',
+        s2_title: 'Алгоритмы и структуры данных',
+        s2_time: 'Примерно 3–6 месяцев, можно вместе с шагом 3',
+        s2_link: '<b>Ты уже видел:</b> KNN на уроке 5 сравнивает нового пингвина со всеми — на миллионе примеров это очень медленно. Алгоритмы учат делать то же самое быстрее.',
+        s2_learn: '<ul><li>Сортировка и двоичный поиск.</li><li>Сложность: почему один способ в тысячу раз быстрее другого.</li><li>Стек, очередь, словарь, дерево — как они устроены внутри.</li><li>Олимпиадные задачи по информатике — лучшая тренировка.</li></ul>',
+        s3_title: 'Математика для ML',
+        s3_time: 'Всё время, параллельно с остальными шагами',
+        s3_link: '<b>Ты уже видел:</b> векторы и их похожесть (урок 17), шаг против градиента (урок 13), среднее и стандартное отклонение (урок 10).',
+        s3_learn: '<ul><li>Линейная алгебра: векторы, матрицы, умножение матриц.</li><li>Вероятность и статистика: распределения, среднее, разброс.</li><li>Производная — как узнать, куда «катиться» модели.</li><li>Школьная алгебра и геометрия — фундамент: её стоит знать хорошо.</li></ul>',
+        s4_title: 'Инструменты инженера',
+        s4_time: 'Примерно 1–2 месяца',
+        s4_link: '<b>Ты уже видел:</b> ноутбуки Colab. Этот сайт и его ноутбуки лежат на GitHub — поэтому они открываются в Colab.',
+        s4_learn: '<ul><li>Git и GitHub: сохранять версии кода и показывать его другим.</li><li>Командная строка: запускать программы без мышки.</li><li>pandas, numpy, matplotlib — таблицы, числа и графики.</li></ul>',
+        s5_title: 'Классический ML глубже',
+        s5_time: 'Примерно 3–4 месяца',
+        s5_link: '<b>Ты уже видел:</b> KNN, дерево, лес, линейную регрессию, Pipeline, кросс-валидацию (уроки 5–12).',
+        s5_learn: '<ul><li>Подготовка признаков: что подать модели и в каком виде.</li><li>Градиентный бустинг — один из сильнейших методов для таблиц.</li><li>Метрика под задачу: где важнее precision, а где recall.</li><li>Подбор параметров по validation, а test — один раз в конце.</li></ul>',
+        s6_title: 'Нейросети и PyTorch',
+        s6_time: 'Примерно 4–6 месяцев',
+        s6_link: '<b>Ты уже видел:</b> нейрон, обучение сети, MNIST, свёртку и свой классификатор картинок (уроки 13–16).',
+        s6_learn: '<ul><li>PyTorch — основной инструмент для нейросетей.</li><li>Обучение на видеокарте (GPU), бесплатно — в Colab.</li><li>Перенос обучения: взять готовую сеть и доучить под свою задачу.</li></ul>',
+        s7_title: 'Английский для ML',
+        s7_time: 'Всё время: хотя бы 15 минут в день',
+        s7_link: '<b>Ты уже видел:</b> accuracy, train, validation, test, Pipeline — термины ML по-английски, и ты их уже знаешь.',
+        s7_learn: '<ul><li>Документация, статьи и лучшие курсы по ML — почти всё на английском.</li><li>Начни с документации sklearn: там простые примеры кода.</li><li>Смотри лекции с английскими субтитрами — так быстрее привыкаешь.</li></ul>',
+        s8_title: 'Проекты и портфолио',
+        s8_time: 'С первого месяца и дальше всегда',
+        s8_link: '<b>Ты уже видел:</b> финальный проект и Demo Day (уроки 21–24), приложение на Gradio (урок 20).',
+        s8_learn: '<ul><li>3–5 своих проектов на GitHub: с описанием (README), данными и выводами.</li><li>Демо каждого проекта — на Hugging Face Spaces, чтобы его можно было открыть по ссылке.</li><li>Соревнования Kaggle для начинающих: сравнить себя с тысячами людей.</li></ul>',
+        s9_title: 'Свои, местные задачи',
+        s9_time: 'То, что отличает тебя от тысяч других',
+        s9_link: '<b>Ты уже видел:</b> токены, эмбеддинги и большие языковые модели (уроки 17–18).',
+        s9_learn: '<ul><li>Таджикский язык почти не поддержан ИИ: мало данных и мало моделей. Здесь ты можешь сделать то, чего ещё никто не сделал.</li><li>Собрать свой датасет: тексты, речь, фото — и выложить его для всех.</li><li>Данные вокруг тебя: погода, урожай, цены на рынке, школьные задачи — всё это можно предсказывать.</li></ul>',
+
+        r_pybook: 'Учебник Python',
+        r_warmup: 'Python-разминки',
+        r_stepik: 'Stepik — бесплатные курсы на русском',
+        r_codeforces: 'Codeforces — задачи и соревнования',
+        r_khan: 'Khan Academy — математика',
+        r_github: 'GitHub',
+        r_book1: 'Учебник, том 1',
+        r_book2: 'Учебник, том 2',
+        r_kagglelearn: 'Kaggle Learn — короткие курсы',
+        r_sklearn: 'Документация scikit-learn',
+        r_fastai: 'fast.ai — курс по нейросетям',
+        r_mlcc: 'Google ML Crash Course',
+        r_kaggle: 'Соревнования Kaggle',
+        r_spaces: 'Hugging Face Spaces',
+        r_hfdata: 'Датасеты Hugging Face',
+
+        howTitle: 'Как идти по дороге',
+        howBody:
+          '<ol>' +
+          '<li><b>Шаги 1–4 — основа.</b> Без уверенного Python и математики дальше будет тяжело, поэтому не торопись их пропускать.</li>' +
+          '<li><b>Математику и английский не откладывай:</b> они идут рядом со всеми шагами, понемногу каждый день.</li>' +
+          '<li><b>Проект — с первого месяца.</b> Маленький, но свой: так знания превращаются в умение.</li>' +
+          '<li><b>Сроки примерные.</b> Кто-то идёт быстрее, кто-то медленнее — важно не останавливаться.</li>' +
+          '</ol>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Когда показать.</b> На последнем уроке, после Demo Day: курс закончился, а интерес только появился. Эта страница отвечает на вопрос «а что дальше?».</p>' +
+          '<p><b>Как использовать.</b> Попросите учеников честно отметить, что они уже умеют, и назвать свой следующий шаг вслух. Отметки хранятся только в браузере ученика, на общем компьютере их можно сбросить.</p>' +
+          '<p><b>Ссылки.</b> Учебники и разминки работают офлайн. Внешние сайты (Stepik, Kaggle, GitHub и другие) открываются только с интернетом.</p>',
+        footer: 'Сроки примерные. Внешние сайты нужны с интернетом; учебники и разминки открываются офлайн.'
+      },
+      /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
+      /* tg:end */
+    };
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    MLViz.renderHeader('../');
+    MLViz.applyI18n(STR);
+
+    // ======================= Шаги и ресурсы =======================
+    // Ссылки внутри сайта работают офлайн, внешние — открываются в новой вкладке
+    var STEPS = [
+      { res: [['r_pybook', '../book/python/index.html'], ['r_warmup', '../warmup/index.html'], ['r_stepik', 'https://stepik.org/']] },
+      { res: [['r_codeforces', 'https://codeforces.com/']] },
+      { res: [['r_khan', 'https://www.khanacademy.org/']] },
+      { res: [['r_github', 'https://github.com/'], ['r_book1', '../book/ml/index.html']] },
+      { res: [['r_book2', '../book/ml2/index.html'], ['r_kagglelearn', 'https://www.kaggle.com/learn'], ['r_sklearn', 'https://scikit-learn.org/']] },
+      { res: [['r_book2', '../book/ml2/index.html'], ['r_fastai', 'https://course.fast.ai/']] },
+      { res: [['r_sklearn', 'https://scikit-learn.org/'], ['r_mlcc', 'https://developers.google.com/machine-learning/crash-course']] },
+      { res: [['r_github', 'https://github.com/'], ['r_spaces', 'https://huggingface.co/spaces'], ['r_kaggle', 'https://www.kaggle.com/competitions']] },
+      { res: [['r_hfdata', 'https://huggingface.co/datasets']] }
+    ];
+    var KEY = 'mlviz.roadmap';
+    function loadDone() {
+      try { var v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+    }
+    function saveDone(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
+    var done = loadDone();
+    function isDone(i) { return done.indexOf(i + 1) !== -1; }
+
+    function renderRoute() {
+      var next = -1;
+      for (var i = 0; i < STEPS.length; i++) if (!isDone(i)) { next = i; break; }
+      el('route').innerHTML = STEPS.map(function (s, i) {
+        var n = i + 1;
+        var res = s.res.map(function (r) {
+          var ext = /^https?:/.test(r[1]);
+          return '<a class="btn" href="' + r[1] + '"' + (ext ? ' target="_blank" rel="noopener"' : '') + '>' +
+            MLViz.icon(ext ? 'external' : 'book') + T(r[0]) + '</a>';
+        }).join('');
+        return '<li class="step' + (isDone(i) ? ' done' : i === next ? ' next' : '') + '">' +
+          '<span class="step-tag">' + T('stepTag', { n: n }) + '</span>' +
+          '<div><h3>' + T('s' + n + '_title') + '</h3><p class="time">' + T('s' + n + '_time') + '</p>' +
+          '<p class="link">' + T('s' + n + '_link') + '</p>' + T('s' + n + '_learn') +
+          '<div class="res">' + res + '</div>' +
+          '<label class="toggle"><input type="checkbox" data-step="' + n + '"' + (isDone(i) ? ' checked' : '') + '> <span>' + T('done') + '</span></label>' +
+          '</div></li>';
+      }).join('');
+      el('route').querySelectorAll('input[data-step]').forEach(function (c) {
+        c.addEventListener('change', function () {
+          var n = +c.dataset.step;
+          done = done.filter(function (x) { return x !== n; });
+          if (c.checked) done.push(n);
+          saveDone(done); render();
+          var again = el('route').querySelector('input[data-step="' + n + '"]');
+          if (again) again.focus();   // после перерисовки фокус остаётся на том же флажке (клавиатура)
+        });
+      });
+      return next;
+    }
+
+    function renderProgress(next) {
+      var d = STEPS.filter(function (s, i) { return isDone(i); }).length, n = STEPS.length;
+      el('progress').innerHTML =
+        '<div class="head"><span>' + T('progressTitle') + '</span><span class="count">' + T('progressCount', { d: d, n: n }) + '</span></div>' +
+        '<div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + d + '" aria-label="' + T('progressTitle') + ': ' + d + ' / ' + n + '">' +
+          '<div class="fill" style="width:' + (100 * d / n) + '%"></div></div>' +
+        '<p class="note">' + (next === -1 ? T('allDone') : T('nextLine', { n: next + 1, t: T('s' + (next + 1) + '_title') })) + '</p>' +
+        '<p class="note">' + T('progressHint') + '</p>' +
+        (d ? '<button type="button" class="reset" id="resetBtn">' + T('reset') + '</button>' : '');
+      var rb = el('resetBtn');
+      if (rb) rb.addEventListener('click', function () {
+        if (!window.confirm(T('resetAsk'))) return;
+        done = []; saveDone(done); render();
+      });
+    }
+
+    function render() { renderProgress(renderRoute()); }
+    render();
+  })();
+  </script>
+</body>
+</html>
