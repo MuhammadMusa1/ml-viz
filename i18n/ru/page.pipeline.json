@@ -36,6 +36,8 @@
   "dLbl": "Глубина дерева (max_depth)",
   "showMap": "Показать карту решений",
   "accTitle": "Точность (accuracy) конвейера на test",
+  "cmpPipe": "Твой конвейер",
+  "cmpLazy": "«Ленивая» модель: всегда {sp}",
   "accNote": "{c} из {n} пингвинов",
   "cmpOff": "без StandardScaler",
   "cmpOn": "со StandardScaler",

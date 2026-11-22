@@ -105,6 +105,7 @@
               <small class="muted" id="accTestNote"></small>
             </div>
           </div>
+          <div class="compare" id="lazyCmp"></div>
         </div>
 
         <!-- Соревнование: 3 вопроса против модели -->
@@ -193,6 +194,9 @@
         hintMax: 'Разрезов уже {n} — это максимум. Отмени лишний или сбрось.',
         accTrain: 'Точность (accuracy) на train',
         accTest: 'Точность (accuracy) на test',
+        cmpTrain: 'Дерево на train',
+        cmpTest: 'Дерево на test',
+        cmpLazy: '«Ленивая» модель: всегда {sp}',
         accNote: '{c} из {n}',
         hidden: '?',
         hiddenNote: 'узнаешь после сравнения',
@@ -294,6 +298,9 @@
         "hintMax": "Буришҳо аллакай {n}-то шудаанд — ин максимум аст. Зиёдатиашро бекор кун ё аз нав оғоз намо.",
         "accTrain": "Саҳеҳӣ (accuracy) дар train",
         "accTest": "Саҳеҳӣ (accuracy) дар test",
+        "cmpTrain": "Дарахт дар train",
+        "cmpTest": "Дарахт дар test",
+        "cmpLazy": "Модели «танбал»: ҳамеша {sp}",
         "accNote": "{c} аз {n}",
         "hidden": "?",
         "hiddenNote": "баъд аз муқоиса мефаҳмӣ",
@@ -343,6 +350,13 @@
     var byPos = function (a, b) { return a.pos - b.pos; };
     var train = all.filter(function (p) { return !p.test; }).sort(byPos);
     var test = all.filter(function (p) { return p.test; }).sort(byPos);
+    // «Ленивая» модель — точка отсчёта: всегда самый частый вид в train (ничья — раньше по алфавиту, как в sklearn)
+    var LZ = (function () {
+      var c = [0, 0, 0]; train.forEach(function (p) { c[p.si]++; });
+      var si = c.indexOf(Math.max.apply(null, c));
+      var hit = function (p) { return p.si === si; };
+      return { sp: SPECIES[si], tr: train.filter(hit).length, te: test.filter(hit).length };
+    })();
 
     // ======================= Дерево: общие функции =======================
     // Узел: {rect, f, thr, l, r} — у листа f === null. rect — область узла на графике (в мм).
@@ -642,6 +656,14 @@
         document.getElementById('accTest').textContent = pct(cte, test.length);
         document.getElementById('accTestNote').textContent = T('accNote', { c: cte, n: test.length });
       }
+      // Пока test спрятан — сравниваем на train, потом на test
+      MLViz.compare(document.getElementById('lazyCmp'), testHidden() ? [
+        { label: T('cmpTrain'), c: ctr, n: train.length, main: true },
+        { label: T('cmpLazy', { sp: LZ.sp }), c: LZ.tr, n: train.length, lazy: true }
+      ] : [
+        { label: T('cmpTest'), c: cte, n: test.length, main: true },
+        { label: T('cmpLazy', { sp: LZ.sp }), c: LZ.te, n: test.length, lazy: true }
+      ]);
 
       MLViz.setPressed(document.getElementById('orientBtns'), function (b) { return +b.dataset.f === state.f; });
       // «Отменить» и «Сбросить» видны, только когда есть что отменять

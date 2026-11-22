@@ -99,6 +99,7 @@
               <small id="accTestNote" style="color:var(--muted)"></small>
             </div>
           </div>
+          <div class="compare" id="lazyCmp"></div>
           <p class="note" id="baseline"></p>
         </div>
       </aside>
@@ -168,6 +169,9 @@
         accTitle: 'Точность (accuracy) — доля верных ответов',
         colTrain: 'Train',
         colTest: 'Test',
+        cmpTrain: 'Нейрон на train',
+        cmpTest: 'Нейрон на test',
+        cmpLazy: '«Ленивая» модель: всегда «не Chinstrap»',
         accNote: '{c} из {n}',
         hidden: '?',
         hiddenNote: 'после экзамена',
@@ -278,6 +282,9 @@
         "accTitle": "Саҳеҳӣ (accuracy) — ҳиссаи ҷавобҳои дуруст",
         "colTrain": "Train",
         "colTest": "Test",
+        "cmpTrain": "Нейрон дар train",
+        "cmpTest": "Нейрон дар test",
+        "cmpLazy": "Модели «танбал»: ҳамеша «Chinstrap не»",
         "accNote": "{c} аз {n}",
         "hidden": "?",
         "hiddenNote": "баъд аз имтиҳон",
@@ -655,6 +662,13 @@
         el('accTestNote').textContent = T('accNote', { c: cte, n: test.length });
       }
       el('baseline').textContent = T('baseline', { ctr: LAZY.tr, ntr: train.length, cte: LAZY.te, nte: test.length });
+      MLViz.compare(el('lazyCmp'), testHidden() ? [
+        { label: T('cmpTrain'), c: ctr, n: train.length, main: true },
+        { label: T('cmpLazy'), c: LAZY.tr, n: train.length, lazy: true }
+      ] : [
+        { label: T('cmpTest'), c: cte, n: test.length, main: true },
+        { label: T('cmpLazy'), c: LAZY.te, n: test.length, lazy: true }
+      ]);
       el('legTest').style.display = testHidden() ? 'none' : '';
       el('actHint').textContent = T('actHint');
 

@@ -77,6 +77,7 @@
         <div class="divider">
           <h3 data-i18n="accTitle"></h3>
           <div class="big-number" id="acc" style="margin-top:6px"></div>
+          <div class="compare" id="lazyCmp"></div>
           <p class="note" id="accNote"></p>
         </div>
       </aside>
@@ -145,6 +146,8 @@
         gameOver: 'Итог: ты <b>{a}</b> : <b>{b}</b> сеть. {v} В игре были и 3 картинки, где сеть ошиблась увереннее всего, — ты их узнал?',
         gWin: 'Ты точнее сети!', gTie: 'Ничья!', gLose: 'Сеть оказалась точнее.',
         accTitle: 'Точность на 300 картинках test',
+        cmpNet: 'Нейросеть',
+        cmpLazy: '«Ленивая» модель: всегда {d}',
         accNote: 'Сеть угадала {c} из {n}. Точность (accuracy) — доля верных ответов. «Ленивая» модель, которая всегда отвечает самой частой цифрой ({d}), угадала бы {l} из {n} ({lp}%).',
         cellNote: 'Клетка: строка {r}, столбец {c}. Число: <b>{v}</b> из 255.',
         cellHint: 'Нажми на клетку слева, чтобы увидеть её число. Справа — 128 нейронов скрытого слоя: чем светлее, тем сильнее нейрон «загорелся» на этой картинке.',
@@ -234,6 +237,8 @@
         "gTie": "Мусовӣ!",
         "gLose": "Шабака саҳеҳтар баромад.",
         "accTitle": "Саҳеҳӣ дар 300 расми test",
+        "cmpNet": "Шабакаи нейронӣ",
+        "cmpLazy": "Модели «танбал»: ҳамеша {d}",
         "accNote": "Шабака {c} аз {n}-ро ёфт. Саҳеҳӣ (accuracy) — ҳиссаи ҷавобҳои дуруст. Модели «танбал», ки ҳамеша бо рақами аз ҳама маъмул ({d}) ҷавоб медиҳад, {l} аз {n} ({lp}%)-ро меёфт.",
         "cellNote": "Катак: сатри {r}, сутуни {c}. Адад: <b>{v}</b> аз 255.",
         "cellHint": "Ба катаки тарафи чап пахш кун, то адади онро бинӣ. Аз тарафи рост — 128 нейрони қабати пинҳон: ҳар қадар равшантар бошад, нейрон дар ин расм ҳамон қадар сахттар «даргирифтааст».",
@@ -442,6 +447,10 @@
 
     el('acc').textContent = Math.round(100 * CORRECT / N) + '%';
     el('accNote').textContent = T('accNote', { c: CORRECT, n: N, d: LAZY.d, l: LAZY.n, lp: Math.round(100 * LAZY.n / N) });
+    MLViz.compare(el('lazyCmp'), [
+      { label: T('cmpNet'), c: CORRECT, n: N, main: true },
+      { label: T('cmpLazy', { d: LAZY.d }), c: LAZY.n, n: N, lazy: true }
+    ]);
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
 

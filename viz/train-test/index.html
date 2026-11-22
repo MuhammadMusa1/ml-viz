@@ -87,6 +87,7 @@
               <small id="accTestNote" style="color:var(--muted)"></small>
             </div>
           </div>
+          <div class="compare" id="lazyCmp"></div>
           <p class="note" id="baseline"></p>
         </div>
 
@@ -164,6 +165,9 @@
         colTrain: 'Train',
         colVal: 'Validation',
         colTest: 'Test',
+        cmpVal: 'Модель на validation, K = {k}',
+        cmpTest: 'Модель на test, K = {k}',
+        cmpLazy: '«Ленивая» модель: всегда {sp}',
         accNote: '{c} из {n}',
         hidden: '?',
         hiddenNote: 'после экзамена',
@@ -264,6 +268,9 @@
         "colTrain": "Train",
         "colVal": "Validation",
         "colTest": "Test",
+        "cmpVal": "Модел дар validation, K = {k}",
+        "cmpTest": "Модел дар test, K = {k}",
+        "cmpLazy": "Модели «танбал»: ҳамеша {sp}",
         "accNote": "{c} аз {n}",
         "hidden": "?",
         "hiddenNote": "баъд аз имтиҳон",
@@ -377,6 +384,12 @@
       var c = [0, 0, 0]; train.forEach(function (p) { c[p.si]++; });
       var sp = c.indexOf(Math.max.apply(null, c));
       return { sp: sp, c: test.filter(function (p) { return p.si === sp; }).length };
+    })();
+    // Пока test спрятан, сравниваем на validation: «ленивая» модель учится на той же части, что и модель (204)
+    var BASE_VAL = (function () {
+      var c = [0, 0, 0]; tr.forEach(function (p) { c[p.si]++; });
+      var sp = c.indexOf(Math.max.apply(null, c));
+      return { sp: sp, c: va.filter(function (p) { return p.si === sp; }).length };
     })();
 
     // ======================= Состояние =======================
@@ -559,6 +572,13 @@
       document.getElementById('baseline').textContent = T('baseline', {
         sp: SPECIES[BASE.sp], c: BASE.c, n: test.length, p: Math.round(100 * BASE.c / test.length)
       });
+      MLViz.compare(document.getElementById('lazyCmp'), testHidden() ? [
+        { label: T('cmpVal', { k: state.k }), c: cva, n: va.length, main: true },
+        { label: T('cmpLazy', { sp: SPECIES[BASE_VAL.sp] }), c: BASE_VAL.c, n: va.length, lazy: true }
+      ] : [
+        { label: T('cmpTest', { k: state.k }), c: cte, n: test.length, main: true },
+        { label: T('cmpLazy', { sp: SPECIES[BASE.sp] }), c: BASE.c, n: test.length, lazy: true }
+      ]);
       document.getElementById('legTestLine').style.visibility = testHidden() ? 'hidden' : '';
 
       var view = currentView(), vb = document.getElementById('viewBtns');

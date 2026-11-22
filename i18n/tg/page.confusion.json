@@ -81,5 +81,7 @@
   "colab": "Кушодани дафтари дарс дар Colab",
   "footer": "Маълумот: Palmer Penguins (Horst, Hill, Gorman, 2020). Ҳамаи ҳисобҳо бевосита дар браузер иҷро мешаванд.",
   "chartX": "Остона: ҳамсояҳои Chinstrap аз 10",
-  "chartY": "%"
+  "chartY": "%",
+  "cmpModel": "Модел",
+  "cmpLazy": "Модели «танбал»: ҳамеша «не»"
 }

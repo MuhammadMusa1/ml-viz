@@ -112,6 +112,7 @@
               <small class="muted" id="accTreeNote"></small>
             </div>
           </div>
+          <div class="compare" id="lazyCmp"></div>
           <small class="muted" id="rangeNote" style="display:block; margin-top:8px"></small>
         </div>
       </aside>
@@ -193,6 +194,9 @@
         again: 'Сыграть ещё ↺',
         accForest: 'Лес: точность (accuracy) на test',
         accTreeTitle: 'Дерево №{k}: точность на test',
+        cmpForest: 'Лес из {n} деревьев',
+        cmpTree: 'Дерево № {k}',
+        cmpLazy: '«Ленивая» модель: всегда {sp}',
         accNote: '{c} из {n}',
         rangeNote: 'Отдельные деревья этого леса угадывают от {min} до {max} из {n}, в среднем {avg}.',
         howTitle: 'Как это работает',
@@ -286,6 +290,9 @@
         "again": "Боз бозӣ кардан ↺",
         "accForest": "Ҷангал: саҳеҳӣ (accuracy) дар test",
         "accTreeTitle": "Дарахти №{k}: саҳеҳӣ дар test",
+        "cmpForest": "Ҷангал аз {n} дарахт",
+        "cmpTree": "Дарахти № {k}",
+        "cmpLazy": "Модели «танбал»: ҳамеша {sp}",
         "accNote": "{c} аз {n}",
         "rangeNote": "Дарахтони алоҳидаи ин ҷангал аз {min} то {max} аз {n}-ро меёбанд, ба ҳисоби миёна {avg}.",
         "howTitle": "Ин чӣ тавр кор мекунад",
@@ -327,6 +334,13 @@
     var byPos = function (a, b) { return a.pos - b.pos; };
     var train = all.filter(function (p) { return !p.test; }).sort(byPos);
     var test = all.filter(function (p) { return p.test; }).sort(byPos);
+    // «Ленивая» модель — точка отсчёта: всегда самый частый вид в train (ничья — раньше по алфавиту, как в sklearn)
+    var LZ = (function () {
+      var c = [0, 0, 0]; train.forEach(function (p) { c[p.si]++; });
+      var si = c.indexOf(Math.max.apply(null, c));
+      var hit = function (p) { return p.si === si; };
+      return { sp: SPECIES[si], tr: train.filter(hit).length, te: test.filter(hit).length };
+    })();
 
     // ======================= Генератор случайных чисел numpy =======================
     // Лес в sklearn случаен, но с random_state=42 случайность всегда одна и та же.
@@ -656,6 +670,11 @@
       document.getElementById('accTreeTitle').textContent = T('accTreeTitle', { k: state.k });
       document.getElementById('accTree').textContent = pct(tc, n);
       document.getElementById('accTreeNote').textContent = T('accNote', { c: tc, n: n });
+      MLViz.compare(document.getElementById('lazyCmp'), [
+        { label: T('cmpForest', { n: state.n }), c: fc, n: n, main: true },
+        { label: T('cmpTree', { k: state.k }), c: tc, n: n },
+        { label: T('cmpLazy', { sp: LZ.sp }), c: LZ.te, n: n, lazy: true }
+      ]);
       var sub = TREE_TEST.slice(0, state.n);
       var avg = sub.reduce(function (s, x) { return s + x; }, 0) / sub.length;
       document.getElementById('rangeNote').textContent = T('rangeNote', {

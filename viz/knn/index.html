@@ -407,13 +407,10 @@
       var correct = test.filter(function (p) { return predict(p.x, p.y, state.k, state.scaled) === p.sp; }).length;
       document.getElementById('acc').textContent = Math.round(100 * correct / test.length) + '%';
       document.getElementById('accNote').textContent = T('accNote', { c: correct, n: test.length });
-      var row = function (cls, label, c) {
-        var p = Math.round(100 * c / test.length);
-        return '<div class="compare-row ' + cls + '"><span>' + label + '</span><b>' + p + '%</b>' +
-          '<div class="track"><div class="fill" style="width:' + p + '%"></div></div></div>';
-      };
-      document.getElementById('compare').innerHTML =
-        row('main', T('cmpModel', { k: state.k }), correct) + row('', T('cmpLazy', { sp: LAZY }), LAZY_OK);
+      MLViz.compare(document.getElementById('compare'), [
+        { label: T('cmpModel', { k: state.k }), c: correct, n: test.length, main: true },
+        { label: T('cmpLazy', { sp: LAZY }), c: LAZY_OK, n: test.length, lazy: true }
+      ]);
     }
 
     function refresh() { updatePanel(); draw(); }

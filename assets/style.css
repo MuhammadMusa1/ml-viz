@@ -322,6 +322,8 @@ button .key { display: inline-block; margin-left: 10px; padding: 0 6px; border: 
 .compare-row .track { grid-column: 1 / -1; height: 10px; border-radius: 10px; background: var(--n-750); overflow: hidden; }
 .compare-row .fill { height: 100%; border-radius: 10px; background: var(--n-400); transition: width .25s; }
 .compare-row.main .fill { background: var(--accent); }
+.compare-row.lazy span { color: var(--text-muted); }
+.compare-row.lazy .fill { background: var(--n-600); }
 .projector .compare-row .track { height: 14px; }
 
 /* ---------- Главная: каталог уроков ---------- */

@@ -476,6 +476,17 @@
 
   // ---------- Переключатели (режимы, виды) ----------
   // Выбранный пункт отмечается aria-pressed: так его видно и глазами, и программе экранного доступа
+  // Полоски сравнения точности: модель (main — полоса акцента) и «ленивая» модель (lazy — тихая).
+  // rows: [{ label, c (верных), n (всего), main, lazy }]
+  function compare(box, rows) {
+    if (!box) return;
+    box.innerHTML = (rows || []).map(function (r) {
+      var p = Math.round(100 * r.c / r.n);
+      return '<div class="compare-row' + (r.main ? ' main' : '') + (r.lazy ? ' lazy' : '') + '"><span>' + r.label + '</span><b>' + p + '%</b>' +
+        '<div class="track"><div class="fill" style="width:' + p + '%"></div></div></div>';
+    }).join('');
+  }
+
   function setPressed(container, isOn) {
     container.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', isOn(b) ? 'true' : 'false'); });
   }
@@ -589,6 +600,6 @@
   window.MLViz = {
     lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, icon: icon, lessonPart: lessonPart, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
-    fontPx: fontPx, isProjector: isProjector, zoom: zoom, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, quiz: quiz
+    fontPx: fontPx, isProjector: isProjector, zoom: zoom, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, compare: compare, quiz: quiz
   };
 })();

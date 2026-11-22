@@ -121,6 +121,7 @@
             <p class="note" id="mRecNote"></p>
           </div>
         </div>
+        <div class="compare" id="lazyCmp"></div>
         <p class="note" id="baseline"></p>
 
       </aside>
@@ -205,6 +206,8 @@
         cellTP: '✓ нашли',
         cmNote: 'Строки — правда, столбцы — ответ модели. Такой же порядок печатает sklearn: [[TN, FP], [FN, TP]]. Нажми на клетку — эти пингвины подсветятся.',
         cellAria: '{name}: {c}. Подсветить этих пингвинов',
+        cmpModel: 'Модель',
+        cmpLazy: '«Ленивая» модель: всегда «нет»',
         accNote: 'все верные: {c} из {n}',
         precNote: 'настоящих среди тревог: {c} из {n}',
         precNone: 'тревог не было',
@@ -331,6 +334,8 @@
         "cellTP": "✓ ёфтанд",
         "cmNote": "Сатрҳо — ҳақиқат, сутунҳо — ҷавоби модел. sklearn низ ҳамин тартибро чоп мекунад: [[TN, FP], [FN, TP]]. Ба катак пахш кун — ин пингвинҳо равшан мешаванд.",
         "cellAria": "{name}: {c}. Ин пингвинҳоро равшан кардан",
+        "cmpModel": "Модел",
+        "cmpLazy": "Модели «танбал»: ҳамеша «не»",
         "accNote": "ҳамаи дурустҳо: {c} аз {n}",
         "precNote": "ҳақиқиҳо дар байни бонгҳои хатар: {c} аз {n}",
         "precNone": "бонги хатар набуд",
@@ -664,6 +669,12 @@
       el('mRec').textContent = pct(mt.rec);
       el('mRecNote').textContent = T('recNote', { c: m.tp, n: m.tp + m.fn });
       el('baseline').textContent = T('baseline', { c: LAZY.tn, n: test.length, p: Math.round(100 * LAZY.tn / test.length) });
+      // «Всегда нет» верна на всех, кто не Chinstrap, — в той части данных, которая сейчас на экране
+      var pos = v.key === 'test' ? P_TEST : P_VAL;
+      MLViz.compare(el('lazyCmp'), [
+        { label: T('cmpModel'), c: m.tp + m.tn, n: n, main: true },
+        { label: T('cmpLazy'), c: n - pos, n: n, lazy: true }
+      ]);
 
       el('legSetText').textContent = T(v.key === 'test' ? 'legTest' : 'legVal');
       var icon = el('legSetIcon');

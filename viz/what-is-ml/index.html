@@ -64,6 +64,7 @@
               <div><div class="big-number" id="accYou"></div><small data-i18n="you"></small></div>
               <div><div class="big-number" id="accPc"></div><small data-i18n="computer"></small></div>
             </div>
+            <div class="compare" id="lazyCmp"></div>
             <p class="note" id="accNote"></p>
             <button type="button" id="testBtn" class="primary" style="margin-top:10px" data-i18n="testBtn"></button>
             <p class="note" data-i18n="fairNote"></p>
@@ -153,6 +154,9 @@
         you: 'ты', computer: 'компьютер',
         accHidden: 'Новые пингвины — это экзамен. Поставь свою границу только по примерам сверху и нажми «Проверить».',
         testBtn: 'Проверить на новых пингвинах',
+        cmpYou: 'Твоё правило',
+        cmpPc: 'Правило компьютера',
+        cmpLazy: '«Ленивая» модель: всегда «не Gentoo»',
         accNote: 'Твоё правило угадало {y} из 69, правило компьютера — {p} из 69. Точность (accuracy) — доля верных ответов. Для сравнения: «ленивая» модель — как ученик, который во всём тесте ставит «А», — всегда отвечает «не Gentoo» и угадывает {l} из 69 ({lp}%). Сдвинешь свою границу — проверку придётся повторить.',
         fairNote: 'Подгонять границу под новых пингвинов нечестно: это как подсмотреть ответы экзамена.',
         legNot: 'Adelie и Chinstrap = «не Gentoo»',
@@ -275,6 +279,9 @@
         "computer": "компютер",
         "accHidden": "Пингвинҳои нав — ин имтиҳон аст. Сарҳади худро танҳо аз рӯи мисолҳои боло гузор ва «Санҷидан»-ро пахш кун.",
         "testBtn": "Дар пингвинҳои нав санҷидан",
+        "cmpYou": "Қоидаи ту",
+        "cmpPc": "Қоидаи компютер",
+        "cmpLazy": "Модели «танбал»: ҳамеша «Gentoo не»",
         "accNote": "Қоидаи ту {y} аз 69-ро ёфт, қоидаи компютер — {p} аз 69-ро. Саҳеҳӣ (accuracy) — ҳиссаи ҷавобҳои дуруст. Барои муқоиса: модели «танбал» — мисли хонандае, ки дар тамоми тест «А» мегузорад, — ҳамеша «Gentoo не» ҷавоб медиҳад ва {l} аз 69 ({lp}%)-ро меёбад. Агар сарҳади худро лағжонӣ — санҷишро такрор кардан лозим меояд.",
         "fairNote": "Сарҳадро ба пингвинҳои нав мувофиқ кардан беинсофона аст: ин мисли нигоҳ кардан ба ҷавобҳои имтиҳон аст.",
         "legNot": "Adelie ва Chinstrap = «Gentoo не»",
@@ -536,6 +543,7 @@
       if (!state.checked) {
         el('accYou').textContent = '?'; el('accPc').textContent = '?';
         el('accNote').textContent = T('accHidden');
+        el('lazyCmp').innerHTML = '';
         return;
       }
       var y = countRight(function (v) { return youPredict(u, v); }, fi);
@@ -543,6 +551,11 @@
       el('accYou').textContent = Math.round(100 * y / test.length) + '%';
       el('accPc').textContent = Math.round(100 * p / test.length) + '%';
       el('accNote').textContent = T('accNote', { y: y, p: p, l: LAZY, lp: Math.round(100 * LAZY / test.length) });
+      MLViz.compare(el('lazyCmp'), [
+        { label: T('cmpYou'), c: y, n: test.length, main: true },
+        { label: T('cmpPc'), c: p, n: test.length },
+        { label: T('cmpLazy'), c: LAZY, n: test.length, lazy: true }
+      ]);
     }
     // Своё правило изменилось — старая проверка уже не про него
     function uncheck() { state.checked = false; }

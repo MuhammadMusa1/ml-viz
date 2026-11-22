@@ -115,6 +115,7 @@
           <h3 data-i18n="accTitle"></h3>
           <div class="big-number" id="acc" style="margin-top:6px"></div>
           <small class="muted" id="accNote"></small>
+          <div class="compare" id="lazyCmp"></div>
           <table class="cmp" id="cmp" style="margin-top:8px"></table>
         </div>
 
@@ -204,6 +205,8 @@
         dLbl: 'Глубина дерева (max_depth)',
         showMap: 'Показать карту решений',
         accTitle: 'Точность (accuracy) конвейера на test',
+        cmpPipe: 'Твой конвейер',
+        cmpLazy: '«Ленивая» модель: всегда {sp}',
         accNote: '{c} из {n} пингвинов',
         cmpOff: 'без StandardScaler',
         cmpOn: 'со StandardScaler',
@@ -312,6 +315,8 @@
         "dLbl": "Чуқурии дарахт (max_depth)",
         "showMap": "Нишон додани харитаи қарорҳо",
         "accTitle": "Саҳеҳии (accuracy) конвейер дар test",
+        "cmpPipe": "Конвейери ту",
+        "cmpLazy": "Модели «танбал»: ҳамеша {sp}",
         "accNote": "{c} аз {n} пингвин",
         "cmpOff": "бе StandardScaler",
         "cmpOn": "бо StandardScaler",
@@ -363,6 +368,13 @@
     var byVpos = function (a, b) { return a.vpos - b.vpos; };
     var train = all.filter(function (p) { return !p.test; }).sort(byPos);
     var test = all.filter(function (p) { return p.test; }).sort(byPos);
+    // «Ленивая» модель — точка отсчёта: всегда самый частый вид в train (ничья — раньше по алфавиту, как в sklearn)
+    var LZ = (function () {
+      var c = [0, 0, 0]; train.forEach(function (p) { c[p.si]++; });
+      var si = c.indexOf(Math.max.apply(null, c));
+      var hit = function (p) { return p.si === si; };
+      return { sp: SPECIES[si], tr: train.filter(hit).length, te: test.filter(hit).length };
+    })();
     // Для игры: train ещё раз делим на «учёбу» (204) и validation (69), как train_test_split(X_train, test_size=0.25, random_state=42)
     var tr = train.filter(function (p) { return !p.val; }).sort(byVpos);
     var va = train.filter(function (p) { return p.val; }).sort(byVpos);
@@ -661,10 +673,15 @@
         document.getElementById('acc').textContent = T('hidden');
         document.getElementById('accNote').textContent = '';
         document.getElementById('cmp').innerHTML = '';
+        document.getElementById('lazyCmp').innerHTML = '';
       } else {
         var c = testCorrect(cfg);
         document.getElementById('acc').textContent = Math.round(100 * c / n) + '%';
         document.getElementById('accNote').textContent = T('accNote', { c: c, n: n });
+        MLViz.compare(document.getElementById('lazyCmp'), [
+          { label: T('cmpPipe'), c: c, n: n, main: true },
+          { label: T('cmpLazy', { sp: LZ.sp }), c: LZ.te, n: n, lazy: true }
+        ]);
         // Та же модель с масштабом и без — чтобы разница была видна сразу
         var off = testCorrect({ scaler: false, leak: false, model: cfg.model, k: cfg.k, d: cfg.d });
         var on = testCorrect({ scaler: true, leak: false, model: cfg.model, k: cfg.k, d: cfg.d });

@@ -103,6 +103,7 @@
               <small id="accTestNote" style="color:var(--muted)"></small>
             </div>
           </div>
+          <div class="compare" id="lazyCmp"></div>
           <p class="note" id="baseline"></p>
         </div>
       </aside>
@@ -179,6 +180,8 @@
         accTitle: 'Точность (accuracy) — доля верных ответов',
         colTrain: 'Train',
         colTest: 'Test',
+        cmpTest: 'Модель на test',
+        cmpLazy: '«Ленивая» модель: всегда «не Gentoo»',
         accNote: '{c} из {n}',
         baseline: 'Для сравнения: «ленивая» модель, которая всегда говорит «не Gentoo», верна в {ctr} из {ntr} на train и в {cte} из {nte} на test.',
         axisW: 'Вес w',
@@ -284,6 +287,8 @@
         "accTitle": "Саҳеҳӣ (accuracy) — ҳиссаи ҷавобҳои дуруст",
         "colTrain": "Train",
         "colTest": "Test",
+        "cmpTest": "Модел дар test",
+        "cmpLazy": "Модели «танбал»: ҳамеша «Gentoo не»",
         "accNote": "{c} аз {n}",
         "baseline": "Барои муқоиса: модели «танбал», ки ҳамеша «Gentoo не» мегӯяд, дар {ctr} аз {ntr} дар train ва дар {cte} аз {nte} дар test дуруст аст.",
         "axisW": "Вазн w",
@@ -594,6 +599,10 @@
         ctr: train.filter(function (p) { return !p.y; }).length, ntr: train.length,
         cte: test.filter(function (p) { return !p.y; }).length, nte: test.length
       });
+      MLViz.compare(el('lazyCmp'), [
+        { label: T('cmpTest'), c: cte, n: test.length, main: true },
+        { label: T('cmpLazy'), c: test.filter(function (p) { return !p.y; }).length, n: test.length, lazy: true }
+      ]);
 
       // В игре: шагать вручную и переставлять мяч нельзя, пока идёт попытка — и размер шага менять тоже
       el('stepBtn').hidden = !!gm;
