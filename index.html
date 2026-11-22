@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Лаборатория ML</title>
   <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* Только главная. 27 карточек — это путь курса: рамки и стрелки тихие, цвет получает тот урок, на который навели */
+    #catalog .card { padding: 20px; }
+    #catalog a.card::before { display: none; }
+    #catalog a.card { transition: border-color .15s, background-color .15s; }
+    #catalog a.card:hover { transform: none; box-shadow: none; border-color: var(--violet); }
+    #catalog a.card::after { color: var(--muted); transition: color .15s; }
+    #catalog a.card:hover::after { transform: none; color: var(--violet); }
+    .home-links { margin: 16px 0 0; }
+    .home-links .btn { display: inline-flex; align-items: center; gap: 8px; }
+    .home-links svg { width: 18px; height: 18px; flex: none; color: var(--muted); }
+  </style>
 </head>
 <body>
   <header id="site-header"></header>
@@ -15,8 +27,10 @@
     <p class="lead" data-i18n="lead"></p>
     <!-- Прогресс ученика: сколько уроков доиграно до конца (хранится только в этом браузере) -->
     <div class="progress" id="progress"></div>
-    <p class="row" style="margin:14px 0 0"><a class="btn" href="book/index.html" data-i18n="bookLink"></a>
-      <a class="btn" href="warmup/index.html" data-i18n="warmupLink"></a></p>
+    <p class="row home-links">
+      <a class="btn" href="book/index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg><span data-i18n="bookLink"></span></a>
+      <a class="btn" href="warmup/index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg><span data-i18n="warmupLink"></span></a>
+    </p>
     <div id="catalog"></div>
   </main>
 
@@ -33,11 +47,11 @@
         title: 'Машинное обучение, которое можно потрогать',
         lead: 'Интерактивные визуализации к курсу из 24 уроков. Двигай точки, крути ползунки и смотри, как модель принимает решения. Без установки и без интернета.',
         planned: 'Скоро',
-        bookLink: '📖 Учебники курса: книги и ноутбуки Colab ›',
-        warmupLink: '🐍 Python-разминки к урокам ›',
+        bookLink: 'Учебники курса: книги и ноутбуки Colab ›',
+        warmupLink: 'Python-разминки к урокам ›',
         done: '✓ Пройдено',
         progress: 'Пройдено уроков: <b>{d} из {n}</b>',
-        progressHint: 'Урок отмечается, когда ты доиграешь в нём игру до конца. Отметки хранятся только в этом браузере.',
+        progressHint: 'Урок отмечается, когда ты доиграешь до конца игры на всех его страницах. Отметки хранятся только в этом браузере.',
         resetProgress: 'Сбросить отметки',
         resetAsk: 'Сбросить все отметки о пройденных уроках в этом браузере?',
         footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Работает офлайн: скачайте папку и откройте <code>index.html</code>.'
@@ -48,11 +62,11 @@
         "title": "Омӯзиши мошиние, ки онро даст расондан мумкин аст",
         "lead": "Визуализатсияҳои интерактивӣ барои курси 24-дарса. Нуқтаҳоро ҳаракат деҳ, лағжандаҳоро тоб деҳ ва бин, ки модел чӣ тавр қарор қабул мекунад. Бе насб ва бе интернет.",
         "planned": "Ба зудӣ",
-        "bookLink": "📖 Китобҳои дарсии курс: китобҳо ва дафтарҳои Colab ›",
-        "warmupLink": "🐍 Машқҳои гармкунии Python ба дарсҳо ›",
+        "bookLink": "Китобҳои дарсии курс: китобҳо ва дафтарҳои Colab ›",
+        "warmupLink": "Машқҳои гармкунии Python ба дарсҳо ›",
         "done": "✓ Гузашта шуд",
         "progress": "Дарсҳои гузашташуда: <b>{d} аз {n}</b>",
-        "progressHint": "Дарс вақте қайд мешавад, ки ту бозиро дар он то охир бозӣ кунӣ. Қайдҳо танҳо дар ҳамин браузер нигоҳ дошта мешаванд.",
+        "progressHint": "Дарс вақте қайд мешавад, ки ту бозиҳоро дар ҳамаи саҳифаҳои он то охир бозӣ кунӣ. Қайдҳо танҳо дар ҳамин браузер нигоҳ дошта мешаванд.",
         "resetProgress": "Тоза кардани қайдҳо",
         "resetAsk": "Ҳамаи қайдҳоро дар бораи дарсҳои гузашташуда дар ин браузер тоза кунем?",
         "footer": "Маълумот: Palmer Penguins (Horst, Hill, Gorman, 2020). Офлайн кор мекунад: ҷузвдонро боргирӣ кунед ва <code>index.html</code>-ро кушоед."
@@ -65,12 +79,20 @@
 
     var L = MLViz.lang;
     var DONE = MLViz.doneList();
-    var READY = [];
-    CATALOG.forEach(function (ph) { ph.items.forEach(function (it) { if (it.status === 'ready') READY.push(it.id); }); });
 
-    // Полоса прогресса. Компьютер в классе общий — поэтому есть «Сбросить отметки»
+    // Страницы готовых уроков по номеру урока: у урока 13 две страницы, у урока 17 — три
+    var BY_LESSON = {};
+    CATALOG.forEach(function (ph) { ph.items.forEach(function (it) {
+      if (it.status === 'ready') (BY_LESSON[it.lesson] = BY_LESSON[it.lesson] || []).push(it.id);
+    }); });
+
+    // Полоса прогресса считает уроки, а не страницы: урок пройден, когда доиграны игры на всех его страницах.
+    // Компьютер в классе общий — поэтому есть «Сбросить отметки»
     function renderProgress() {
-      var d = READY.filter(function (id) { return DONE.indexOf(id) !== -1; }).length, n = READY.length;
+      var lessons = Object.keys(BY_LESSON), n = lessons.length;
+      var d = lessons.filter(function (k) {
+        return BY_LESSON[k].every(function (id) { return DONE.indexOf(id) !== -1; });
+      }).length;
       document.getElementById('progress').innerHTML =
         '<div class="row"><span>' + MLViz.t(STR, 'progress', { d: d, n: n }) + '</span>' +
         (d ? '<button type="button" id="resetProgress">' + MLViz.t(STR, 'resetProgress') + '</button>' : '') + '</div>' +
