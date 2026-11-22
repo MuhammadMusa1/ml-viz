@@ -354,6 +354,170 @@ else:
     print("no better")
 '''),
     ],
+    # Урок 13 — нейрон и градиентный спуск: взвешенная сумма, ReLU, шаг против градиента
+    13: [
+        dict(id='l13a', type='out', topic='math', code='''
+w1 = 2
+w2 = -1
+b = 1
+x1 = 3
+x2 = 4
+print(w1 * x1 + w2 * x2 + b)
+''', wrong=['11', '2', '!err']),
+        dict(id='l13b', type='out', topic='func', code='''
+def relu(x):
+    return max(0, x)
+
+print(relu(-5), relu(3))
+''', wrong=['-5 3', '0 0', '5 3']),
+        dict(id='l13c', type='bug', topic='var', code='''
+w = 5
+for step in range(3):
+    w = w - lr * 2 * w
+lr = 0.1
+'''),
+        dict(id='l13d', type='parsons', topic='loop', code='''
+w = 8
+lr = 0.25
+for step in range(2):
+    w = w - lr * 2 * w
+print(w)
+'''),
+    ],
+    # Урок 14 — MNIST: яркость /255, номер самой большой вероятности, картинка в одну строку
+    14: [
+        dict(id='l14a', type='out', topic='math', code='''
+pixel = 51
+print(pixel / 255)
+''', wrong=['51', '0', '255']),
+        dict(id='l14b', type='out', topic='list', code='''
+probs = [0.05, 0.1, 0.7, 0.15]
+print(probs.index(max(probs)))
+''', wrong=['0.7', '3', '1']),
+        dict(id='l14c', type='bug', topic='list', code='''
+image = [[0, 255],
+         [255, 0]]
+print(image[1][0])
+print(image[2][0])
+'''),
+        dict(id='l14d', type='parsons', topic='loop', code='''
+image = [[0, 255], [255, 0]]
+flat = []
+for row in image:
+    for p in row:
+        flat.append(p)
+print(flat)
+'''),
+    ],
+    # Урок 15 — свёртка: строки и столбцы картинки, фильтр, max pooling
+    15: [
+        dict(id='l15a', type='out', topic='list', code='''
+img = [[1, 2, 3],
+       [4, 5, 6]]
+print(img[1][2])
+''', wrong=['2', '5', '!err']),
+        dict(id='l15b', type='out', topic='loop', code='''
+patch = [1, 2, 3]
+kernel = [1, 0, -1]
+total = 0
+for i in range(3):
+    total = total + patch[i] * kernel[i]
+print(total)
+''', wrong=['6', '2', '0']),
+        dict(id='l15c', type='bug', topic='loop', code='''
+patch = [1, 2, 3]
+total = 0
+for i in range(4):
+    total = total + patch[i]
+'''),
+        dict(id='l15d', type='parsons', topic='loop', code='''
+row = [3, 8, 2, 5]
+pooled = []
+for i in range(0, 4, 2):
+    pooled.append(max(row[i], row[i + 1]))
+print(pooled)
+'''),
+    ],
+    # Урок 16 — свои картинки: отражение (аугментация), словарь «класс → вероятность» для Gradio
+    16: [
+        dict(id='l16a', type='out', topic='slice', code='''
+row = [1, 2, 3]
+print(row[::-1])
+''', wrong=['[1, 2, 3]', '3', '!err']),
+        dict(id='l16b', type='out', topic='dict', code='''
+labels = ["cat", "dog"]
+pred = [0.8, 0.2]
+result = {labels[i]: pred[i] for i in range(2)}
+print(result["dog"])
+''', wrong=['0.8', 'dog', '!err']),
+        dict(id='l16c', type='bug', topic='if', code='''
+pred = [0.8, 0.2]
+best = max(pred)
+if best > "0.5":
+    print("sure")
+'''),
+        dict(id='l16d', type='parsons', topic='loop', code='''
+labels = ["cat", "dog", "cat"]
+guesses = ["cat", "cat", "cat"]
+right = 0
+for i in range(len(labels)):
+    if labels[i] == guesses[i]:
+        right = right + 1
+print(right, "/", len(labels))
+'''),
+    ],
+    # Урок 17 — токены, эмбеддинги, attention: слова → номера, похожесть векторов
+    17: [
+        dict(id='l17a', type='out', topic='str', code='''
+text = "the cat sat"
+words = text.split()
+print(len(words))
+''', wrong=['11', '1', 'the cat sat']),
+        dict(id='l17b', type='out', topic='dict', code='''
+vocab = {"the": 0, "cat": 1, "sat": 2}
+ids = [vocab[w] for w in "cat sat the".split()]
+print(ids)
+''', wrong=['[0, 1, 2]', "['cat', 'sat', 'the']", '!err']),
+        dict(id='l17c', type='bug', topic='str', code='''
+vocab = {"the": 0, "cat": 1}
+word = "Cat"
+print(vocab[word])
+'''),
+        dict(id='l17d', type='parsons', topic='loop', code='''
+a = [1, 0, 2]
+b = [2, 1, 1]
+dot = 0
+for i in range(3):
+    dot = dot + a[i] * b[i]
+print(dot)
+'''),
+    ],
+    # Урок 18 — температура и LLM: промпт f-строкой, самое вероятное слово, сообщения для API
+    18: [
+        dict(id='l18a', type='out', topic='fstr', code='''
+question = "2 + 2?"
+prompt = f"Question: {question}"
+print(prompt)
+''', wrong=['Question: {question}', 'Question: 4', '!err']),
+        dict(id='l18b', type='out', topic='dict', code='''
+probs = {"cat": 0.6, "dog": 0.3, "fish": 0.1}
+word = max(probs, key=probs.get)
+print(word)
+''', wrong=['0.6', 'fish', 'dog']),
+        dict(id='l18c', type='bug', topic='list', code='''
+messages = [{"role": "user", "content": "Hi"}]
+first = messages[0]
+print(first["content"])
+print(messages["content"])
+'''),
+        dict(id='l18d', type='parsons', topic='str', code='''
+examples = ["good -> pos", "bad -> neg"]
+prompt = "Examples:\\n"
+for e in examples:
+    prompt = prompt + e + "\\n"
+print(prompt)
+'''),
+    ],
 }
 
 

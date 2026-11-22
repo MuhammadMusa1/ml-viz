@@ -801,5 +801,463 @@ window.WARMUP = {
     ]
    ]
   }
+ ],
+ "13": [
+  {
+   "id": "l13a",
+   "type": "out",
+   "topic": "math",
+   "code": "w1 = 2\nw2 = -1\nb = 1\nx1 = 3\nx2 = 4\nprint(w1 * x1 + w2 * x2 + b)",
+   "choices": [
+    "3",
+    "11",
+    "2",
+    "!err"
+   ]
+  },
+  {
+   "id": "l13b",
+   "type": "out",
+   "topic": "func",
+   "code": "def relu(x):\n    return max(0, x)\n\nprint(relu(-5), relu(3))",
+   "choices": [
+    "0 3",
+    "-5 3",
+    "0 0",
+    "5 3"
+   ]
+  },
+  {
+   "id": "l13c",
+   "type": "bug",
+   "topic": "var",
+   "code": "w = 5\nfor step in range(3):\n    w = w - lr * 2 * w\nlr = 0.1",
+   "line": 3,
+   "err": "NameError"
+  },
+  {
+   "id": "l13d",
+   "type": "parsons",
+   "topic": "loop",
+   "lines": [
+    "w = 8",
+    "lr = 0.25",
+    "for step in range(2):",
+    "    w = w - lr * 2 * w",
+    "print(w)"
+   ],
+   "out": "2.0",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4
+    ]
+   ]
+  }
+ ],
+ "14": [
+  {
+   "id": "l14a",
+   "type": "out",
+   "topic": "math",
+   "code": "pixel = 51\nprint(pixel / 255)",
+   "choices": [
+    "0.2",
+    "51",
+    "0",
+    "255"
+   ]
+  },
+  {
+   "id": "l14b",
+   "type": "out",
+   "topic": "list",
+   "code": "probs = [0.05, 0.1, 0.7, 0.15]\nprint(probs.index(max(probs)))",
+   "choices": [
+    "2",
+    "0.7",
+    "3",
+    "1"
+   ]
+  },
+  {
+   "id": "l14c",
+   "type": "bug",
+   "topic": "list",
+   "code": "image = [[0, 255],\n         [255, 0]]\nprint(image[1][0])\nprint(image[2][0])",
+   "line": 4,
+   "err": "IndexError"
+  },
+  {
+   "id": "l14d",
+   "type": "parsons",
+   "topic": "loop",
+   "lines": [
+    "image = [[0, 255], [255, 0]]",
+    "flat = []",
+    "for row in image:",
+    "    for p in row:",
+    "        flat.append(p)",
+    "print(flat)"
+   ],
+   "out": "[0, 255, 255, 0]",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4,
+     5
+    ]
+   ]
+  }
+ ],
+ "15": [
+  {
+   "id": "l15a",
+   "type": "out",
+   "topic": "list",
+   "code": "img = [[1, 2, 3],\n       [4, 5, 6]]\nprint(img[1][2])",
+   "choices": [
+    "6",
+    "2",
+    "5",
+    "!err"
+   ]
+  },
+  {
+   "id": "l15b",
+   "type": "out",
+   "topic": "loop",
+   "code": "patch = [1, 2, 3]\nkernel = [1, 0, -1]\ntotal = 0\nfor i in range(3):\n    total = total + patch[i] * kernel[i]\nprint(total)",
+   "choices": [
+    "-2",
+    "6",
+    "2",
+    "0"
+   ]
+  },
+  {
+   "id": "l15c",
+   "type": "bug",
+   "topic": "loop",
+   "code": "patch = [1, 2, 3]\ntotal = 0\nfor i in range(4):\n    total = total + patch[i]",
+   "line": 4,
+   "err": "IndexError"
+  },
+  {
+   "id": "l15d",
+   "type": "parsons",
+   "topic": "loop",
+   "lines": [
+    "row = [3, 8, 2, 5]",
+    "pooled = []",
+    "for i in range(0, 4, 2):",
+    "    pooled.append(max(row[i], row[i + 1]))",
+    "print(pooled)"
+   ],
+   "out": "[8, 5]",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4
+    ]
+   ]
+  }
+ ],
+ "16": [
+  {
+   "id": "l16a",
+   "type": "out",
+   "topic": "slice",
+   "code": "row = [1, 2, 3]\nprint(row[::-1])",
+   "choices": [
+    "[3, 2, 1]",
+    "[1, 2, 3]",
+    "3",
+    "!err"
+   ]
+  },
+  {
+   "id": "l16b",
+   "type": "out",
+   "topic": "dict",
+   "code": "labels = [\"cat\", \"dog\"]\npred = [0.8, 0.2]\nresult = {labels[i]: pred[i] for i in range(2)}\nprint(result[\"dog\"])",
+   "choices": [
+    "0.2",
+    "0.8",
+    "dog",
+    "!err"
+   ]
+  },
+  {
+   "id": "l16c",
+   "type": "bug",
+   "topic": "if",
+   "code": "pred = [0.8, 0.2]\nbest = max(pred)\nif best > \"0.5\":\n    print(\"sure\")",
+   "line": 3,
+   "err": "TypeError"
+  },
+  {
+   "id": "l16d",
+   "type": "parsons",
+   "topic": "loop",
+   "lines": [
+    "labels = [\"cat\", \"dog\", \"cat\"]",
+    "guesses = [\"cat\", \"cat\", \"cat\"]",
+    "right = 0",
+    "for i in range(len(labels)):",
+    "    if labels[i] == guesses[i]:",
+    "        right = right + 1",
+    "print(right, \"/\", len(labels))"
+   ],
+   "out": "2 / 3",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     0,
+     2,
+     1,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     1,
+     2,
+     0,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     2,
+     0,
+     1,
+     3,
+     4,
+     5,
+     6
+    ],
+    [
+     2,
+     1,
+     0,
+     3,
+     4,
+     5,
+     6
+    ]
+   ]
+  }
+ ],
+ "17": [
+  {
+   "id": "l17a",
+   "type": "out",
+   "topic": "str",
+   "code": "text = \"the cat sat\"\nwords = text.split()\nprint(len(words))",
+   "choices": [
+    "3",
+    "11",
+    "1",
+    "the cat sat"
+   ]
+  },
+  {
+   "id": "l17b",
+   "type": "out",
+   "topic": "dict",
+   "code": "vocab = {\"the\": 0, \"cat\": 1, \"sat\": 2}\nids = [vocab[w] for w in \"cat sat the\".split()]\nprint(ids)",
+   "choices": [
+    "[1, 2, 0]",
+    "[0, 1, 2]",
+    "['cat', 'sat', 'the']",
+    "!err"
+   ]
+  },
+  {
+   "id": "l17c",
+   "type": "bug",
+   "topic": "str",
+   "code": "vocab = {\"the\": 0, \"cat\": 1}\nword = \"Cat\"\nprint(vocab[word])",
+   "line": 3,
+   "err": "KeyError"
+  },
+  {
+   "id": "l17d",
+   "type": "parsons",
+   "topic": "loop",
+   "lines": [
+    "a = [1, 0, 2]",
+    "b = [2, 1, 1]",
+    "dot = 0",
+    "for i in range(3):",
+    "    dot = dot + a[i] * b[i]",
+    "print(dot)"
+   ],
+   "out": "4",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    [
+     0,
+     2,
+     1,
+     3,
+     4,
+     5
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4,
+     5
+    ],
+    [
+     1,
+     2,
+     0,
+     3,
+     4,
+     5
+    ],
+    [
+     2,
+     0,
+     1,
+     3,
+     4,
+     5
+    ],
+    [
+     2,
+     1,
+     0,
+     3,
+     4,
+     5
+    ]
+   ]
+  }
+ ],
+ "18": [
+  {
+   "id": "l18a",
+   "type": "out",
+   "topic": "fstr",
+   "code": "question = \"2 + 2?\"\nprompt = f\"Question: {question}\"\nprint(prompt)",
+   "choices": [
+    "Question: 2 + 2?",
+    "Question: {question}",
+    "Question: 4",
+    "!err"
+   ]
+  },
+  {
+   "id": "l18b",
+   "type": "out",
+   "topic": "dict",
+   "code": "probs = {\"cat\": 0.6, \"dog\": 0.3, \"fish\": 0.1}\nword = max(probs, key=probs.get)\nprint(word)",
+   "choices": [
+    "cat",
+    "0.6",
+    "fish",
+    "dog"
+   ]
+  },
+  {
+   "id": "l18c",
+   "type": "bug",
+   "topic": "list",
+   "code": "messages = [{\"role\": \"user\", \"content\": \"Hi\"}]\nfirst = messages[0]\nprint(first[\"content\"])\nprint(messages[\"content\"])",
+   "line": 4,
+   "err": "TypeError"
+  },
+  {
+   "id": "l18d",
+   "type": "parsons",
+   "topic": "str",
+   "lines": [
+    "examples = [\"good -> pos\", \"bad -> neg\"]",
+    "prompt = \"Examples:\\n\"",
+    "for e in examples:",
+    "    prompt = prompt + e + \"\\n\"",
+    "print(prompt)"
+   ],
+   "out": "Examples:\ngood -> pos\nbad -> neg",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4
+    ]
+   ]
+  }
  ]
 };
