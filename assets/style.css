@@ -213,6 +213,34 @@ code, kbd { font-family: var(--mono); font-size: .9em; background: var(--n-950);
 .lang-switch button:hover:not(:disabled) { background: var(--surface-2); }
 .lang-switch button[aria-pressed="true"] { background: var(--surface-3); color: var(--text-strong); box-shadow: inset 0 -3px 0 var(--accent); }
 
+/* Кнопка «Проектор» в шапке: включённая — заливка акцентом */
+.proj-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; font-size: var(--fs-label); }
+.proj-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.proj-btn[aria-pressed="true"]:hover { background: var(--accent-hover); }
+@media (max-width: 900px) { .proj-btn span { display: none; } .proj-btn { padding: 0 10px; } }
+/* На телефоне проектор не нужен — кнопку прячем, но оставляем, если режим включён (чтобы его можно было выключить) */
+@media (max-width: 600px) { .proj-btn[aria-pressed="false"] { display: none; } }
+
+/* ---------- Режим проектора: шире колонка, крупнее подписи, кнопки и цифры ---------- */
+.projector .wrap { max-width: 1760px; padding: 0 48px; }
+.projector .site-header .wrap { min-height: 80px; }
+.projector .brand { font-size: 26px; }
+.projector .brand .logo { width: 44px; height: 44px; }
+.projector .site-header nav a { font-size: var(--fs-small); }
+.projector .lang-switch button, .projector .proj-btn { min-height: 48px; font-size: var(--fs-label); }
+.projector .viz-layout { grid-template-columns: minmax(0, 1fr) 440px; gap: 32px; }
+.projector button, .projector .btn { font-size: var(--fs-small); padding: 12px 20px; min-height: 56px; }
+.projector .note, .projector .stage .hint, .projector .legend { font-size: var(--fs-small); }
+.projector .legend i { width: 16px; height: 16px; }
+.projector .big-number { font-size: var(--fs-metric); }
+.projector label.toggle input { width: 28px; height: 28px; }
+.projector .bar { grid-template-columns: 130px 1fr 44px; font-size: var(--fs-label); }
+.projector .bar .track { height: 16px; }
+.projector .card h3 { font-size: 28px; line-height: 34px; }
+.projector .card .num { height: 36px; font-size: 18px; }
+.projector .term-pop { font-size: 22px; max-width: min(520px, calc(100vw - 16px)); }
+.projector .term-pop b { font-size: 24px; }
+
 /* ---------- Типографика ---------- */
 h1, h2, h3 { color: var(--text-strong); }
 h1 { font-size: var(--fs-h1); line-height: var(--lh-h1); margin: 14px 0 12px; }

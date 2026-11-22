@@ -23,6 +23,20 @@
   }
   var lang = readLang();
 
+  // ---------- Режим проектора ----------
+  // Класс .projector на <html>: шрифты крупнее, текст светлее (токены в style.css). Выбор запоминается в этом
+  // браузере — учитель включает его один раз на компьютере у проектора. Ставим сразу, до отрисовки страницы.
+  var PROJ_KEY = 'mlviz.projector';
+  function isProjector() { return document.documentElement.classList.contains('projector'); }
+  try { if (localStorage.getItem(PROJ_KEY) === '1') document.documentElement.classList.add('projector'); } catch (e) {}
+  function setProjector(on) {
+    document.documentElement.classList.toggle('projector', on);
+    try { localStorage.setItem(PROJ_KEY, on ? '1' : '0'); } catch (e) {}
+    document.querySelectorAll('.proj-btn').forEach(function (b) { b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    // Графики перерисовываются по resize: так они подхватят новую ширину колонки и крупный шрифт
+    window.dispatchEvent(new Event('resize'));
+  }
+
   // t(STR, 'key', {n: 5}) -> строка на текущем языке, с запасным русским вариантом и подстановкой {n}
   function t(dict, key, vars) {
     var s = (dict[lang] && dict[lang][key]) || (dict.ru && dict.ru[key]) || key;
@@ -57,8 +71,9 @@
           doneYes: '✓ Урок пройден: ты доиграл игру до конца. Отметка видна на главной.',
           doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.',
           book: 'Учебник', readChapter: 'Глава {n} учебника', colab: 'Открыть ноутбук в Colab', warmup: 'Python-разминка к уроку',
-          bookLinksTitle: 'К этой главе', vizLink: 'Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓' },
-    tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓"}
+          bookLinksTitle: 'К этой главе', vizLink: 'Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓',
+          projector: 'Проектор', projectorTip: 'Режим проектора: всё крупнее и контрастнее' },
+    tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓","projector":"Проектор","projectorTip":"Реҷаи проектор: ҳама калонтар ва равшантар"}
   };
 
   // Номер страницы в уроке: на один урок курса бывает несколько страниц (урок 17 — три).
@@ -124,7 +139,8 @@
     code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
     external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     flask: '<path d="M10 2v7.5L4.5 19A2 2 0 0 0 6.2 22h11.6a2 2 0 0 0 1.7-3L14 9.5V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>',
-    arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'
+    arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    monitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>'
   };
   function icon(name) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + '</svg>'; }
 
@@ -329,8 +345,11 @@
         '<a class="brand" href="' + root + 'index.html" aria-label="' + t(UI, 'home') + '">' + LOGO + '<span>' + t(UI, 'brand') + '</span></a>' +
         '<nav><a class="book-link" href="' + root + 'book/index.html">' + t(UI, 'book') + '</a>' +
           (root ? '<a class="all-link" href="' + root + 'index.html">' + t(UI, 'all') + '</a>' + lessonNav(root) : '') + '</nav>' +
+        '<button type="button" class="proj-btn" aria-pressed="' + isProjector() + '" title="' + t(UI, 'projectorTip') + '">' +
+          icon('monitor') + '<span>' + t(UI, 'projector') + '</span></button>' +
         langBtns +
       '</div>';
+    h.querySelector('.proj-btn').addEventListener('click', function () { setProjector(!isProjector()); });
     h.querySelectorAll('[data-lang]').forEach(function (b) {
       b.addEventListener('click', function () { setLang(b.dataset.lang); });
     });
@@ -389,7 +408,9 @@
 
   // ---------- Оси графиков (общие для всех страниц) ----------
   // Размер шрифта растёт с шириной графика: на проекторе 15–16 px, на телефоне не меньше 13 px.
-  function fontPx(w) { return Math.round(Math.max(13, Math.min(16, w / 50))); }
+  function fontPx(w) {
+    return isProjector() ? Math.round(Math.max(18, Math.min(22, w / 40))) : Math.round(Math.max(13, Math.min(16, w / 50)));
+  }
   function range(a, b, step) {
     var r = [];
     for (var v = a; v <= b + 1e-9; v += step) r.push(Math.round(v * 1e6) / 1e6);
@@ -528,6 +549,6 @@
   window.MLViz = {
     lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, icon: icon, lessonPart: lessonPart, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
-    fontPx: fontPx, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, quiz: quiz
+    fontPx: fontPx, isProjector: isProjector, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, quiz: quiz
   };
 })();
