@@ -1259,5 +1259,351 @@ window.WARMUP = {
     ]
    ]
   }
+ ],
+ "19": [
+  {
+   "id": "l19a",
+   "type": "out",
+   "topic": "fmt",
+   "code": "score = 0.97345\nprint(f\"{score:.3f}\")",
+   "choices": [
+    "0.973",
+    "0.97345",
+    "0.97",
+    "{score:.3f}"
+   ]
+  },
+  {
+   "id": "l19b",
+   "type": "out",
+   "topic": "dict",
+   "code": "scores = {\"KNN\": 0.93, \"Tree\": 0.95, \"Forest\": 0.97}\nbest = max(scores, key=scores.get)\nprint(best, scores[best])",
+   "choices": [
+    "Forest 0.97",
+    "0.97",
+    "KNN 0.93",
+    "Forest"
+   ]
+  },
+  {
+   "id": "l19c",
+   "type": "bug",
+   "topic": "dict",
+   "code": "scores = {\"KNN\": 0.93, \"Forest\": 0.97}\nfor name in scores:\n    print(name, scores[name])\nprint(scores[\"forest\"])",
+   "line": 4,
+   "err": "KeyError"
+  },
+  {
+   "id": "l19d",
+   "type": "parsons",
+   "topic": "loop",
+   "lines": [
+    "scores = {\"KNN\": 0.93, \"Tree\": 0.95, \"Forest\": 0.97}",
+    "best = \"KNN\"",
+    "for name in scores:",
+    "    if scores[name] > scores[best]:",
+    "        best = name",
+    "print(best)"
+   ],
+   "out": "Forest",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    [
+     1,
+     0,
+     2,
+     3,
+     4,
+     5
+    ]
+   ]
+  }
+ ],
+ "20": [
+  {
+   "id": "l20a",
+   "type": "out",
+   "topic": "func",
+   "code": "def predict(h):\n    return round(9.5 * h + 12.3, 1)\n\nprint(predict(4))",
+   "choices": [
+    "50.3",
+    "50",
+    "50.0",
+    "9.5 * 4 + 12.3"
+   ]
+  },
+  {
+   "id": "l20b",
+   "type": "out",
+   "topic": "func",
+   "code": "def hello(name):\n    return \"Hi, \" + name\n\nf = hello\nprint(f(\"Ali\"))",
+   "choices": [
+    "Hi, Ali",
+    "Hi, name",
+    "hello",
+    "!err"
+   ]
+  },
+  {
+   "id": "l20c",
+   "type": "bug",
+   "topic": "func",
+   "code": "def predict(h):\n    return 9.5 * h + 12.3\n\nprint(predict(\"4\"))",
+   "line": 2,
+   "err": "TypeError"
+  },
+  {
+   "id": "l20d",
+   "type": "parsons",
+   "topic": "func",
+   "lines": [
+    "def predict(h):",
+    "    score = 9.5 * h + 12.3",
+    "    return round(score, 1)",
+    "print(predict(2))"
+   ],
+   "out": "31.3",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  }
+ ],
+ "21": [
+  {
+   "id": "l21a",
+   "type": "out",
+   "topic": "math",
+   "code": "baseline = 0.44\nmodel = 0.97\nprint(round((model - baseline) * 100))",
+   "choices": [
+    "53",
+    "0.53",
+    "97",
+    "44"
+   ]
+  },
+  {
+   "id": "l21b",
+   "type": "out",
+   "topic": "list",
+   "code": "columns = [\"species\", \"bill\", \"mass\", \"island\"]\nfeatures = [c for c in columns if c != \"species\"]\nprint(features)",
+   "choices": [
+    "['bill', 'mass', 'island']",
+    "['species']",
+    "['species', 'bill', 'mass', 'island']",
+    "3"
+   ]
+  },
+  {
+   "id": "l21c",
+   "type": "bug",
+   "topic": "tuple",
+   "code": "X_tr, X_te, y_tr = [\"a\", \"b\", \"c\", \"d\"]\nprint(X_tr)",
+   "line": 1,
+   "err": "ValueError"
+  },
+  {
+   "id": "l21d",
+   "type": "parsons",
+   "topic": "fstr",
+   "lines": [
+    "baseline = 0.44",
+    "model = 0.97",
+    "gain = model - baseline",
+    "print(f\"better by {gain:.2f}\")"
+   ],
+   "out": "better by 0.53",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     1,
+     0,
+     2,
+     3
+    ]
+   ]
+  }
+ ],
+ "22": [
+  {
+   "id": "l22a",
+   "type": "out",
+   "topic": "str",
+   "code": "text = \"45,4000\"\nparts = text.split(\",\")\nprint(parts)",
+   "choices": [
+    "['45', '4000']",
+    "[45, 4000]",
+    "45 4000",
+    "['45,4000']"
+   ]
+  },
+  {
+   "id": "l22b",
+   "type": "out",
+   "topic": "str",
+   "code": "parts = [\"45\", \"4000\"]\nnums = [float(p) for p in parts]\nprint(nums[0] + 1)",
+   "choices": [
+    "46.0",
+    "451",
+    "46",
+    "!err"
+   ]
+  },
+  {
+   "id": "l22c",
+   "type": "bug",
+   "topic": "str",
+   "code": "text = \"45 mm\"\nvalue = float(text)\nprint(value)",
+   "line": 2,
+   "err": "ValueError"
+  },
+  {
+   "id": "l22d",
+   "type": "parsons",
+   "topic": "func",
+   "lines": [
+    "def predict(text):",
+    "    parts = text.split(\",\")",
+    "    nums = [float(p) for p in parts]",
+    "    return str(sum(nums))",
+    "print(predict(\"1,2,3\"))"
+   ],
+   "out": "6.0",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4
+    ]
+   ]
+  }
+ ],
+ "23": [
+  {
+   "id": "l23a",
+   "type": "out",
+   "topic": "func",
+   "code": "def predict(x):\n    print(x * 2)\n\nresult = predict(5)\nprint(result)",
+   "choices": [
+    "10\nNone",
+    "10\n10",
+    "10",
+    "None"
+   ]
+  },
+  {
+   "id": "l23b",
+   "type": "out",
+   "topic": "try",
+   "code": "try:\n    value = float(\"abc\")\nexcept ValueError:\n    value = 0\nprint(value)",
+   "choices": [
+    "0",
+    "abc",
+    "0.0",
+    "!err"
+   ]
+  },
+  {
+   "id": "l23c",
+   "type": "bug",
+   "topic": "list",
+   "code": "words = [\"a\", \"b\"]\nprint(words.length)",
+   "line": 2,
+   "err": "AttributeError"
+  },
+  {
+   "id": "l23d",
+   "type": "parsons",
+   "topic": "try",
+   "lines": [
+    "def safe(text):",
+    "    try:",
+    "        return float(text) * 2",
+    "    except ValueError:",
+    "        return \"error\"",
+    "print(safe(\"4\"), safe(\"abc\"))"
+   ],
+   "out": "8.0 error",
+   "orders": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   ]
+  }
+ ],
+ "24": [
+  {
+   "id": "l24a",
+   "type": "out",
+   "topic": "list",
+   "code": "lessons = list(range(1, 25))\nprint(len(lessons), lessons[-1])",
+   "choices": [
+    "24 24",
+    "24 23",
+    "25 24",
+    "23 24"
+   ]
+  },
+  {
+   "id": "l24b",
+   "type": "out",
+   "topic": "dict",
+   "code": "votes = [\"app\", \"pitch\", \"app\", \"app\"]\ncount = {}\nfor v in votes:\n    count[v] = count.get(v, 0) + 1\nprint(count)",
+   "choices": [
+    "{'app': 3, 'pitch': 1}",
+    "{'app': 1, 'pitch': 1}",
+    "3",
+    "['app', 'pitch']"
+   ]
+  },
+  {
+   "id": "l24c",
+   "type": "bug",
+   "topic": "func",
+   "code": "name = \"Ali\"\nprint \"Thanks, \" + name",
+   "line": 2,
+   "err": "SyntaxError"
+  },
+  {
+   "id": "l24d",
+   "type": "parsons",
+   "topic": "math",
+   "lines": [
+    "scores = [8, 9, 10]",
+    "avg = sum(scores) / len(scores)",
+    "print(f\"Demo Day: {avg}\")"
+   ],
+   "out": "Demo Day: 9.0",
+   "orders": [
+    [
+     0,
+     1,
+     2
+    ]
+   ]
+  }
  ]
 };

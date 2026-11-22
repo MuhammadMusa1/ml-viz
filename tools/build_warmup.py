@@ -518,6 +518,162 @@ for e in examples:
 print(prompt)
 '''),
     ],
+    # Урок 19 — AutoML: перебор моделей, лучшая по оценке, ровная печать результатов
+    19: [
+        dict(id='l19a', type='out', topic='fmt', code='''
+score = 0.97345
+print(f"{score:.3f}")
+''', wrong=['0.97345', '0.97', '{score:.3f}']),
+        dict(id='l19b', type='out', topic='dict', code='''
+scores = {"KNN": 0.93, "Tree": 0.95, "Forest": 0.97}
+best = max(scores, key=scores.get)
+print(best, scores[best])
+''', wrong=['0.97', 'KNN 0.93', 'Forest']),
+        dict(id='l19c', type='bug', topic='dict', code='''
+scores = {"KNN": 0.93, "Forest": 0.97}
+for name in scores:
+    print(name, scores[name])
+print(scores["forest"])
+'''),
+        # Первая модель — не лучшая: иначе программа «угадала» бы и без сравнения
+        dict(id='l19d', type='parsons', topic='loop', code='''
+scores = {"KNN": 0.93, "Tree": 0.95, "Forest": 0.97}
+best = "KNN"
+for name in scores:
+    if scores[name] > scores[best]:
+        best = name
+print(best)
+'''),
+    ],
+    # Урок 20 — Gradio: функция прогноза, функцию передают (fn=predict), а вызывает её Gradio
+    20: [
+        dict(id='l20a', type='out', topic='func', code='''
+def predict(h):
+    return round(9.5 * h + 12.3, 1)
+
+print(predict(4))
+''', wrong=['50', '50.0', '9.5 * 4 + 12.3']),
+        dict(id='l20b', type='out', topic='func', code='''
+def hello(name):
+    return "Hi, " + name
+
+f = hello
+print(f("Ali"))
+''', wrong=['Hi, name', 'hello', '!err']),
+        dict(id='l20c', type='bug', topic='func', code='''
+def predict(h):
+    return 9.5 * h + 12.3
+
+print(predict("4"))
+'''),
+        dict(id='l20d', type='parsons', topic='func', code='''
+def predict(h):
+    score = 9.5 * h + 12.3
+    return round(score, 1)
+print(predict(2))
+'''),
+    ],
+    # Урок 21 — финальный проект, питч: признаки без ответа, сравнение с baseline
+    21: [
+        dict(id='l21a', type='out', topic='math', code='''
+baseline = 0.44
+model = 0.97
+print(round((model - baseline) * 100))
+''', wrong=['0.53', '97', '44']),
+        dict(id='l21b', type='out', topic='list', code='''
+columns = ["species", "bill", "mass", "island"]
+features = [c for c in columns if c != "species"]
+print(features)
+''', wrong=["['species']", "['species', 'bill', 'mass', 'island']", '3']),
+        dict(id='l21c', type='bug', topic='tuple', code='''
+X_tr, X_te, y_tr = ["a", "b", "c", "d"]
+print(X_tr)
+'''),
+        dict(id='l21d', type='parsons', topic='fstr', code='''
+baseline = 0.44
+model = 0.97
+gain = model - baseline
+print(f"better by {gain:.2f}")
+'''),
+    ],
+    # Урок 22 — финальный проект, сборка: из текстового поля приходит строка — её превращают в числа
+    22: [
+        dict(id='l22a', type='out', topic='str', code='''
+text = "45,4000"
+parts = text.split(",")
+print(parts)
+''', wrong=['[45, 4000]', '45 4000', "['45,4000']"]),
+        dict(id='l22b', type='out', topic='str', code='''
+parts = ["45", "4000"]
+nums = [float(p) for p in parts]
+print(nums[0] + 1)
+''', wrong=['451', '46', '!err']),
+        dict(id='l22c', type='bug', topic='str', code='''
+text = "45 mm"
+value = float(text)
+print(value)
+'''),
+        dict(id='l22d', type='parsons', topic='func', code='''
+def predict(text):
+    parts = text.split(",")
+    nums = [float(p) for p in parts]
+    return str(sum(nums))
+print(predict("1,2,3"))
+'''),
+    ],
+    # Урок 23 — репетиция: ошибки, которые чаще всего ломают проект на защите
+    23: [
+        dict(id='l23a', type='out', topic='func', code='''
+def predict(x):
+    print(x * 2)
+
+result = predict(5)
+print(result)
+''', wrong=['10\n10', '10', 'None']),
+        dict(id='l23b', type='out', topic='try', code='''
+try:
+    value = float("abc")
+except ValueError:
+    value = 0
+print(value)
+''', wrong=['abc', '0.0', '!err']),
+        dict(id='l23c', type='bug', topic='list', code='''
+words = ["a", "b"]
+print(words.length)
+'''),
+        # Две проверки сразу: нормальный ввод и неправильный — иначе ветки try и except можно было бы перепутать
+        dict(id='l23d', type='parsons', topic='try', code='''
+def safe(text):
+    try:
+        return float(text) * 2
+    except ValueError:
+        return "error"
+print(safe("4"), safe("abc"))
+'''),
+    ],
+    # Урок 24 — Demo Day: итоговое повторение главных конструкций курса
+    24: [
+        dict(id='l24a', type='out', topic='list', code='''
+lessons = list(range(1, 25))
+print(len(lessons), lessons[-1])
+''', wrong=['24 23', '25 24', '23 24']),
+        dict(id='l24b', type='out', topic='dict', code='''
+votes = ["app", "pitch", "app", "app"]
+count = {}
+for v in votes:
+    count[v] = count.get(v, 0) + 1
+print(count)
+''', wrong=["{'app': 1, 'pitch': 1}", '3', "['app', 'pitch']"]),
+        dict(id='l24c', type='bug', topic='func', code='''
+name = "Ali"
+print "Thanks, " + name
+'''),
+        dict(id='l24d', type='parsons', topic='math', code='''
+scores = [8, 9, 10]
+avg = sum(scores) / len(scores)
+print(f"Demo Day: {avg}")
+'''),
+    ],
 }
 
 
