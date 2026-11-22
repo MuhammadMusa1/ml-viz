@@ -511,6 +511,7 @@
     function showStep() { step.textContent = o.text.step(q); }
     function begin() {
       q.answered = false;
+      choiceBox = null;   // клавиши 1–9 — только для вариантов этого раунда
       result.innerHTML = '';
       next.hidden = true;
       showStep();

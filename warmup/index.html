@@ -6,30 +6,64 @@
   <title>Python-разминка · Лаборатория ML</title>
   <link rel="stylesheet" href="../assets/style.css">
   <style>
-    /* Только для этой страницы: блок кода с номерами строк и сборка программы из строк */
-    .warm { max-width: 900px; margin-top: 18px; padding: 16px 18px; }
-    .warm h3 { margin: 0 0 4px; }
-    .warm .ask { font-size: 18px; margin: 4px 0 0; }
-    pre.code { font-family: var(--mono); font-size: 19px; line-height: 1.5; background: var(--bg); border: 1px solid var(--line);
-               border-radius: var(--radius-sm); padding: 12px 14px; margin: 12px 0; overflow-x: auto; }
-    pre.code .ln { display: block; white-space: pre; min-height: 1.5em; }
-    pre.code .no { display: inline-block; width: 2ch; margin-right: 16px; color: var(--muted); text-align: right; user-select: none; }
-    .choices.mono button { font-family: var(--mono); font-size: 17px; text-align: left; justify-content: flex-start; }
-    .parsons { display: grid; gap: 10px; margin-top: 10px; }
-    .parsons .lines { display: flex; flex-direction: column; gap: 6px; }
-    .parsons .built { min-height: 52px; border: 1px dashed var(--line); border-radius: var(--radius-sm); padding: 8px; }
-    .parsons .lines button { font-family: var(--mono); font-size: 17px; white-space: pre-wrap; text-align: left; justify-content: flex-start; width: 100%; }
-    .parsons .empty { color: var(--muted); margin: 6px 4px; }
-    .warm #gameResult { font-size: 17px; line-height: 1.5; }
-    .warm #gameResult pre.code { font-size: 16px; }
-    .final-list { list-style: none; padding: 0; margin: 8px 0; }
-    .final-list li { margin: 4px 0; }
-    @media (max-width: 600px) {
-      pre.code { font-size: 15px; padding: 10px; }
-      pre.code .no { margin-right: 10px; }
-      .choices.mono { grid-template-columns: 1fr; }
-      .choices.mono button, .parsons .lines button { font-size: 15px; }
-    }
+    /* Только для этой страницы: задание, код с номерами строк и подсветкой, сборка программы, итог */
+    .lesson-picks { display: flex; flex-wrap: wrap; gap: 8px; }
+    .lesson-picks button { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-code); font-size: var(--fs-label); padding: 6px 12px 6px 10px; border-radius: var(--r-s); }
+    .lesson-picks button::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; }
+    .lesson-picks button[aria-pressed="true"] { background: var(--surface-3); border-color: var(--accent); }
+    .warm { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
+    .task-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    /* «Задание 3 из 8» — бирка журнала, как бирка урока */
+    .task-head #gameStep { display: inline-flex; align-items: center; gap: 8px; margin: 0; background: var(--paper); color: var(--ink);
+      border-radius: var(--r-xs); padding: 5px 12px 5px 10px; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 700; }
+    .task-head #gameStep::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; }
+    .task-head #ask { margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+    .task-hint { color: var(--text-2); margin: 8px 0 0; }
+    .task-hint:empty { display: none; }
+    .task-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 20px; }
+    .task-grid.wide { grid-template-columns: minmax(0, 1fr); }
+    @media (max-width: 900px) { .task-grid { grid-template-columns: minmax(0, 1fr); } }
+    /* Код: тёмное поле, номера строк, подсветка */
+    pre.code { font-family: var(--font-code); font-size: calc(var(--fs-code) + 2px); line-height: 1.55; color: var(--n-100); background: var(--n-950);
+      border: 1px solid var(--line); border-radius: var(--r-m); padding: 12px 0; margin: 0; overflow-x: auto; }
+    pre.code .ln { display: grid; grid-template-columns: 3.2em 1fr; min-height: 1.55em; white-space: pre; width: 100%; padding-right: 14px;
+      font: inherit; color: inherit; text-align: left; background: transparent; border: 0; border-radius: 0; }
+    pre.code .no { color: var(--n-500); text-align: right; padding-right: 1em; user-select: none; }
+    pre.code button.ln { cursor: pointer; min-height: 44px; align-items: center; border-top: 1px solid rgba(255, 255, 255, .04); transition: background-color .15s; }
+    pre.code button.ln:hover:not(:disabled) { background: var(--surface-2); }
+    pre.code button.ln:disabled { cursor: default; opacity: 1; color: inherit; background: transparent; }
+    pre.code .ln.is-right { background: var(--accent-soft) !important; box-shadow: inset 4px 0 0 var(--accent); }
+    pre.code .ln.is-wrong { box-shadow: inset 4px 0 0 var(--n-300); outline: 1px dashed var(--n-300); outline-offset: -1px; }
+    pre.code button.ln { padding: 0 14px 0 0; }   /* без общего отступа кнопок — номера строк в одну колонку */
+    pre.code .ln.slot { color: var(--text-muted); min-height: 44px; align-items: center; border-top: 1px solid rgba(255, 255, 255, .04); }
+    .tok-k { color: #C4B5FD; } .tok-s { color: #F5D0A9; } .tok-n { color: #FDBA74; } .tok-c { color: var(--n-400); } .tok-f { color: #A5F3FC; }
+    /* Ответы */
+    .choices.mono button { font-family: var(--font-code); font-weight: 400; font-size: calc(var(--fs-code) + 1px); text-align: left; display: flex; align-items: center; }
+    .choices.mono button .key { margin-left: auto; }
+    #answer .row { margin-top: 12px; }
+    .parsons .lines { display: flex; flex-direction: column; gap: 8px; }
+    .parsons .lines button { font-family: var(--font-code); font-weight: 400; font-size: calc(var(--fs-code) + 1px); white-space: pre-wrap; text-align: left; width: 100%; }
+    /* Вердикт после ответа */
+    #gameResult:empty { display: none; }
+    .verdict { display: flex; gap: 14px; align-items: flex-start; margin-top: 20px; padding: 16px 20px; border-radius: var(--r-m); background: var(--surface-1); border: 1px solid var(--line); }
+    .verdict .mark { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
+    .verdict.ok .mark { background: var(--accent); color: var(--accent-ink); }
+    .verdict.no .mark { border: 2px dashed var(--n-300); color: var(--text-2); }
+    .verdict b.v { display: block; color: var(--text-strong); font-size: var(--fs-h3); line-height: var(--lh-h3); margin-bottom: 4px; }
+    .verdict pre.code { margin-top: 10px; font-size: var(--fs-code); }
+    #nextBtn { margin-top: 16px; }
+    /* Итог */
+    .final { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 32px; margin-top: 20px; padding: 24px; border-radius: var(--r-l); background: var(--surface-2); border: 1px solid var(--line); }
+    @media (max-width: 900px) { .final { grid-template-columns: minmax(0, 1fr); } }
+    .final .score { font-size: var(--fs-h2); color: var(--text-2); font-weight: 700; margin: 8px 0; font-variant-numeric: tabular-nums; }
+    .final .score b { font-size: 72px; line-height: 1; color: var(--text-strong); }
+    .projector .final .score b { font-size: 104px; }
+    .final .row { margin-top: 16px; gap: 12px; }
+    .repeat-list { list-style: none; padding: 0; margin: 8px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+    .repeat-list li { display: flex; gap: 12px; align-items: baseline; padding: 12px 16px; border-radius: var(--r-m); background: var(--surface-1); border: 1px solid var(--line); }
+    .repeat-list .n { flex: none; font-family: var(--font-code); font-size: var(--fs-label); color: var(--text-2); border: 1.5px solid var(--control-line); border-radius: var(--r-xs); padding: 0 6px; }
+    .repeat-list b { color: var(--text-strong); }
+    .repeat-list small { display: block; color: var(--text-muted); font-size: var(--fs-label); }
   </style>
 </head>
 <body>
@@ -40,18 +74,20 @@
     <h1 data-i18n="title"></h1>
     <div class="analogy-box" data-i18n-html="analogy"></div>
 
-    <div style="margin-top:18px">
+    <div style="margin-top:24px">
       <p class="sub" data-i18n="pick"></p>
-      <div class="seg" id="lessonSeg"></div>
-      <p class="note" id="lessonInfo" style="font-size:15px;margin-top:8px"></p>
+      <div class="lesson-picks" id="lessonSeg"></div>
+      <p class="note" id="lessonInfo" style="margin-top:12px"></p>
     </div>
 
-    <div class="stage warm" id="game">
-      <h3 id="gameStep"></h3>
-      <p class="ask" id="ask"></p>
-      <pre class="code" id="code"></pre>
-      <div id="answer"></div>
-      <p id="gameResult"></p>
+    <div class="warm" id="game">
+      <div class="task-head"><h3 id="gameStep"></h3><h2 id="ask"></h2></div>
+      <p class="task-hint" id="hint"></p>
+      <div class="task-grid" id="taskGrid">
+        <pre class="code" id="code"></pre>
+        <div><p class="sub" id="answerLabel"></p><div id="answer"></div></div>
+      </div>
+      <div id="gameResult"></div>
       <button type="button" id="nextBtn" hidden></button>
     </div>
 
@@ -88,26 +124,35 @@
         finish: 'Итог',
         finishTitle: 'Итог разминки',
         again: 'Сыграть ещё ↺',
-        askOut: 'Что выведет программа? Сначала подумай, потом нажимай.',
-        askBug: 'В этой программе есть ошибка. В какой строке Python остановится?',
-        askParsons: 'Собери программу: нажимай строки по порядку. {g}',
+        askOut: 'Что выведет программа?',
+        askBug: 'В какой строке ошибка?',
+        askParsons: 'Собери программу',
+        hintOut: 'Сначала подумай, потом нажимай.',
+        keysHint: 'Можно клавишами 1–{n}.',
+        hintBug: 'Python остановится на одной из строк. Нажми на неё прямо в коде — или «Ошибки нет».',
+        hintParsons: '{g} Нажимай строки по порядку.',
+        answerLabel: 'Выбери ответ',
+        bugLabel: 'Или',
         errChoice: 'Ошибка — программа не запустится',
         lineN: 'Строка {n}',
         noBug: 'Ошибки нет',
         bugIs: 'Ошибка в строке {n}. Python напишет <code>{err}</code>.',
-        yourProgram: 'Твоя программа (нажми строку, чтобы убрать её)',
         poolLabel: 'Строки (нажми, чтобы добавить)',
-        emptyProg: 'Пока пусто — нажимай строки ниже.',
-        reset: 'Сначала',
+        slot: '— нажми строку —',
+        undo: '← Убрать последнюю',
         check: 'Проверить',
         rightOrder: 'Правильная программа:',
-        right: '<b>✓ Верно!</b>',
-        wrong: '<b>✕ Не так.</b>',
-        finalScore: 'Верно: <b>{s} из {n}</b>.',
+        right: 'Верно',
+        wrong: 'Не так',
+        finalScore: '<b>{s}</b> из {n}',
         finalAll: 'Отлично — ты готов к уроку!',
         finalSome: 'Неплохо. Перед уроком повтори темы, где ошибся.',
         finalFew: 'Эти темы стоит разобрать вместе с учителем — с ними урок пойдёт легче.',
-        repeat: 'Повторить: {t}.',
+        repeatTitle: 'Повтори',
+        repeatItem: 'Задание {i}',
+        okTopics: 'Верно: {t}.',
+        retry: 'Пройти ошибки ещё раз',
+        toLessonN: 'К уроку {n}',
 
         topic_var: 'переменные',
         topic_if: 'условия if / else',
@@ -192,41 +237,61 @@
     el('code').setAttribute('aria-label', T('codeAria'));
 
     function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    // Подсветка Python: ключевые слова, строки, числа, встроенные функции, комментарии.
+    // Цвета пастельные и только внутри кода — интерфейс и данные ими не красим
+    var HL = /(f?"[^"]*"|'[^']*')|(#.*$)|\b(def|return|if|elif|else|for|in|while|not|is|and|or|None|True|False|import|from|as)\b|\b(print|len|abs|sorted|sum|range|min|max)\b(?=\()|\b(\d+(?:\.\d+)?)\b/g;
+    function hl(line) {
+      var out = '', last = 0, m;
+      HL.lastIndex = 0;
+      while ((m = HL.exec(line))) {
+        out += esc(line.slice(last, m.index));
+        var cls = m[1] ? 's' : m[2] ? 'c' : m[3] ? 'k' : m[4] ? 'f' : 'n';
+        out += '<span class="tok-' + cls + '">' + esc(m[0]) + '</span>';
+        last = m.index + m[0].length;
+      }
+      return out + esc(line.slice(last));
+    }
+    function lineHtml(text, i) { return '<span class="no">' + (i + 1) + '</span><span>' + hl(text) + '</span>'; }
     // Код с номерами строк: в заданиях «найди ошибку» номер строки — это ответ
     function codeHtml(code) {
-      return code.split('\n').map(function (l, i) {
-        return '<span class="ln"><span class="no">' + (i + 1) + '</span>' + esc(l) + '</span>';
-      }).join('');
+      return code.split('\n').map(function (l, i) { return '<span class="ln">' + lineHtml(l, i) + '</span>'; }).join('');
+    }
+    function verdict(ok, body) {
+      return '<div class="verdict ' + (ok ? 'ok' : 'no') + '"><span class="mark" aria-hidden="true">' + (ok ? '✓' : '✕') + '</span>' +
+        '<div><b class="v">' + T(ok ? 'right' : 'wrong') + '</b>' + body + '</div></div>';
     }
     function lessonItem(n) {
       var it = null;
       (window.CATALOG || []).forEach(function (ph) { ph.items.forEach(function (x) { if (!it && x.lesson === n) it = x; }); });
       return it;
     }
-    function topicsOf(n) {
+    function topicsOf(list) {
       var seen = [];
-      W[n].forEach(function (t) { if (seen.indexOf(t.topic) === -1) seen.push(t.topic); });
+      list.forEach(function (t) { if (seen.indexOf(t.topic) === -1) seen.push(t.topic); });
       return seen.map(function (k) { return T('topic_' + k); }).join(', ');
     }
 
     // ---------- Выбор урока: ?lesson=N в адресе (на него ведёт ссылка со страницы урока) ----------
     var lesson = +new URLSearchParams(location.search).get('lesson');
     if (LESSONS.indexOf(lesson) === -1) lesson = LESSONS[0];
+    var retryIdx = null, pendingRetry = false;   // «Пройти ошибки ещё раз»: номера заданий с ошибками
 
     LESSONS.forEach(function (n) {
       var b = document.createElement('button');
-      b.type = 'button'; b.dataset.n = n; b.textContent = T('lessonBtn', { n: n });
+      b.type = 'button'; b.dataset.n = n;
+      b.setAttribute('aria-label', T('lessonBtn', { n: n }));
+      b.textContent = '№ ' + (n < 10 ? '0' : '') + n;
       b.addEventListener('click', function () { pickLesson(n); });
       el('lessonSeg').appendChild(b);
     });
     function pickLesson(n) {
-      lesson = n;
+      lesson = n; retryIdx = null;
       MLViz.setPressed(el('lessonSeg'), function (b) { return +b.dataset.n === n; });
       var it = lessonItem(n);
       el('lessonInfo').innerHTML = T('lessonInfo', {
         l: it ? MLViz.lessonLabel(it) : T('lessonBtn', { n: n }),
         t: it ? esc(it.title[MLViz.lang] || it.title.ru) : '',
-        topics: topicsOf(n)
+        topics: topicsOf(W[n])
       }) + (it && it.status === 'ready' ? ' <a href="../viz/' + it.id + '/index.html">' + T('toLesson') + '</a>' : '');
       // Адрес запоминает урок: перезагрузка и переключатель языка остаются на нём
       var u = new URL(location.href); u.searchParams.set('lesson', n);
@@ -235,10 +300,23 @@
     }
 
     // ---------- Раунды ----------
-    function tasks() { return W[lesson]; }
+    function tasks() {
+      var all = W[lesson];
+      return retryIdx ? retryIdx.map(function (i) { return all[i]; }) : all;
+    }
+    function layout(wide) {
+      el('taskGrid').classList.toggle('wide', !!wide);
+      el('code').hidden = false;
+    }
 
+    // «Что выведет?»: код слева, варианты справа (клавиши 1–4 добавляет MLViz.quiz)
     function roundOut(q, t) {
+      layout(false);
       el('ask').textContent = T('askOut');
+      // Про клавиши говорим только там, где есть клавиатура
+      el('hint').textContent = T('hintOut') + (window.matchMedia('(pointer: coarse)').matches ? '' : ' ' + T('keysHint', { n: t.choices.length }));
+      el('answerLabel').textContent = T('answerLabel');
+      el('code').innerHTML = codeHtml(t.code);
       var opts = MLViz.shuffle(t.choices.map(function (c, k) { return { v: c, ok: k === 0 }; }), rand);
       var box = el('answer');
       box.className = 'choices mono';
@@ -246,84 +324,123 @@
         return o.v === '!err' ? esc(T('errChoice')) : esc(o.v).replace(/\n/g, '<br>');
       }), function (k) { return opts[k].ok; }, function (k, ok) {
         q.data.res[q.i] = ok;
-        q.answer(ok ? 1 : 0, (ok ? T('right') : T('wrong')) + ' ' + T('x_' + t.id));
+        q.answer(ok ? 1 : 0, verdict(ok, T('x_' + t.id)));
       });
     }
 
+    // «В какой строке ошибка?»: строки кода — сами кнопки
     function roundBug(q, t) {
+      layout(false);
       el('ask').textContent = T('askBug');
-      var nums = [];
-      t.code.split('\n').forEach(function (l, i) { if (l.trim()) nums.push(i + 1); });   // пустые строки не варианты
-      var box = el('answer');
-      box.className = 'choices';
-      var labels = nums.map(function (n) { return T('lineN', { n: n }); }).concat([T('noBug')]);
-      q.choices(box, labels, function (k) { return nums[k] === t.line; }, function (k, ok) {
+      el('hint').textContent = T('hintBug');
+      el('answerLabel').textContent = T('bugLabel');
+      var code = el('code'), lines = t.code.split('\n'), done = false;
+      code.innerHTML = '';
+      function finish(pickedLine) {
+        if (done) return;
+        done = true;
+        var ok = pickedLine === t.line;
+        code.querySelectorAll('button.ln').forEach(function (b) {
+          b.disabled = true;
+          if (+b.dataset.n === t.line) b.classList.add('is-right');
+          else if (+b.dataset.n === pickedLine) b.classList.add('is-wrong');
+        });
+        noBtn.disabled = true;
+        if (pickedLine === 0) noBtn.classList.add('wrong');
         q.data.res[q.i] = ok;
-        q.answer(ok ? 1 : 0, (ok ? T('right') : T('wrong')) + ' ' + T('bugIs', { n: t.line, err: t.err }) + ' ' + T('x_' + t.id));
+        q.answer(ok ? 1 : 0, verdict(ok, T('bugIs', { n: t.line, err: t.err }) + ' ' + T('x_' + t.id)));
+      }
+      lines.forEach(function (l, i) {
+        if (!l.trim()) { code.insertAdjacentHTML('beforeend', '<span class="ln">' + lineHtml('', i) + '</span>'); return; }
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'ln'; b.dataset.n = i + 1;
+        b.setAttribute('aria-label', T('lineN', { n: i + 1 }) + ': ' + l.trim());
+        b.innerHTML = lineHtml(l, i);
+        b.addEventListener('click', function () { finish(i + 1); });
+        code.appendChild(b);
       });
+      var box = el('answer');
+      box.className = '';
+      box.innerHTML = '';
+      var noBtn = document.createElement('button');
+      noBtn.type = 'button'; noBtn.textContent = T('noBug');
+      noBtn.addEventListener('click', function () { finish(0); });
+      box.appendChild(noBtn);
     }
 
-    // «Собери программу»: строки нажимают по порядку, нажатую в программе строку можно вернуть обратно
+    // «Собери программу»: слева — нумерованные строки программы, справа — строки, которые нажимают по порядку
     function roundParsons(q, t) {
-      el('ask').innerHTML = T('askParsons', { g: T('g_' + t.id) });
-      el('code').hidden = true;
-      var n = t.lines.length, built = [], pool;
-      function isValid(order) {
-        return t.orders.some(function (o) { return o.join() === order.join(); });
-      }
+      layout(false);
+      el('ask').textContent = T('askParsons');
+      el('hint').innerHTML = T('hintParsons', { g: T('g_' + t.id) });
+      el('answerLabel').textContent = T('poolLabel');
+      var n = t.lines.length, built = [], pool, done = false;
+      function isValid(order) { return t.orders.some(function (o) { return o.join() === order.join(); }); }
       // Перемешиваем так, чтобы строки не стояли сразу в верном порядке
       do { pool = MLViz.shuffle(MLViz.range(0, n - 1, 1), rand); } while (isValid(pool));
       var box = el('answer');
       box.className = 'parsons';
-      box.innerHTML =
-        '<div><p class="sub">' + T('yourProgram') + '</p><div class="lines built" id="built"></div></div>' +
-        '<div><p class="sub">' + T('poolLabel') + '</p><div class="lines" id="pool"></div></div>' +
-        '<div class="row"><button type="button" id="resetBtn">' + T('reset') + '</button>' +
+      box.innerHTML = '<div class="lines" id="pool"></div>' +
+        '<div class="row"><button type="button" id="undoBtn">' + T('undo') + '</button>' +
         '<button type="button" class="primary" id="checkBtn" disabled>' + T('check') + '</button></div>';
-      var done = false;
-      function lineBtn(i, onClick) {
-        var b = document.createElement('button');
-        b.type = 'button'; b.textContent = t.lines[i];
-        b.disabled = done;
-        b.addEventListener('click', onClick);
-        return b;
-      }
       function draw() {
-        var bEl = el('built'), pEl = el('pool');
-        bEl.innerHTML = ''; pEl.innerHTML = '';
-        if (!built.length) bEl.innerHTML = '<p class="empty">' + T('emptyProg') + '</p>';
-        built.forEach(function (i, pos) {
-          bEl.appendChild(lineBtn(i, function () { built.splice(pos, 1); draw(); }));
-        });
-        pool.forEach(function (i) {
-          if (built.indexOf(i) === -1) pEl.appendChild(lineBtn(i, function () { built.push(i); draw(); }));
+        var code = el('code'), pEl = el('pool');
+        code.innerHTML = ''; pEl.innerHTML = '';
+        for (var i = 0; i < n; i++) {
+          if (i < built.length) {
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = 'ln'; b.disabled = done;
+            b.innerHTML = lineHtml(t.lines[built[i]], i);
+            b.addEventListener('click', (function (pos) { return function () { built.splice(pos, 1); draw(); }; })(i));
+            code.appendChild(b);
+          } else {
+            code.insertAdjacentHTML('beforeend', '<span class="ln slot"><span class="no">' + (i + 1) + '</span><span>' + T('slot') + '</span></span>');
+          }
+        }
+        pool.forEach(function (k) {
+          if (built.indexOf(k) !== -1) return;
+          var b = document.createElement('button');
+          b.type = 'button'; b.textContent = t.lines[k]; b.disabled = done;
+          b.addEventListener('click', function () { built.push(k); draw(); });
+          pEl.appendChild(b);
         });
         el('checkBtn').disabled = done || built.length < n;
-        el('resetBtn').disabled = done || !built.length;
+        el('undoBtn').disabled = done || !built.length;
       }
-      el('resetBtn').addEventListener('click', function () { built = []; draw(); });
+      el('undoBtn').addEventListener('click', function () { built.pop(); draw(); });
       el('checkBtn').addEventListener('click', function () {
         if (built.length < n) return;
         var ok = isValid(built);
         done = true; draw();
         q.data.res[q.i] = ok;
-        q.answer(ok ? 1 : 0, (ok ? T('right') : T('wrong') + ' ' + T('rightOrder') +
-          '<pre class="code">' + codeHtml(t.lines.join('\n')) + '</pre>') + ' ' + T('x_' + t.id));
+        q.answer(ok ? 1 : 0, verdict(ok, (ok ? '' : T('rightOrder') + '<pre class="code">' + codeHtml(t.lines.join('\n')) + '</pre>') + T('x_' + t.id)));
       });
       draw();
     }
 
+    // Итог: счёт, «Повтори» с заданиями, где ошибся, и «Пройти ошибки ещё раз»
     function finalHtml(q) {
-      var list = tasks(), missed = [];
+      var list = tasks(), missed = [], good = [];
       var items = list.map(function (t, i) {
-        var ok = q.data.res[i];
-        var name = T('topic_' + t.topic);
-        if (!ok && missed.indexOf(name) === -1) missed.push(name);
-        return '<li>' + (ok ? '✓ ' : '✕ ') + T('step', { i: i + 1, n: list.length }) + ' — ' + name + '</li>';
+        if (q.data.res[i]) { good.push(t); return ''; }
+        missed.push(i);
+        return '<li><span class="n">' + (missed.length < 10 ? '0' : '') + missed.length + '</span><div><b>' + T('topic_' + t.topic) + '</b>' +
+          '<small>' + T('repeatItem', { i: i + 1 }) + ' · ' + T(t.type === 'out' ? 'askOut' : t.type === 'bug' ? 'askBug' : 'askParsons') + '</small></div></li>';
       }).join('');
+      q.data.missed = missed.map(function (i) { return W[lesson].indexOf(list[i]); });
+      // «Верно» — только темы, где не было ни одной ошибки (иначе тема окажется и в «Повтори», и в «Верно»)
+      var missedTopics = missed.map(function (i) { return list[i].topic; });
+      var goodOnly = good.filter(function (t) { return missedTopics.indexOf(t.topic) === -1; });
       var msg = q.score === q.n ? T('finalAll') : q.score >= q.n / 2 ? T('finalSome') : T('finalFew');
-      return T('finalScore', { s: q.score, n: q.n }) + ' ' + msg +
-        '<ul class="final-list">' + items + '</ul>' + (missed.length ? T('repeat', { t: missed.join(', ') }) : '');
+      var it = lessonItem(lesson);
+      return '<div class="final"><div>' +
+          '<div class="score">' + T('finalScore', { s: q.score, n: q.n }) + '</div><p>' + msg + '</p>' +
+          '<div class="row">' + (missed.length ? '<button type="button" class="btn" id="retryBtn">' + T('retry') + '</button>' : '') +
+          (it && it.status === 'ready' ? '<a class="btn" href="../viz/' + it.id + '/index.html">' + T('toLessonN', { n: lesson }) + '</a>' : '') + '</div>' +
+        '</div><div>' +
+          (missed.length ? '<p class="sub">' + T('repeatTitle') + '</p><ul class="repeat-list">' + items + '</ul>' : '') +
+          (goodOnly.length ? '<p class="note">' + T('okTopics', { t: topicsOf(goodOnly) }) + '</p>' : '') +
+        '</div></div>';
     }
 
     var game = MLViz.quiz({
@@ -334,19 +451,31 @@
         next: T('next'), finish: T('finish'), again: T('again'), finishTitle: T('finishTitle'),
         final: finalHtml
       },
-      start: function (q) { q.data.res = []; },
+      start: function (q) {
+        if (!pendingRetry) retryIdx = null;
+        pendingRetry = false;
+        q.data.res = [];
+      },
       round: function (q) {
         var t = tasks()[q.i];
-        el('code').hidden = false;
-        el('code').innerHTML = t.code ? codeHtml(t.code) : '';
         if (t.type === 'out') roundOut(q, t);
         else if (t.type === 'bug') roundBug(q, t);
         else roundParsons(q, t);
       },
-      onEnd: function () {
-        el('ask').textContent = ''; el('code').hidden = true; el('answer').innerHTML = '';
+      onEnd: function (q) {
+        el('ask').textContent = ''; el('hint').textContent = '';
+        el('taskGrid').hidden = true;
+        var rb = el('retryBtn');
+        if (rb) rb.addEventListener('click', function () {
+          retryIdx = q.data.missed; pendingRetry = true;
+          game.start();
+        });
       }
     });
+    // Новый раунд или новая игра — сетка задания снова видна
+    el('nextBtn').addEventListener('click', function () { el('taskGrid').hidden = false; }, true);
+    var _start = game.start;
+    game.start = function () { el('taskGrid').hidden = false; _start(); };
 
     pickLesson(lesson);
   </script>

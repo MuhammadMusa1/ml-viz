@@ -276,6 +276,8 @@ button.primary, .btn.primary {
 }
 button.primary:hover:not(:disabled), .btn.primary:hover { background: var(--accent-hover); border-color: transparent; }
 button.primary:active:not(:disabled), .btn.primary:active { background: var(--accent-press); }
+/* Выключенная главная кнопка не должна выглядеть нажимаемой */
+button.primary:disabled { background: var(--disabled-bg); color: var(--disabled-text); }
 
 /* Переключатель режимов и видов (сегменты). Выбранный пункт — светлая рамка и галочка, а не «кнопка действия» */
 .seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--n-950); border: 1px solid var(--line); border-radius: var(--r-m); }
@@ -417,8 +419,8 @@ a.card:hover { background: var(--surface-2); border-color: var(--line-strong); }
    зелёный занят validation, красно-розовый — «подозрительными» данными */
 button.right, button.right:disabled { border-color: var(--accent); background: var(--accent-soft); color: var(--text-strong); }
 button.wrong, button.wrong:disabled { border-style: dashed; border-color: var(--n-300); background: transparent; color: var(--text-2); text-decoration: line-through; text-decoration-thickness: 2px; }
-button.right::before { content: "✓ "; color: var(--accent-text); }
-button.wrong::before { content: "✕ "; color: var(--text-2); display: inline-block; margin-right: .3em; text-decoration: none; }
+button.right::before { content: "✓"; color: var(--accent-text); display: inline-block; margin-right: .4em; }
+button.wrong::before { content: "✕"; color: var(--text-2); display: inline-block; margin-right: .4em; text-decoration: none; }
 button.right:disabled, button.wrong:disabled { opacity: 1; cursor: default; }
 /* Остальные варианты после ответа — просто приглушены, без серой заливки */
 .choices button:disabled:not(.right):not(.wrong) { background: transparent; border-color: var(--line); color: var(--text-muted); cursor: default; }
