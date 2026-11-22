@@ -111,7 +111,9 @@
     // Полоса прогресса считает уроки, а не страницы: урок пройден, когда доиграны игры на всех его страницах.
     // Компьютер в классе общий — поэтому есть «Сбросить отметки»
     function renderProgress() {
-      var n = LESSONS.length, d = LESSONS.filter(lessonDone).length, next = nextItem();
+      // Урок 0 (подготовка) — не из 24 уроков курса: в счётчик не входит, но «Начать» ведёт на него
+      var COUNTED = LESSONS.filter(function (k) { return k >= 1; });
+      var n = COUNTED.length, d = COUNTED.filter(lessonDone).length, next = nextItem();
       var plain = MLViz.t(STR, 'progress', { d: d, n: n }).replace(/<[^>]+>/g, '');
       document.getElementById('progress').innerHTML =
         '<div class="head"><span>' + MLViz.t(STR, 'progressTitle') + '</span><span class="count">' + MLViz.t(STR, 'progressCount', { d: d, n: n }) + '</span></div>' +

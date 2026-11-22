@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Как устроен компьютер · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Только для этой страницы: кнопки программ (название + размер) и строка «напечатано / сохранено» */
+    .apps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .apps button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+    .apps button small { font-weight: 400; color: var(--text-muted); font-size: var(--fs-label); }
+    .apps button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--surface-3); }
+    .doc-line { font-variant-numeric: tabular-nums; }
+    .legend i.dash { border-style: dashed; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="stage">
+        <canvas id="cv"></canvas>
+        <div class="legend" style="padding:8px 4px 0">
+          <span><i style="background:var(--surface-3); border:1.5px solid var(--n-400)"></i><span data-i18n="legRam"></span></span>
+          <span><i class="dash" style="background:transparent; border:1.5px dashed var(--n-300)"></i><span data-i18n="legDisk"></span></span>
+          <span><i style="background:transparent; border:2px solid var(--accent)"></i><span data-i18n="legCpu"></span></span>
+        </div>
+        <div class="hint" id="hint"></div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <!-- Режим «Исследуй»: собираем компьютер и запускаем программы -->
+        <div id="explorePanel" style="display:flex; flex-direction:column; gap:16px">
+          <div>
+            <h3 data-i18n="ramTitle"></h3>
+            <div class="seg" id="ramSeg" style="margin-top:6px">
+              <button type="button" data-ram="4">4 <span data-i18n="gb"></span></button>
+              <button type="button" data-ram="8">8 <span data-i18n="gb"></span></button>
+              <button type="button" data-ram="16">16 <span data-i18n="gb"></span></button>
+            </div>
+          </div>
+          <div>
+            <h3 data-i18n="diskTitle"></h3>
+            <div class="seg" id="diskSeg" style="margin-top:6px">
+              <button type="button" data-disk="ssd" data-i18n="diskSsd"></button>
+              <button type="button" data-disk="hdd" data-i18n="diskHdd"></button>
+            </div>
+          </div>
+
+          <div>
+            <h3 data-i18n="usedTitle"></h3>
+            <div class="big-number" id="used"></div>
+            <div class="compare" id="usedBar"></div>
+          </div>
+
+          <div>
+            <h3 data-i18n="appsTitle"></h3>
+            <p class="note" data-i18n="appsNote"></p>
+            <div class="apps" id="apps" style="margin-top:8px"></div>
+            <div class="row" style="margin-top:8px">
+              <button type="button" id="closeBtn" data-i18n="closeBtn"></button>
+              <button type="button" id="restartBtn" data-i18n="restartBtn"></button>
+            </div>
+          </div>
+
+          <div>
+            <h3 data-i18n="lastTitle"></h3>
+            <div class="big-number" id="lastSec"></div>
+            <p class="note" id="lastNote"></p>
+          </div>
+
+          <div>
+            <h3 data-i18n="docTitle"></h3>
+            <p class="doc-line" id="docLine" style="margin:4px 0 8px"></p>
+            <div class="row">
+              <button type="button" id="typeBtn" data-i18n="typeBtn"></button>
+              <button type="button" id="saveBtn" class="primary" data-i18n="saveBtn"></button>
+            </div>
+            <p class="note" id="docNote"></p>
+          </div>
+        </div>
+
+        <!-- Режим «Игра: где это хранится?» -->
+        <div id="gamePanel" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <p style="margin:6px 0 0; font-size:var(--fs-lead); color:var(--text-strong)" id="gameItem"></p>
+          <div class="choices" id="choices" style="grid-template-columns:1fr"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+          <div style="margin-top:12px"><div class="big-number" id="score">0</div><small data-i18n="scoreLbl"></small></div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Как устроен компьютер',
+        analogy: '<b>Компьютер — это кухня.</b> Процессор — повар, оперативная память — рабочий стол, диск — холодильник. Повар готовит очень быстро, но только то, что лежит на столе. Стол небольшой, а в холодильник ходить долго.',
+        cvLabel: 'Схема компьютера: процессор, оперативная память и диск, на них — открытые программы и файлы',
+        legRam: 'на столе — в оперативной памяти',
+        legDisk: 'убрано на диск',
+        legCpu: 'с этим сейчас работает процессор',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: где это хранится?',
+        hintExplore: 'Выбери размер памяти и диск, открывай программы кнопками справа — и смотри, что помещается на стол, а что уезжает в холодильник.',
+        hintGame: 'Решай: где компьютер держит эту вещь — у процессора, в оперативной памяти или на диске?',
+        gb: 'ГБ',
+        ramTitle: 'Оперативная память (стол)',
+        diskTitle: 'Диск (холодильник)',
+        diskSsd: 'SSD (быстрый)',
+        diskHdd: 'Жёсткий диск (старый)',
+        usedTitle: 'Занято на столе',
+        usedValue: '{u} из {r} ГБ',
+        usedBarLbl: 'Windows и открытые программы',
+        appsTitle: 'Открыть программу',
+        appsNote: 'Нажми, чтобы открыть программу или переключиться на неё.',
+        app_browser: 'Браузер',
+        app_python: 'Python',
+        app_photo: 'Фоторедактор',
+        app_game: 'Игра',
+        app_doc: 'Документ',
+        os: 'Windows',
+        sizeGb: '{s} ГБ',
+        closeBtn: 'Закрыть программу',
+        restartBtn: 'Выключить и включить',
+        lastTitle: 'Последнее действие',
+        sec: '{s} с',
+        lastNone: 'Пока ничего не открыто: стол занят только Windows.',
+        lastFromDisk: '«{a}» берём с диска: {g} ГБ ÷ {v} ГБ/с = {s} с. Пока данные едут из холодильника, всё ждёт.',
+        lastInRam: '«{a}» уже на столе — процессор берёт её сразу.',
+        lastEvict: ' Места на столе не хватило — на диск убрано: {list}. Вернуться к этому снова будет долго.',
+        lastTooBig: ' «{a}» целиком на стол не помещается — часть всё время будет ездить с диска, и программа будет тормозить.',
+        lastClosed: '«{a}» закрыта — место на столе освободилось.',
+        lastRestart: 'Компьютер выключили: стол опустел. На диске осталось только то, что было сохранено.',
+        docTitle: 'Документ',
+        docLine: 'Напечатано абзацев: <b>{t}</b> · сохранено на диск: <b>{s}</b>',
+        typeBtn: 'Напечатать абзац',
+        saveBtn: 'Сохранить',
+        docNeedOpen: 'Сначала открой «Документ».',
+        docUnsaved: 'Несохранённое лежит только на столе. Выключишь компьютер — пропадёт.',
+        docSaved: 'Всё сохранено на диск. Можно спокойно выключать.',
+        docLost: 'Пропало несохранённых абзацев: {n}. Сохраняй чаще (Ctrl+S).',
+        // Подписи на схеме
+        zCpu: 'Процессор',
+        zCpuSub: 'повар',
+        zRam: 'Оперативная память',
+        zRamSub: 'стол',
+        zDisk: 'Диск',
+        zDiskSub: 'холодильник',
+        cpuIdle: 'ждёт работы',
+        cpuBusy: 'работает с:',
+        diskPrograms: 'Установленные программы',
+        diskSwapped: '{a} (со стола)',
+        diskMore: 'и ещё {n} (со стола)',
+        diskFile: 'Документ: {n} абз.',
+        free: 'свободно {g} ГБ',
+        over: 'не помещается: {g} ГБ',
+        // Игра
+        gameStep: 'Раунд {i} из {n}',
+        gameAsk: 'Где компьютер держит это?',
+        chCpu: 'У процессора — прямо сейчас',
+        chRam: 'В оперативной памяти — на столе',
+        chDisk: 'На диске — в холодильнике',
+        right: '<b>✓ Верно.</b>',
+        wrong: '<b>✕ Не так.</b>',
+        scoreLbl: 'верных ответов',
+        next: 'Дальше',
+        finish: 'Итог',
+        again: 'Сыграть ещё ↺',
+        gameOver: 'Верно: <b>{s} из {n}</b>. {verdict}',
+        gameGood: 'Ты отлично понимаешь, где что лежит в компьютере.',
+        gameMid: 'Неплохо. Перечитай объяснения к ошибкам — и сыграй ещё раз.',
+        gameLow: 'Вспомни кухню: повар — сейчас, стол — пока работаем, холодильник — надолго. И попробуй ещё раз.',
+        i1: 'Открытая вкладка браузера', e1: 'Пока вкладка открыта, страница лежит на столе. Закроешь — место освободится.',
+        i2: 'Фото, сохранённое на компьютер', e2: 'Сохранённое хранится на диске — даже когда компьютер выключен.',
+        i3: 'Текст, который ты печатаешь и ещё не сохранил', e3: 'Пока не нажал «Сохранить», текст только на столе. Выключат свет — пропадёт.',
+        i4: 'Установленная игра, когда она выключена', e4: 'Программа хранится на диске. На стол она попадает, только когда её запускают.',
+        i5: 'Два числа, которые складываются в эту долю секунды', e5: 'Само вычисление происходит в процессоре — у повара в руках.',
+        i6: 'Файл урока на флешке', e6: 'Флешка — это тоже диск: хранит файлы без электричества.',
+        i7: 'Запущенная игра', e7: 'Запущенная программа лежит на столе: процессору нужно быстро до неё дотягиваться.',
+        i8: 'Windows, когда компьютер выключен', e8: 'Без электричества стол пустой. Windows ждёт на диске и при включении загружается на стол.',
+        i9: 'Команда, которую компьютер выполняет прямо сейчас', e9: 'Выполняет команды процессор — по одной, но миллиарды в секунду.',
+        i10: 'Песня, которая сейчас играет', e10: 'Кусок песни, который сейчас звучит, лежит на столе. Сам файл песни — на диске.',
+        i11: 'Скачанный файл в папке «Загрузки»', e11: 'Скачанное сохраняется на диск — поэтому оно остаётся после выключения.',
+        i12: 'Пароль, который ты набираешь в поле', e12: 'Пока ты печатаешь, буквы лежат на столе. На диск сайт пароль не пишет.',
+        i13: 'Таблица пингвинов, которую Colab только что загрузил', e13: 'Загрузить данные — значит положить их на стол: модель учится только на том, что в оперативной памяти.',
+        i14: 'Результат 2 + 2 в момент вычисления', e14: 'Считает процессор. Потом результат можно положить на стол или сохранить на диск.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Диск хранит всё надолго</b> — программы, фото, документы, даже без электричества. Но он медленный: как холодильник в другой комнате.</li>' +
+          '<li><b>Когда открываешь программу,</b> она копируется с диска в оперативную память — на рабочий стол. Поэтому первый запуск долгий.</li>' +
+          '<li><b>Процессор берёт данные со стола</b> и считает — миллиарды простых действий в секунду.</li>' +
+          '<li><b>Стол небольшой.</b> Когда он полон, компьютер убирает на диск то, что давно не трогали. Вернуться к этому — снова ждать диск: компьютер «тормозит».</li>' +
+          '<li><b>При выключении стол очищается.</b> Что не сохранено на диск — пропало.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь 4 ГБ и открой игру. Что написано под «Последнее действие»? Почему?</li>' +
+          '<li>Открой браузер, фоторедактор и игру при 8 ГБ, потом вернись в браузер. Сколько пришлось ждать и почему?</li>' +
+          '<li>Переключи диск на старый жёсткий и повтори. Во сколько раз дольше?</li>' +
+          '<li>Напечатай три абзаца, сохрани один раз, напечатай ещё два и выключи компьютер. Сколько абзацев пропало?</li>' +
+          '<li>Почему в Colab сначала загружают данные и только потом обучают модель?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: насколько диск медленнее',
+        mathBody:
+          '<p>Примерное время, чтобы достать немного данных (у разных компьютеров по-разному):</p>' +
+          '<div class="tbl-wrap"><table style="border-collapse:collapse; width:100%">' +
+          '<tr><th style="text-align:left; padding:6px">Где лежит</th><th style="text-align:left; padding:6px">Время</th><th style="text-align:left; padding:6px">Если «со стола» — это 1 секунда</th></tr>' +
+          '<tr><td style="padding:6px">Оперативная память</td><td style="padding:6px">≈ 0,0001 мс</td><td style="padding:6px">1 секунда</td></tr>' +
+          '<tr><td style="padding:6px">SSD</td><td style="padding:6px">≈ 0,1 мс</td><td style="padding:6px">≈ 17 минут</td></tr>' +
+          '<tr><td style="padding:6px">Жёсткий диск</td><td style="padding:6px">≈ 10 мс</td><td style="padding:6px">больше суток</td></tr>' +
+          '</table></div>' +
+          '<p>Узнать, какой у тебя компьютер, можно прямо в Colab:</p>' +
+          '<p><code>import os, shutil, psutil<br>' +
+          'print("Ядер процессора:", os.cpu_count())<br>' +
+          'print("Оперативная память, ГБ:", round(psutil.virtual_memory().total / 2**30))<br>' +
+          'print("Диск, ГБ:", round(shutil.disk_usage("/").total / 2**30))</code></p>' +
+          '<p>В Colab ты увидишь компьютер Google в интернете, а не свой. На своём Windows то же самое показывает «Диспетчер задач» (Ctrl+Shift+Esc).</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Зачем урок 0.</b> Многие ученики путают «память» и «диск» и не понимают, почему несохранённое пропадает. На уроках ML это всплывает постоянно: «загрузить данные», «не хватило памяти», «сохранить модель».</p>' +
+          '<p><b>Как использовать (0–10 мин).</b> Попросите всех открыть «Диспетчер задач» (Ctrl+Shift+Esc) → «Производительность»: сколько памяти занято прямо сейчас? Потом на проекторе откройте игру при 4 ГБ и спросите, почему так долго.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему старый компьютер «тормозит», если открыть много вкладок? Что лучше купить для скорости — диск побольше или памяти побольше? Почему важно нажимать Ctrl+S?</p>' +
+          '<p><b>Клавиши, которые стоит выучить сразу:</b> Ctrl+C / Ctrl+V (копировать / вставить), Ctrl+Z (отменить), Ctrl+S (сохранить), Alt+Tab (переключить программу), Win+E (папки и файлы).</p>' +
+          '<p>Числа на странице примерные, но честные: время = размер программы ÷ скорость чтения диска (SSD ≈ 0,5 ГБ/с, жёсткий диск ≈ 0,1 ГБ/с).</p>',
+        footer: 'Числа на схеме — примерные для обычного школьного компьютера. Все расчёты выполняются прямо в браузере.'
+      },
+      /* tg:start — перевод вставлен tools/i18n.js, не правьте руками */
+      /* tg:end */
+    };
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Модель компьютера =======================
+    // Размеры — примерные для школьного компьютера. Windows всегда занимает часть стола.
+    var OS_GB = 2.5;
+    var APPS = [
+      { id: 'browser', gb: 1.5 }, { id: 'python', gb: 1 }, { id: 'photo', gb: 2.5 },
+      { id: 'game', gb: 6 }, { id: 'doc', gb: 0.5 }
+    ];
+    var BY_ID = {};
+    APPS.forEach(function (a) { BY_ID[a.id] = a; });
+    // Скорость чтения диска, ГБ в секунду (последовательное чтение, примерно)
+    var DISK_SPEED = { ssd: 0.5, hdd: 0.1 };
+
+    var state = {
+      mode: 'explore',
+      ram: 8, disk: 'ssd',
+      open: [],          // открытые программы: от давно не тронутой к самой свежей
+      inRam: {},         // какие из открытых лежат на столе (остальные убраны на диск)
+      active: null,      // с чем сейчас работает процессор
+      last: null,        // последнее действие: { kind, app, gb, sec, evicted }
+      typed: 0, saved: 0, lost: 0,
+      game: null         // в игре: какую зону подсветить на схеме
+    };
+
+    function fmt(x) { return String(Math.round(x * 10) / 10).replace('.', ','); }
+    function appName(id) { return T('app_' + id); }
+    function usedGb() {
+      var s = OS_GB;
+      state.open.forEach(function (id) { if (state.inRam[id]) s += BY_ID[id].gb; });
+      return s;
+    }
+
+    // Стол полон — убираем на диск то, что давно не трогали (кроме программы, с которой работаем сейчас)
+    function makeRoom() {
+      var evicted = [];
+      for (var i = 0; i < state.open.length && usedGb() > state.ram; i++) {
+        var id = state.open[i];
+        if (id !== state.active && state.inRam[id]) { state.inRam[id] = false; evicted.push(id); }
+      }
+      return evicted;
+    }
+
+    // Открыть программу или переключиться на неё
+    function useApp(id) {
+      var a = BY_ID[id], wasOpen = state.open.indexOf(id) !== -1;
+      var fromDisk = !wasOpen || !state.inRam[id];   // первый запуск или программа была убрана со стола
+      state.open = state.open.filter(function (x) { return x !== id; }).concat([id]);
+      state.inRam[id] = true;
+      state.active = id;
+      var evicted = makeRoom();
+      var v = DISK_SPEED[state.disk];
+      state.last = { kind: fromDisk ? 'disk' : 'ram', app: id, gb: a.gb, sec: fromDisk ? a.gb / v : 0, evicted: evicted };
+      refresh();
+    }
+    function closeApp() {
+      if (!state.active) return;
+      var id = state.active;
+      state.open = state.open.filter(function (x) { return x !== id; });
+      delete state.inRam[id];
+      if (id === 'doc') { state.lost += state.typed - state.saved; state.typed = state.saved; }   // закрыли без сохранения
+      state.active = state.open.length ? state.open[state.open.length - 1] : null;
+      state.last = { kind: 'closed', app: id, sec: 0 };
+      refresh();
+    }
+    function restart() {
+      state.lost = state.typed - state.saved;
+      state.typed = state.saved;
+      state.open = []; state.inRam = {}; state.active = null;
+      state.last = { kind: 'restart', sec: 0 };
+      refresh();
+    }
+    function typePara() { if (state.active === 'doc') { state.typed++; refresh(); } }
+    function save() { if (state.active === 'doc') { state.saved = state.typed; state.lost = 0; refresh(); } }
+
+    // ======================= Панель =======================
+    function updatePanel() {
+      MLViz.setPressed(el('ramSeg'), function (b) { return +b.dataset.ram === state.ram; });
+      MLViz.setPressed(el('diskSeg'), function (b) { return b.dataset.disk === state.disk; });
+
+      var u = usedGb();
+      el('used').textContent = T('usedValue', { u: fmt(u), r: state.ram });
+      el('usedBar').innerHTML = '<div class="compare-row main"><span>' + T('usedBarLbl') + '</span><b>' +
+        Math.round(100 * Math.min(u, state.ram) / state.ram) + '%</b><div class="track"><div class="fill" style="width:' +
+        Math.min(100, 100 * u / state.ram) + '%"></div></div></div>';
+
+      var apps = el('apps');
+      if (!apps.children.length) {
+        APPS.forEach(function (a) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.dataset.app = a.id;
+          b.innerHTML = '<span>' + appName(a.id) + '</span><small>' + T('sizeGb', { s: fmt(a.gb) }) + '</small>';
+          b.addEventListener('click', function () { useApp(a.id); });
+          apps.appendChild(b);
+        });
+      }
+      MLViz.setPressed(apps, function (b) { return b.dataset.app === state.active; });
+      el('closeBtn').disabled = !state.active;
+
+      var L = state.last, note = '';
+      el('lastSec').textContent = T('sec', { s: L ? fmt(L.sec) : '0' });
+      if (!L) note = T('lastNone');
+      else if (L.kind === 'disk') note = T('lastFromDisk', { a: appName(L.app), g: fmt(L.gb), v: fmt(DISK_SPEED[state.disk]), s: fmt(L.sec) });
+      else if (L.kind === 'ram') note = T('lastInRam', { a: appName(L.app) });
+      else if (L.kind === 'closed') note = T('lastClosed', { a: appName(L.app) });
+      else note = T('lastRestart');
+      if (L && L.evicted && L.evicted.length) note += T('lastEvict', { list: L.evicted.map(appName).join(', ') });
+      if (L && (L.kind === 'disk' || L.kind === 'ram') && OS_GB + BY_ID[L.app].gb > state.ram) note += T('lastTooBig', { a: appName(L.app) });
+      el('lastNote').textContent = note;
+
+      el('docLine').innerHTML = T('docLine', { t: state.typed, s: state.saved });
+      var docOn = state.active === 'doc';
+      el('typeBtn').disabled = !docOn;
+      el('saveBtn').disabled = !docOn || state.saved === state.typed;
+      el('docNote').textContent = state.lost ? T('docLost', { n: state.lost })
+        : !docOn ? T('docNeedOpen') : state.typed > state.saved ? T('docUnsaved') : T('docSaved');
+    }
+
+    // ======================= Рисование схемы =======================
+    var cv = el('cv'), g;
+    function resize() {
+      var narrow = cv.parentElement.clientWidth < 560;
+      g = MLViz.fitCanvas(cv, narrow ? 1.5 : 0.62);   // телефон: зоны друг под другом — нужна высота
+      draw();
+    }
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    }
+    // Текст, который не вылезает за ширину: обрезаем с многоточием
+    function fitText(ctx, s, maxW) {
+      if (ctx.measureText(s).width <= maxW) return s;
+      while (s.length > 1 && ctx.measureText(s + '…').width > maxW) s = s.slice(0, -1);
+      return s + '…';
+    }
+
+    function draw() {
+      if (!g) return;
+      var ctx = g.ctx, w = g.w, h = g.h, fs = MLViz.fontPx(w);
+      var C = {
+        text: MLViz.cssVar('--text-strong'), sub: MLViz.cssVar('--text-2'), muted: MLViz.cssVar('--text-muted'),
+        line: MLViz.cssVar('--line-strong'), s1: MLViz.cssVar('--surface-1'), s2: MLViz.cssVar('--surface-2'), s3: MLViz.cssVar('--surface-3'),
+        accent: MLViz.cssVar('--accent'), dash: MLViz.cssVar('--n-300'), odd: MLViz.cssVar('--c-odd')
+      };
+      var font = MLViz.cssVar('--font');
+      ctx.clearRect(0, 0, w, h);
+
+      // Три зоны: на широком экране в ряд, на телефоне — сверху вниз
+      var narrow = w < 560, pad = 10, gap = 12, Z = {};
+      if (!narrow) {
+        var cw = (w - 2 * pad - 2 * gap);
+        Z.cpu = { x: pad, y: pad, w: cw * 0.24, h: h - 2 * pad };
+        Z.ram = { x: Z.cpu.x + Z.cpu.w + gap, y: pad, w: cw * 0.40, h: h - 2 * pad };
+        Z.disk = { x: Z.ram.x + Z.ram.w + gap, y: pad, w: cw * 0.36, h: h - 2 * pad };
+      } else {
+        var ch = h - 2 * pad - 2 * gap;
+        Z.cpu = { x: pad, y: pad, w: w - 2 * pad, h: ch * 0.17 };
+        Z.ram = { x: pad, y: Z.cpu.y + Z.cpu.h + gap, w: w - 2 * pad, h: ch * 0.4 };
+        Z.disk = { x: pad, y: Z.ram.y + Z.ram.h + gap, w: w - 2 * pad, h: ch * 0.43 };
+      }
+
+      function zone(z, title, sub, hl, subColor) {
+        ctx.fillStyle = C.s1; roundRect(ctx, z.x, z.y, z.w, z.h, 12); ctx.fill();
+        ctx.lineWidth = hl ? 3 : 1.5; ctx.strokeStyle = hl ? C.accent : C.line; ctx.stroke();
+        ctx.fillStyle = C.text; ctx.font = 'bold ' + fs + 'px ' + font; ctx.textBaseline = 'top';
+        ctx.fillText(fitText(ctx, title, z.w - 20), z.x + 10, z.y + 10);
+        ctx.fillStyle = subColor || C.sub; ctx.font = fs + 'px ' + font;
+        ctx.fillText(fitText(ctx, sub, z.w - 20), z.x + 10, z.y + 12 + fs * 1.3);
+        return z.y + 18 + fs * 2.6;   // где начинается содержимое зоны
+      }
+      var hl = state.game;   // в игре после ответа подсвечиваем правильную зону
+
+      // ---- Процессор ----
+      var y0 = zone(Z.cpu, T('zCpu'), T('zCpuSub'), hl === 'cpu');
+      var busy = state.active && state.mode === 'explore';
+      // Колонка процессора узкая: «работает с» и название программы — в две строки
+      var bh = Math.min(Z.cpu.h - (y0 - Z.cpu.y) - 10, fs * 4.4);
+      if (bh > fs * 1.6) {
+        ctx.fillStyle = busy ? C.s3 : 'transparent'; roundRect(ctx, Z.cpu.x + 10, y0, Z.cpu.w - 20, bh, 8); ctx.fill();
+        ctx.lineWidth = busy ? 2.5 : 1.5; ctx.strokeStyle = busy ? C.accent : C.line; ctx.stroke();
+        ctx.textBaseline = 'middle';
+        if (busy && bh > fs * 3) {
+          ctx.fillStyle = C.sub; ctx.font = fs + 'px ' + font;
+          ctx.fillText(fitText(ctx, T('cpuBusy'), Z.cpu.w - 36), Z.cpu.x + 18, y0 + bh / 2 - fs * 0.7);
+          ctx.fillStyle = C.text; ctx.font = 'bold ' + fs + 'px ' + font;
+          ctx.fillText(fitText(ctx, appName(state.active), Z.cpu.w - 36), Z.cpu.x + 18, y0 + bh / 2 + fs * 0.7);
+        } else {
+          ctx.fillStyle = busy ? C.text : C.muted; ctx.font = (busy ? 'bold ' : '') + fs + 'px ' + font;
+          ctx.fillText(fitText(ctx, busy ? appName(state.active) : T('cpuIdle'), Z.cpu.w - 36), Z.cpu.x + 18, y0 + bh / 2);
+        }
+      }
+
+      // ---- Оперативная память: столбец вместимостью state.ram ГБ ----
+      // Под заголовком стола — сколько свободно или сколько не помещается (а не поверх блоков)
+      var over = Math.max(0, usedGb() - state.ram);
+      y0 = zone(Z.ram, T('zRam') + ' · ' + state.ram + ' ' + T('gb'),
+        T('zRamSub') + ' · ' + (over > 0 ? T('over', { g: fmt(over) }) : T('free', { g: fmt(state.ram - usedGb()) })),
+        hl === 'ram', over > 0 ? C.odd : null);
+      var top = y0, bottom = Z.ram.y + Z.ram.h - 10, H = bottom - top, x = Z.ram.x + 10, bw = Z.ram.w - 20;
+      var perGb = H / state.ram;
+      var blocks = [{ name: T('os'), gb: OS_GB, os: true }];
+      state.open.forEach(function (id) { if (state.inRam[id]) blocks.push({ name: appName(id), gb: BY_ID[id].gb, id: id }); });
+      var yy = bottom;
+      blocks.forEach(function (b) {
+        // Маленькой программе (документ 0,5 ГБ) — минимум высоты под подпись, иначе её не видно
+        var bhh = Math.max(fs * 1.6, b.gb * perGb - 3), yTop = Math.max(top, yy - bhh);
+        ctx.fillStyle = b.os ? C.s3 : C.s2; roundRect(ctx, x, yTop, bw, yy - yTop, 6); ctx.fill();
+        var act = b.id && b.id === state.active && state.mode === 'explore';
+        ctx.lineWidth = act ? 2.5 : 1.5; ctx.strokeStyle = act ? C.accent : C.line; ctx.stroke();
+        if (yy - yTop > fs * 1.3) {
+          ctx.fillStyle = C.text; ctx.font = (act ? 'bold ' : '') + fs + 'px ' + font; ctx.textBaseline = 'middle';
+          ctx.fillText(fitText(ctx, b.name + ' · ' + fmt(b.gb) + ' ' + T('gb'), bw - 16), x + 8, (yTop + yy) / 2);
+        }
+        yy = yTop - 3;
+      });
+
+      // ---- Диск: установленные программы, убранное со стола, сохранённый документ ----
+      y0 = zone(Z.disk, T('zDisk') + ' · ' + T(state.disk === 'ssd' ? 'diskSsd' : 'diskHdd'), T('zDiskSub'), hl === 'disk');
+      // Сохранённый файл — сразу после программ: это главное, что остаётся после выключения
+      var rows = [{ text: T('diskPrograms'), solid: true }];
+      if (state.saved > 0) rows.push({ text: T('diskFile', { n: state.saved }), solid: true });
+      var swapped = state.open.filter(function (id) { return !state.inRam[id]; });
+      swapped.forEach(function (id) { rows.push({ text: T('diskSwapped', { a: appName(id) }), dashed: true }); });
+      // Высоту строки подбираем под место (не мельче подписи); не влезает — последняя строка «и ещё N»
+      var avail = Z.disk.y + Z.disk.h - 6 - y0;
+      var rh = Math.max(fs * 1.5, Math.min(fs * 2, avail / rows.length - 6)), ry = y0;
+      var fit = Math.max(1, Math.floor((avail + 6) / (rh + 6)));
+      if (rows.length > fit) {
+        var hidden = rows.length - fit + 1;
+        rows = rows.slice(0, fit - 1).concat([{ text: T('diskMore', { n: hidden }), dashed: true }]);
+      }
+      rows.forEach(function (r) {
+        if (ry + rh > Z.disk.y + Z.disk.h - 6) return;
+        ctx.fillStyle = r.dashed ? 'transparent' : C.s2; roundRect(ctx, Z.disk.x + 10, ry, Z.disk.w - 20, rh, 6); ctx.fill();
+        ctx.setLineDash(r.dashed ? [6, 4] : []); ctx.lineWidth = 1.5; ctx.strokeStyle = r.dashed ? C.dash : C.line; ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = r.dashed ? C.sub : C.text; ctx.font = fs + 'px ' + font; ctx.textBaseline = 'middle';
+        ctx.fillText(fitText(ctx, r.text, Z.disk.w - 36), Z.disk.x + 18, ry + rh / 2);
+        ry += rh + 6;
+      });
+    }
+
+    function refresh() { updatePanel(); draw(); }
+
+    // ======================= Игра «Где это хранится?» (общий компонент MLViz.quiz) =======================
+    // Ответ: cpu — процессор, ram — оперативная память, disk — диск
+    var ITEMS = [
+      { k: 1, a: 'ram' }, { k: 2, a: 'disk' }, { k: 3, a: 'ram' }, { k: 4, a: 'disk' }, { k: 5, a: 'cpu' },
+      { k: 6, a: 'disk' }, { k: 7, a: 'ram' }, { k: 8, a: 'disk' }, { k: 9, a: 'cpu' }, { k: 10, a: 'ram' },
+      { k: 11, a: 'disk' }, { k: 12, a: 'ram' }, { k: 13, a: 'ram' }, { k: 14, a: 'cpu' }
+    ];
+    var ZONES = ['cpu', 'ram', 'disk'];
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: 10,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) {
+          return T('gameOver', { s: q.score, n: q.n, verdict: T(q.score >= 9 ? 'gameGood' : q.score >= 6 ? 'gameMid' : 'gameLow') });
+        }
+      },
+      start: function (q) { q.data.pool = MLViz.shuffle(ITEMS, Math.random).slice(0, 10); el('score').textContent = 0; },
+      round: function (q) {
+        var it = q.data.pool[q.i];
+        state.game = null;
+        el('gameItem').textContent = T('i' + it.k);
+        q.choices(el('choices'), ZONES.map(function (z) { return T(z === 'cpu' ? 'chCpu' : z === 'ram' ? 'chRam' : 'chDisk'); }),
+          function (k) { return ZONES[k] === it.a; },
+          function (k, ok) {
+            state.game = it.a;   // подсветить на схеме правильную зону
+            q.answer(ok ? 1 : 0, T(ok ? 'right' : 'wrong') + ' ' + T('e' + it.k));
+            el('score').textContent = q.score;
+            draw();
+          });
+        draw();
+      },
+      onEnd: function () { state.game = null; el('choices').innerHTML = ''; el('gameItem').textContent = ''; draw(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      state.game = null;
+      if (m === 'game') quiz.start();
+      refresh();
+    }
+
+    // ======================= События =======================
+    el('ramSeg').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state.ram = +b.dataset.ram;
+      var ev = makeRoom();   // памяти стало меньше — лишнее уезжает на диск
+      if (ev.length) state.last = { kind: 'ram', app: state.active, sec: 0, evicted: ev };
+      refresh();
+    });
+    el('diskSeg').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state.disk = b.dataset.disk; refresh();
+    });
+    el('closeBtn').addEventListener('click', closeApp);
+    el('restartBtn').addEventListener('click', restart);
+    el('typeBtn').addEventListener('click', typePara);
+    el('saveBtn').addEventListener('click', save);
+    // Ctrl+S сохраняет документ — та же привычка, что в настоящих программах (KeyS — на любой раскладке)
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS' && state.mode === 'explore' && state.active === 'doc') {
+        e.preventDefault(); save();
+      }
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

@@ -195,7 +195,8 @@
     // «Урок 5 · Классические алгоритмы» — из каталога, чтобы номер и фаза не расходились со страницами
     var eb = main.querySelector('.eyebrow');
     if (eb) eb.textContent = lessonLabel(it) + ' · ' + phaseName(it);
-    var myths = it.myths && (it.myths[lang] || it.myths.ru);
+    // Перевода мифов может не быть (пары из undefined) — тогда показываем русские
+    var myths = it.myths && it.myths[lang] && it.myths[lang][0] && it.myths[lang][0][0] ? it.myths[lang] : it.myths && it.myths.ru;
     if (myths && myths.length) {
       var sec = document.createElement('section');
       sec.className = 'section myths';
@@ -212,8 +213,9 @@
     br.innerHTML = '<h2>' + t(UI, 'nextTitle') + '</h2>' +
       (it.bridge ? '<p>' + tx(it.bridge) + '</p>' : '') +
       '<div class="row next-row"><div class="row">' +
-        '<a class="btn" href="' + chapterUrl(root, it.lesson) + '">' + icon('book') + t(UI, 'readChapter', { n: it.lesson }) + '</a>' +
-        (colabUrl(it.lesson) ? '<a class="btn" href="' + colabUrl(it.lesson) + '" target="_blank" rel="noopener">' + icon('external') + t(UI, 'colab') + '</a>' : '') +
+        // Главы учебника и ноутбуки Colab — к урокам 1–24; у урока 0 (подготовка) их нет
+        (it.lesson >= 1 ? '<a class="btn" href="' + chapterUrl(root, it.lesson) + '">' + icon('book') + t(UI, 'readChapter', { n: it.lesson }) + '</a>' : '') +
+        (it.lesson >= 1 && colabUrl(it.lesson) ? '<a class="btn" href="' + colabUrl(it.lesson) + '" target="_blank" rel="noopener">' + icon('external') + t(UI, 'colab') + '</a>' : '') +
         (hasWarmup(it.lesson) ? '<a class="btn" href="' + root + 'warmup/index.html?lesson=' + it.lesson + '">' + icon('code') + t(UI, 'warmup') + '</a>' : '') +
       '</div>' + (next
         ? '<a class="btn primary" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
@@ -222,7 +224,7 @@
     main.appendChild(br);
     updateDoneNote();
     var cl = document.getElementById('colabLink');
-    if (cl && colabUrl(it.lesson)) { cl.href = colabUrl(it.lesson); cl.hidden = false; }
+    if (cl && it.lesson >= 1 && colabUrl(it.lesson)) { cl.href = colabUrl(it.lesson); cl.hidden = false; }
   }
 
   // ---------- Словарь терминов ----------
