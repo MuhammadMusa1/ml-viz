@@ -5,32 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Лаборатория ML</title>
   <link rel="stylesheet" href="assets/style.css">
-  <style>
-    /* Только главная. 27 карточек — это путь курса: рамки и стрелки тихие, цвет получает тот урок, на который навели */
-    #catalog .card { padding: 20px; }
-    #catalog a.card::before { display: none; }
-    #catalog a.card { transition: border-color .15s, background-color .15s; }
-    #catalog a.card:hover { transform: none; box-shadow: none; border-color: var(--violet); }
-    #catalog a.card::after { color: var(--muted); transition: color .15s; }
-    #catalog a.card:hover::after { transform: none; color: var(--violet); }
-    .home-links { margin: 16px 0 0; }
-    .home-links .btn { display: inline-flex; align-items: center; gap: 8px; }
-    .home-links svg { width: 18px; height: 18px; flex: none; color: var(--muted); }
-  </style>
 </head>
 <body>
   <header id="site-header"></header>
 
   <main class="wrap">
-    <p class="eyebrow" data-i18n="eyebrow"></p>
-    <h1 data-i18n="title"></h1>
-    <p class="lead" data-i18n="lead"></p>
-    <!-- Прогресс ученика: сколько уроков доиграно до конца (хранится только в этом браузере) -->
-    <div class="progress" id="progress"></div>
-    <p class="row home-links">
-      <a class="btn" href="book/index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg><span data-i18n="bookLink"></span></a>
-      <a class="btn" href="warmup/index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg><span data-i18n="warmupLink"></span></a>
-    </p>
+    <div class="home-hero">
+      <div>
+        <p class="eyebrow" data-i18n="eyebrow"></p>
+        <h1 data-i18n="title"></h1>
+        <p class="lead" data-i18n="lead"></p>
+        <!-- «Продолжить: Урок N» вставляет скрипт — первая страница, где игра ещё не доиграна -->
+        <div class="row home-actions" id="homeActions">
+          <a class="btn" href="book/index.html" id="bookBtn"><span data-i18n="bookLink"></span></a>
+          <a class="btn" href="warmup/index.html" id="warmupBtn"><span data-i18n="warmupLink"></span></a>
+        </div>
+      </div>
+      <!-- Прогресс ученика: сколько уроков доиграно до конца (хранится только в этом браузере) -->
+      <aside class="progress-card" id="progress"></aside>
+    </div>
     <div id="catalog"></div>
   </main>
 
@@ -47,11 +40,18 @@
         title: 'Машинное обучение, которое можно потрогать',
         lead: 'Интерактивные визуализации к курсу из 24 уроков. Двигай точки, крути ползунки и смотри, как модель принимает решения. Без установки и без интернета.',
         planned: 'Скоро',
-        bookLink: 'Учебники курса: книги и ноутбуки Colab ›',
-        warmupLink: 'Python-разминки к урокам ›',
-        done: '✓ Пройдено',
+        bookLink: 'Учебники и Colab',
+        warmupLink: 'Python-разминки',
+        done: 'Пройден',
+        current: 'Дальше',
         progress: 'Пройдено уроков: <b>{d} из {n}</b>',
-        progressHint: 'Урок отмечается, когда ты доиграешь до конца игры на всех его страницах. Отметки хранятся только в этом браузере.',
+        progressTitle: 'Пройдено уроков',
+        progressCount: '<b>{d}</b> из {n}',
+        start: 'Начать: {l}',
+        continue: 'Продолжить: {l}',
+        nextLine: 'Следующий — <b>{l} · {t}</b>.',
+        allDone: 'Все игры курса доиграны до конца.',
+        progressHint: 'Урок отмечается, когда доиграны игры на всех его страницах. Отметки хранятся только в этом браузере.',
         resetProgress: 'Сбросить отметки',
         resetAsk: 'Сбросить все отметки о пройденных уроках в этом браузере?',
         footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Работает офлайн: скачайте папку и откройте <code>index.html</code>.'
@@ -62,11 +62,18 @@
         "title": "Омӯзиши мошиние, ки онро даст расондан мумкин аст",
         "lead": "Визуализатсияҳои интерактивӣ барои курси 24-дарса. Нуқтаҳоро ҳаракат деҳ, лағжандаҳоро тоб деҳ ва бин, ки модел чӣ тавр қарор қабул мекунад. Бе насб ва бе интернет.",
         "planned": "Ба зудӣ",
-        "bookLink": "Китобҳои дарсии курс: китобҳо ва дафтарҳои Colab ›",
-        "warmupLink": "Машқҳои гармкунии Python ба дарсҳо ›",
-        "done": "✓ Гузашта шуд",
+        "bookLink": "Китобҳо ва Colab",
+        "warmupLink": "Машқҳои Python",
+        "done": "Гузашт",
+        "current": "Навбатӣ",
         "progress": "Дарсҳои гузашташуда: <b>{d} аз {n}</b>",
-        "progressHint": "Дарс вақте қайд мешавад, ки ту бозиҳоро дар ҳамаи саҳифаҳои он то охир бозӣ кунӣ. Қайдҳо танҳо дар ҳамин браузер нигоҳ дошта мешаванд.",
+        "progressTitle": "Дарсҳои гузашташуда",
+        "progressCount": "<b>{d}</b> аз {n}",
+        "start": "Оғоз: {l}",
+        "continue": "Идома: {l}",
+        "nextLine": "Навбатӣ — <b>{l} · {t}</b>.",
+        "allDone": "Ҳамаи бозиҳои курс то охир бозида шуданд.",
+        "progressHint": "Дарс вақте қайд мешавад, ки бозиҳо дар ҳамаи саҳифаҳои он то охир бозида шаванд. Қайдҳо танҳо дар ҳамин браузер нигоҳ дошта мешаванд.",
         "resetProgress": "Тоза кардани қайдҳо",
         "resetAsk": "Ҳамаи қайдҳоро дар бораи дарсҳои гузашташуда дар ин браузер тоза кунем?",
         "footer": "Маълумот: Palmer Penguins (Horst, Hill, Gorman, 2020). Офлайн кор мекунад: ҷузвдонро боргирӣ кунед ва <code>index.html</code>-ро кушоед."
@@ -86,19 +93,42 @@
       if (it.status === 'ready') (BY_LESSON[it.lesson] = BY_LESSON[it.lesson] || []).push(it.id);
     }); });
 
+    var LESSONS = Object.keys(BY_LESSON).map(Number).sort(function (x, y) { return x - y; });
+    var ITEM = {};
+    CATALOG.forEach(function (ph) { ph.items.forEach(function (it) { ITEM[it.id] = it; }); });
+    function isDone(id) { return DONE.indexOf(id) !== -1; }
+    function lessonDone(n) { return BY_LESSON[n].every(isDone); }
+    // Следующая страница: первая недоигранная в первом непройденном уроке (null — всё пройдено)
+    function nextItem() {
+      for (var i = 0; i < LESSONS.length; i++) {
+        var ids = BY_LESSON[LESSONS[i]];
+        for (var j = 0; j < ids.length; j++) if (!isDone(ids[j])) return ITEM[ids[j]];
+      }
+      return null;
+    }
+    function pageHref(it) { return 'viz/' + it.id + '/index.html' + (L !== 'ru' ? '?lang=' + L : ''); }
+
     // Полоса прогресса считает уроки, а не страницы: урок пройден, когда доиграны игры на всех его страницах.
     // Компьютер в классе общий — поэтому есть «Сбросить отметки»
     function renderProgress() {
-      var lessons = Object.keys(BY_LESSON), n = lessons.length;
-      var d = lessons.filter(function (k) {
-        return BY_LESSON[k].every(function (id) { return DONE.indexOf(id) !== -1; });
-      }).length;
+      var n = LESSONS.length, d = LESSONS.filter(lessonDone).length, next = nextItem();
+      var plain = MLViz.t(STR, 'progress', { d: d, n: n }).replace(/<[^>]+>/g, '');
       document.getElementById('progress').innerHTML =
-        '<div class="row"><span>' + MLViz.t(STR, 'progress', { d: d, n: n }) + '</span>' +
-        (d ? '<button type="button" id="resetProgress">' + MLViz.t(STR, 'resetProgress') + '</button>' : '') + '</div>' +
-        '<div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + d + '" aria-label="' +
-          MLViz.t(STR, 'progress', { d: d, n: n }).replace(/<[^>]+>/g, '') + '"><div class="fill" style="width:' + (100 * d / n) + '%"></div></div>' +
-        '<p class="note">' + MLViz.t(STR, 'progressHint') + '</p>';
+        '<div class="head"><span>' + MLViz.t(STR, 'progressTitle') + '</span><span class="count">' + MLViz.t(STR, 'progressCount', { d: d, n: n }) + '</span></div>' +
+        '<div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + d + '" aria-label="' + plain + '">' +
+          '<div class="fill" style="width:' + (100 * d / n) + '%"></div></div>' +
+        '<p class="note">' + (next ? MLViz.t(STR, 'nextLine', { l: MLViz.lessonLabel(next), t: tx(next.title) }) : MLViz.t(STR, 'allDone')) + '</p>' +
+        '<p class="note">' + MLViz.t(STR, 'progressHint') + '</p>' +
+        (DONE.length ? '<button type="button" class="reset" id="resetProgress">' + MLViz.t(STR, 'resetProgress') + '</button>' : '');
+      // Главное действие — продолжить с того места, где остановился
+      var old = document.getElementById('continueBtn');
+      if (old) old.remove();
+      if (next) {
+        var a = document.createElement('a');
+        a.className = 'btn primary'; a.id = 'continueBtn'; a.href = pageHref(next);
+        a.innerHTML = MLViz.icon('arrow') + MLViz.t(STR, DONE.length ? 'continue' : 'start', { l: MLViz.lessonLabel(next) });
+        document.getElementById('homeActions').insertBefore(a, document.getElementById('bookBtn'));
+      }
       var rb = document.getElementById('resetProgress');
       if (rb) rb.addEventListener('click', function () {
         if (!window.confirm(MLViz.t(STR, 'resetAsk'))) return;
@@ -106,26 +136,35 @@
       });
     }
     var tx = function (o) { return (o && (o[L] || o.ru)) || ''; };
-    function renderCatalog() {
-    var html = CATALOG.map(function (ph) {
-      var cards = ph.items.map(function (it) {
-        var ready = it.status === 'ready';
-        var tag = ready ? 'a' : 'div';
-        var href = ready ? ' href="viz/' + it.id + '/index.html' + (L !== 'ru' ? '?lang=' + L : '') + '"' : '';
-        return '<' + tag + ' class="card ' + it.status + '"' + href + '>' +
-          '<div class="meta"><span>' + MLViz.lessonLabel(it) + '</span>' +
-          // Бейдж только у будущих страниц: когда готово почти всё, «Готово» на каждой карточке — шум
-          (!ready ? '<span class="badge planned">' + MLViz.t(STR, 'planned') + '</span>'
-            : DONE.indexOf(it.id) !== -1 ? '<span class="badge done">' + MLViz.t(STR, 'done') + '</span>' : '') + '</div>' +
-          '<h3>' + tx(it.title) + '</h3>' +
-          '<div class="analogy">' + tx(it.analogy) + '</div>' +
-        '</' + tag + '>';
-      }).join('');
-      return '<section class="phase"><div class="phase-head"><h2>' + tx(ph.phase) + '</h2>' +
-        '<span class="weeks">' + tx(ph.weeks) + '</span></div><div class="grid">' + cards + '</div></section>';
-    }).join('');
-    document.getElementById('catalog').innerHTML = html;
+    // Номер на бирке: «№ 05», у урока из нескольких страниц — «№ 13.1»
+    function numLabel(it) {
+      var p = MLViz.lessonPart(it), n = (p.n < 10 ? '0' : '') + p.n;
+      // «№» — обычным шрифтом: в Consolas этого знака нет, и он рисуется как «IF»
+      return '<span class="no">№</span>' + n + (p.m > 1 ? '.' + p.k : '');
     }
+    function renderCatalog() {
+      var next = nextItem();
+      var html = CATALOG.map(function (ph) {
+        var cards = ph.items.map(function (it) {
+          var ready = it.status === 'ready', done = ready && isDone(it.id), cur = next && next.id === it.id;
+          var status = !ready ? MLViz.t(STR, 'planned')
+            : done ? '✓ ' + MLViz.t(STR, 'done')
+            : cur ? MLViz.icon('arrow') + MLViz.t(STR, 'current') : '';
+          return '<' + (ready ? 'a' : 'div') + ' class="card ' + it.status + (done ? ' done' : '') + (cur ? ' current' : '') + '"' +
+            (ready ? ' href="' + pageHref(it) + '"' : '') + ' aria-label="' + MLViz.lessonLabel(it) + ' · ' + tx(it.title).replace(/"/g, '&quot;') + '">' +
+            '<div class="card-top"><span class="num">' + numLabel(it) + '</span>' + (status ? '<span class="status">' + status + '</span>' : '') + '</div>' +
+            '<h3>' + tx(it.title) + '</h3>' +
+            '<div class="analogy">' + tx(it.analogy) + '</div>' +
+          '</' + (ready ? 'a' : 'div') + '>';
+        }).join('');
+        return '<section class="phase"><div class="phase-head"><h2>' + tx(ph.phase) + '</h2>' +
+          '<span class="weeks">' + tx(ph.weeks) + '</span></div><div class="grid">' + cards + '</div></section>';
+      }).join('');
+      document.getElementById('catalog').innerHTML = html;
+    }
+    // Значки у кнопок учебника и разминок
+    document.getElementById('bookBtn').insertAdjacentHTML('afterbegin', MLViz.icon('book'));
+    document.getElementById('warmupBtn').insertAdjacentHTML('afterbegin', MLViz.icon('code'));
     renderProgress();
     renderCatalog();
   </script>

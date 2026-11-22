@@ -526,7 +526,7 @@
   }
 
   window.MLViz = {
-    lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
+    lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, icon: icon, lessonPart: lessonPart, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
     fontPx: fontPx, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, quiz: quiz
   };
