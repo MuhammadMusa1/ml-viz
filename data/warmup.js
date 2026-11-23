@@ -394,7 +394,7 @@ window.WARMUP = {
   {
    "id": "l7b",
    "type": "out",
-   "topic": "none",
+   "topic": "nolimit",
    "code": "for depth in [1, 3, None]:\n    print(depth)",
    "choices": [
     "1\n3\nNone",
@@ -741,12 +741,12 @@ window.WARMUP = {
    "id": "l12a",
    "type": "out",
    "topic": "math",
-   "code": "scores = [0.9, 1.0, 0.8]\nprint(round(sum(scores) / len(scores), 2))",
+   "code": "scores = [0.9, 0.8, 0.7]\nprint(round(sum(scores) / len(scores), 2))",
    "choices": [
-    "0.9",
-    "2.7",
     "0.8",
-    "1.0"
+    "2.4",
+    "0.7999999999999999",
+    "0.7"
    ]
   },
   {
@@ -765,7 +765,7 @@ window.WARMUP = {
    "id": "l12c",
    "type": "bug",
    "topic": "var",
-   "code": "model = 0.95\nbaseline = 0.44\nprint(model - basline)",
+   "code": "model = 0.95\nbaseline = 0.51\nprint(model - basline)",
    "line": 3,
    "err": "NameError"
   },
@@ -775,7 +775,7 @@ window.WARMUP = {
    "topic": "if",
    "lines": [
     "model = 0.95",
-    "baseline = 0.44",
+    "baseline = 0.51",
     "if model > baseline:",
     "    print(\"better\")",
     "else:",
@@ -1011,7 +1011,7 @@ window.WARMUP = {
    "id": "l16b",
    "type": "out",
    "topic": "dict",
-   "code": "labels = [\"cat\", \"dog\"]\npred = [0.8, 0.2]\nresult = {labels[i]: pred[i] for i in range(2)}\nprint(result[\"dog\"])",
+   "code": "labels = [\"cat\", \"dog\"]\npred = [0.8, 0.2]\nresult = {}\nfor i in range(2):\n    result[labels[i]] = pred[i]\nprint(result[\"dog\"])",
    "choices": [
     "0.2",
     "0.8",
@@ -1385,12 +1385,12 @@ window.WARMUP = {
    "id": "l21a",
    "type": "out",
    "topic": "math",
-   "code": "baseline = 0.44\nmodel = 0.97\nprint(round((model - baseline) * 100))",
+   "code": "baseline = 0.51\nmodel = 0.96\nprint(round((model - baseline) * 100))",
    "choices": [
-    "53",
-    "0.53",
-    "97",
-    "44"
+    "45",
+    "0.45",
+    "96",
+    "51"
    ]
   },
   {
@@ -1418,12 +1418,12 @@ window.WARMUP = {
    "type": "parsons",
    "topic": "fstr",
    "lines": [
-    "baseline = 0.44",
-    "model = 0.97",
+    "baseline = 0.51",
+    "model = 0.96",
     "gain = model - baseline",
     "print(f\"better by {gain:.2f}\")"
    ],
-   "out": "better by 0.53",
+   "out": "better by 0.45",
    "orders": [
     [
      0,

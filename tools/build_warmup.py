@@ -191,7 +191,7 @@ elif mass > 4500:
 else:
     print("Chinstrap")
 ''', wrong=['Adelie', 'Gentoo', 'Gentoo\nChinstrap']),
-        dict(id='l7b', type='out', topic='none', code='''
+        dict(id='l7b', type='out', topic='nolimit', code='''
 for depth in [1, 3, None]:
     print(depth)
 ''', wrong=['1\n3', '1 3 None', '!err']),
@@ -332,9 +332,9 @@ print(tp)
     # Урок 12 — мини-проект: среднее по кросс-валидации, «ленивая» модель, сравнение с baseline
     12: [
         dict(id='l12a', type='out', topic='math', code='''
-scores = [0.9, 1.0, 0.8]
+scores = [0.9, 0.8, 0.7]
 print(round(sum(scores) / len(scores), 2))
-''', wrong=['2.7', '0.8', '1.0']),
+''', wrong=['2.4', '0.7999999999999999', '0.7']),
         dict(id='l12b', type='out', topic='list', code='''
 species = ["Adelie", "Gentoo", "Adelie", "Chinstrap"]
 best = max(species, key=species.count)
@@ -342,12 +342,12 @@ print(best)
 ''', wrong=['Gentoo', 'Chinstrap', '2']),
         dict(id='l12c', type='bug', topic='var', code='''
 model = 0.95
-baseline = 0.44
+baseline = 0.51
 print(model - basline)
 '''),
         dict(id='l12d', type='parsons', topic='if', code='''
 model = 0.95
-baseline = 0.44
+baseline = 0.51
 if model > baseline:
     print("better")
 else:
@@ -447,7 +447,9 @@ print(row[::-1])
         dict(id='l16b', type='out', topic='dict', code='''
 labels = ["cat", "dog"]
 pred = [0.8, 0.2]
-result = {labels[i]: pred[i] for i in range(2)}
+result = {}
+for i in range(2):
+    result[labels[i]] = pred[i]
 print(result["dog"])
 ''', wrong=['0.8', 'dog', '!err']),
         dict(id='l16c', type='bug', topic='if', code='''
@@ -576,10 +578,10 @@ print(predict(2))
     # Урок 21 — финальный проект, питч: признаки без ответа, сравнение с baseline
     21: [
         dict(id='l21a', type='out', topic='math', code='''
-baseline = 0.44
-model = 0.97
+baseline = 0.51
+model = 0.96
 print(round((model - baseline) * 100))
-''', wrong=['0.53', '97', '44']),
+''', wrong=['0.45', '96', '51']),
         dict(id='l21b', type='out', topic='list', code='''
 columns = ["species", "bill", "mass", "island"]
 features = [c for c in columns if c != "species"]
@@ -590,8 +592,8 @@ X_tr, X_te, y_tr = ["a", "b", "c", "d"]
 print(X_tr)
 '''),
         dict(id='l21d', type='parsons', topic='fstr', code='''
-baseline = 0.44
-model = 0.97
+baseline = 0.51
+model = 0.96
 gain = model - baseline
 print(f"better by {gain:.2f}")
 '''),

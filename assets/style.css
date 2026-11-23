@@ -223,12 +223,28 @@ code, kbd { font-family: var(--mono); font-size: .9em; background: var(--n-950);
 
 /* ---------- Режим проектора: шире колонка, крупнее подписи, кнопки и цифры ---------- */
 .projector .wrap { max-width: 1760px; padding: 0 48px; }
+@media (max-width: 900px) {
+  .projector .wrap { padding: 0 16px; }
+  /* Проектор на узком экране: крупный шрифт не должен распирать страницу вбок */
+  .projector code, .projector .panel, .projector .stage { overflow-wrap: anywhere; word-break: break-word; }
+  .projector h1 { overflow-wrap: anywhere; hyphens: auto; }   /* длинное слово в крупном заголовке переносится */
+  .projector .viz-layout > * { min-width: 0; }
+}
+@media (max-width: 520px) {
+  .projector .proj-btn span { display: none; }   /* на телефоне в шапке только значок */
+  .projector .proj-btn, .projector .lang-switch button { padding: 8px 10px; }
+  .projector .brand > span { display: none; }   /* как без проектора: на телефоне от названия остаётся логотип */
+  .projector .site-header .wrap { flex-wrap: wrap; row-gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+}
 .projector .site-header .wrap { min-height: 80px; }
 .projector .brand { font-size: 26px; }
 .projector .brand .logo { width: 44px; height: 44px; }
 .projector .site-header nav a { font-size: var(--fs-small); }
 .projector .lang-switch button, .projector .proj-btn { min-height: 48px; font-size: var(--fs-label); }
-.projector .viz-layout { grid-template-columns: minmax(0, 1fr) 440px; gap: 32px; }
+/* Две колонки и широкие поля — только на широком экране: на телефоне панель 440 px сжимала график до нуля */
+@media (min-width: 901px) {
+  .projector .viz-layout { grid-template-columns: minmax(0, 1fr) 440px; gap: 32px; }
+}
 .projector button, .projector .btn { font-size: var(--fs-small); padding: 12px 20px; min-height: 56px; }
 .projector .note, .projector .stage .hint, .projector .legend { font-size: var(--fs-small); }
 .projector .legend i { width: 16px; height: 16px; }

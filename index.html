@@ -101,8 +101,11 @@
     function isDone(id) { return DONE.indexOf(id) !== -1; }
     function lessonDone(n) { return BY_LESSON[n].every(isDone); }
     // Следующая страница: первая недоигранная в первом непройденном уроке (null — всё пройдено)
+    // Урок 0 (подготовка) предлагаем только совсем новичку. Кто уже начал курс, продолжает с первого
+    // непройденного урока 1–24, даже если урок 0 пропустил.
     function nextItem() {
       for (var i = 0; i < LESSONS.length; i++) {
+        if (LESSONS[i] < 1 && DONE.length) continue;
         var ids = BY_LESSON[LESSONS[i]];
         for (var j = 0; j < ids.length; j++) if (!isDone(ids[j])) return ITEM[ids[j]];
       }

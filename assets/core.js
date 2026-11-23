@@ -372,6 +372,7 @@
         b.type = 'button'; b.className = 'step-btn'; b.textContent = sign > 0 ? '+' : '−';
         b.setAttribute('aria-label', t(UI, sign > 0 ? 'more' : 'less'));
         b.addEventListener('click', function () {
+          if (r.disabled) return;   // страница заблокировала ползунок (идёт спуск, экзамен сдан…) — кнопки тоже молчат
           var before = r.value;
           if (sign > 0) r.stepUp(); else r.stepDown();
           if (r.value === before) return;
@@ -380,7 +381,12 @@
         });
         return b;
       }
-      row.appendChild(btn(-1)); row.appendChild(r); row.appendChild(btn(1));
+      var minus = btn(-1), plus = btn(1);
+      row.appendChild(minus); row.appendChild(r); row.appendChild(plus);
+      // Кнопки выглядят выключенными вместе с ползунком: страницы ставят r.disabled сами, следим за этим
+      function sync() { minus.disabled = plus.disabled = r.disabled; }
+      sync();
+      if (window.MutationObserver) new MutationObserver(sync).observe(r, { attributes: true, attributeFilter: ['disabled'] });
     });
   }
 
