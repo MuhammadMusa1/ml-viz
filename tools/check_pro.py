@@ -20,6 +20,8 @@
   П8  среднее, медиана, p95 задержки                        ↔ numpy.percentile
   П9  время цикла, часы человека, дефекты в проде: 4096 комбинаций агент/проверка × 4 уровня контекста
                                                             ↔ та же модель на numpy
+  П10 оценка по критериям, экономия и 95% интервал Уэлча, кольцо радара: 8 инструментов × 17 размеров пилота × 5 наборов весов
+                                                            ↔ scipy.stats.ttest_ind(equal_var=False).confidence_interval
 
 Пример сверки (П5, порог 0.5):
   >>> model = GaussianNB().fit(X_train[['bill_length_mm', 'body_mass_g']], y_train)
@@ -307,10 +309,52 @@ def check_p9(pg):
     report('П9', n, bad)
 
 
+# ---------------------------------------------------------------- П10
+def check_p10(pg):
+    from scipy import stats
+    D = data('pro-tech-radar')
+
+    def ref(t, n, w):
+        sw = sum(w) or 4
+        w = w if sum(w) else [1, 1, 1, 1]
+        sc = sum(s * x for s, x in zip(t['s'], w)) / sw
+        gate = next((g for g in D['gates'] if not t['gates'][g]), None)
+        st = None
+        if t['pilot']:
+            c, a = np.array(t['pilot']['ctrl'][:n]), np.array(t['pilot']['ai'][:n])
+            ci = stats.ttest_ind(c, a, equal_var=False).confidence_interval(0.95)
+            st = (c.mean() - a.mean(), ci.low, ci.high)
+            dc, da = sum(t['pilot']['dc'][:n]), sum(t['pilot']['da'][:n])
+        if gate:
+            ring = 'hold'
+        elif not st:
+            ring = 'assess'
+        elif st[2] < 0:
+            ring = 'hold'
+        elif st[1] <= 0 or da > dc or sc < D['adoptScore']:
+            ring = 'trial'
+        else:
+            ring = 'adopt'
+        return sc, st, ring
+
+    bad = n_ = 0
+    for wi, w in enumerate([D['weights'], [0, 0, 5, 0], [5, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0]]):
+        for ti, t in enumerate(D['tools']):
+            for n in range(4, 21):
+                js = pg.evaluate(f'PRO_RADAR.evaluate({ti},{n},{json.dumps(w)})')
+                sc, st, ring = ref(t, n, w); n_ += 1
+                ok = abs(js['score'] - sc) < 1e-12 and js['ring'] == ring
+                if st:
+                    ok = ok and max(abs(js['st']['d'] - st[0]), abs(js['st']['lo'] - st[1]), abs(js['st']['hi'] - st[2])) < 1e-9
+                bad += not ok
+    report('П10', n_, bad)
+
+
 if __name__ == '__main__':
     from playwright.sync_api import sync_playwright
     checks = [('pro-embeddings', check_p1), ('pro-rag', check_p2), ('pro-sampling', check_p3), ('pro-hallucinations', check_p4),
-              ('pro-metrics', check_p5), ('pro-guardrails', check_p6), ('pro-architecture', check_p8), ('pro-ai-sdlc', check_p9)]
+              ('pro-metrics', check_p5), ('pro-guardrails', check_p6), ('pro-architecture', check_p8), ('pro-ai-sdlc', check_p9),
+              ('pro-tech-radar', check_p10)]
     with sync_playwright() as p:
         b = p.chromium.launch()
         for pid, fn in checks:

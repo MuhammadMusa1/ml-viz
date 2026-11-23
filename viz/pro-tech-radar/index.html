@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ассистенты для кода: пилот и техрадар · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .feature { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); margin: 0 0 8px; }
+    .gates { list-style: none; margin: 8px 0 0; padding: 0; font-size: var(--fs-label); line-height: var(--lh-label); }
+    .gates li { padding: 4px 0 4px 26px; position: relative; }
+    .gates li::before { content: '✓'; position: absolute; left: 4px; font-weight: 700; color: var(--text-strong); }
+    .gates li.fail { text-decoration: line-through; color: var(--text-2); }
+    .gates li.fail::before { content: '✕'; text-decoration: none; }
+    .ring-out { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: var(--r-m); background: var(--surface-1); }
+    .ring-out b { color: var(--text-strong); font-size: var(--fs-lead); }
+    .choices.rings { grid-template-columns: 1fr 1fr; }
+    #toolSel button { text-align: left; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="feature" data-i18n="feature"></p>
+          <canvas id="cv"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+        <div class="stage viz-extra">
+          <h3 class="sub" id="pilotTitle"></h3>
+          <canvas id="cvPilot"></canvas>
+          <p class="note" data-i18n="pilotNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="toolTitle"></h3>
+          <div class="seg wrapping" id="toolSel" style="margin-top:8px"></div>
+          <div style="margin-top:12px">
+            <h3><span data-i18n="nLabel"></span>: <span id="nVal"></span></h3>
+            <input type="range" id="nTasks" min="4" max="20" step="1" value="20">
+          </div>
+          <h3 style="margin-top:12px" data-i18n="wTitle"></h3>
+          <p class="note" data-i18n="wNote"></p>
+          <div id="weights"></div>
+        </div>
+
+        <div class="divider">
+          <ul class="gates" id="gates"></ul>
+          <div class="kpis" id="kpis" style="margin-top:8px"></div>
+          <p class="note" id="critLine"></p>
+          <div class="ring-out" id="ringOut"></div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices rings" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="riskTitle"></h2>
+      <div data-i18n-html="riskBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="measureTitle"></h2>
+      <div data-i18n-html="measureBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="whoTitle"></h2>
+      <div data-i18n-html="whoBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Ассистенты для кода: пилот и техрадар',
+        analogy: '<b>Перед покупкой новой машины для таксопарка её не берут «по рекламе»: сначала проверяют, проходит ли она техосмотр, потом дают нескольким водителям на месяц и считают, сколько рейсов и поломок.</b> Так же банк выбирает ИИ-ассистентов для разработчиков: обязательные требования, пилот с замерами и решение — в какое кольцо технологического радара поставить инструмент.',
+        feature: 'Гильдия инженеров выбирает ИИ-инструменты для разработки: 8 кандидатов',
+        cvLabel: 'Технологический радар: четыре кольца (Adopt, Trial, Assess, Hold) и четыре сектора. Точки — инструменты, кольцо считается по правилам ниже.',
+        cvPilotLabel: 'Пилот выбранного инструмента: часы на задачу без ассистента и с ассистентом, вертикальные черты — средние',
+        simNote: 'Упрощённая модель, настоящие числа другие. Инструменты, оценки и задачи пилота выдуманы для примера. Средние, доверительные интервалы, оценка по критериям и кольцо радара считаются по этим данным по-настоящему.',
+        modeExplore: 'Исследуй', modeGame: 'Игра: в какое кольцо?',
+        toolTitle: 'Инструмент',
+        nLabel: 'Задач в пилоте (на группу)',
+        wTitle: 'Веса критериев',
+        wNote: 'Оценка 1–5 по каждому критерию, итог — среднее с весами. Безопасность здесь не весит: это обязательные требования (флажки ниже) — их нельзя «перевесить» скоростью.',
+        c_q: 'Качество кода на наших задачах', c_fit: 'Встраивается в IDE, GitLab, SSO', c_cost: 'Цена (5 — дёшево)', c_sup: 'Зрелость и поддержка',
+        g_data: 'Код не уходит наружу без договора (без обучения на нашем коде)', g_lic: 'Фильтр совпадений с открытым кодом (лицензии)', g_audit: 'Журнал действий, вход через SSO, права',
+        q_ide: 'Ассистенты в IDE', q_agent: 'Агенты', q_model: 'Модели', q_qa: 'Ревью и тесты',
+        r_adopt: 'Adopt', r_trial: 'Trial', r_assess: 'Assess', r_hold: 'Hold',
+        rd_adopt: 'берём по умолчанию', rd_trial: 'пробуем на проектах', rd_assess: 'изучаем', rd_hold: 'не начинаем',
+        t_ideA: 'Ассистент А (облако, договор)', t_ideB: 'Ассистент Б (бесплатный, личные аккаунты)', t_plugin: 'Плагин В (без журнала)',
+        t_agent: 'Агент в терминале', t_prbot: 'Агент «задача → PR»', t_local: 'Открытая модель на серверах банка',
+        t_review: 'ИИ-ревью pull request', t_tests: 'Генератор тестов',
+        kScore: 'Оценка по критериям', kSave: 'Экономия на задаче', kDef: 'Дефекты после выкладки', kNoPilot: 'пилота не было',
+        kSaveSub: '95% интервал: {lo} … {hi} ч', kDefSub: 'без ИИ: {c} из {n} задач', kScoreSub: 'порог для Adopt: {t}',
+        hUnit: '{v} ч', pctFaster: '{v}% быстрее',
+        ringIs: 'Кольцо: <b>{r}</b> — {d}',
+        why_gate: 'не выполнено обязательное требование: «{g}». Скорость и цена это не перевешивают.',
+        why_nopilot: 'пилота ещё не было — данных нет, только изучаем.',
+        why_slow: 'с ассистентом задачи делают медленнее, и весь интервал ниже нуля.',
+        why_adopt: 'интервал экономии выше нуля, дефектов не больше и оценка не ниже порога.',
+        why_ci: 'интервал экономии захватывает ноль — ускорения может не быть. Нужно больше задач.',
+        why_def: 'быстрее, но дефектов больше ({a} против {c}). Продолжаем пилот с проверками.',
+        why_score: 'пилот хороший, но оценка по критериям ниже порога {t}.',
+        pilotTitle: 'Пилот: {t}', pilotNone: 'Пилот: {t} — не проводился',
+        rowCtrl: 'без ИИ', rowAi: 'с ИИ', xHours: 'часов на задачу',
+        pilotNote: 'Одна точка — одна задача. Две группы похожих задач: одна команда работает как раньше, другая — с ассистентом. Чем меньше задач, тем шире доверительный интервал.',
+        hintExplore: 'Выбери инструмент в панели или нажми на точку радара. Меняй число задач пилота и веса критериев — кольцо пересчитывается по правилам.',
+        hintGame: 'Посмотри на обязательные требования, пилот и оценку в панели. В какое кольцо по правилам страницы попадает инструмент?',
+        gameAsk: 'В какое кольцо радара поставить инструмент?',
+        gameRight: 'Верно!', gameWrong: 'По правилам — другое кольцо.',
+        gameLine: '{verdict} {tool}: <b>{r}</b> — {why}',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий инструмент →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameRound: 'Раунд {i} из {n}: {t}, {k} задач в пилоте',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Порядок проверки всегда один: обязательные требования → есть ли данные пилота → значимо ли ускорение → не выросли ли дефекты → оценка по критериям.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Обязательные требования (gates).</b> Куда уходит код, есть ли проверка лицензий, есть ли журнал и вход через SSO. Не выполнено хоть одно — <b>Hold</b>, даже если инструмент самый быстрый.</li>' +
+          '<li><b>Пилот.</b> Нет данных — <b>Assess</b>: читаем, пробуем на учебном проекте. Пилот — две группы похожих задач: без ассистента и с ним. Меряем часы на задачу и дефекты после выкладки.</li>' +
+          '<li><b>Шум.</b> Разница средних на маленьком пилоте случайна. Считаем 95% доверительный интервал экономии (t-тест Уэлча). Весь интервал ниже нуля — стало медленнее, <b>Hold</b>. Интервал захватывает ноль — ускорение не доказано, <b>Trial</b>.</li>' +
+          '<li><b>Качество.</b> Быстрее, но дефектов больше — тоже <b>Trial</b>: продолжаем с ревью и тестами.</li>' +
+          '<li><b>Критерии.</b> Ускорение доказано, дефектов не больше, оценка по критериям не ниже 3.5 — <b>Adopt</b>: инструмент по умолчанию для всех команд. Радар пересматривают регулярно, например раз в квартал.</li>' +
+          '</ol>',
+        riskTitle: 'Риски ассистентов для кода в банке',
+        riskBody:
+          '<div class="tbl-wrap"><table class="ptab">' +
+          '<thead><tr><th>Риск</th><th>Что происходит</th><th>Что делаем</th></tr></thead><tbody>' +
+          '<tr><td>Утечка исходников</td><td>Код уходит провайдеру, хранится у него или идёт на обучение</td><td>Корпоративный договор без обучения и с коротким хранением, или модель в контуре банка; прокси с журналом запросов</td></tr>' +
+          '<tr><td>Секреты в коде</td><td>Ключ из файла <code>.env</code> попадает в запрос или ассистент «подсказывает» чужой ключ</td><td>Исключить секретные файлы из контекста, сканер секретов в pre-commit и в CI, ключи — только в хранилище секретов</td></tr>' +
+          '<tr><td>Лицензии</td><td>Подсказка дословно повторяет код под GPL или другой лицензией</td><td>Фильтр совпадений с открытым кодом, проверка зависимостей и лицензий (SCA)</td></tr>' +
+          '<tr><td>Качество и уязвимости</td><td>Правдоподобный код с ошибкой, SQL-инъекцией или устаревшим API</td><td>Обязательное ревью человеком, тесты, статический анализ (SAST): те же правила, что для кода человека</td></tr>' +
+          '<tr><td>Выдуманные пакеты</td><td>Модель советует несуществующую библиотеку, а злоумышленник регистрирует пакет с таким именем</td><td>Только внутреннее зеркало пакетов с проверкой</td></tr>' +
+          '<tr><td>Инъекция в агента</td><td>Агент читает файл или тикет с чужой инструкцией и выполняет её</td><td>Белый список команд, песочница, подтверждение опасных действий, без доступа к боевым системам (П6, П7)</td></tr>' +
+          '</tbody></table></div>',
+        measureTitle: 'Как измерить, что ассистент реально ускоряет команду',
+        measureBody:
+          '<ul>' +
+          '<li><b>Базовая линия и контрольная группа.</b> Замер до пилота и команда без ассистента на похожих задачах в то же время. Иначе ускорение спутаешь с лёгким спринтом.</li>' +
+          '<li><b>Метрики потока, а не строки кода.</b> Время задачи от начала до выкладки (lead time), время ревью pull request, частота выкладок. Число строк и доля принятых подсказок не годятся: их легко накрутить, и они ничего не говорят о готовой задаче.</li>' +
+          '<li><b>Метрики качества.</b> Дефекты после выкладки, доля откатов (change failure rate), находки статического анализа. Ускорение ценой дефектов — не ускорение.</li>' +
+          '<li><b>Мнение разработчиков.</b> Короткий опрос: удобно ли, где мешает, на что тратится сэкономленное время.</li>' +
+          '<li><b>Критерии успеха — заранее.</b> До пилота записать: сколько недель, сколько задач, какой результат считаем успехом. Иначе «успех» подгоняют под результат — как подбор параметров по test.</li>' +
+          '</ul>' +
+          '<p>Сравнение двух ассистентов строится так же: одинаковые требования, один набор задач, ревью вслепую (проверяющий не знает, где какой ассистент), одни и те же метрики.</p>',
+        whoTitle: 'Кто рекомендует, а кто решает',
+        whoBody:
+          '<div class="tbl-wrap"><table class="ptab">' +
+          '<thead><tr><th>Кто</th><th>Роль</th></tr></thead><tbody>' +
+          '<tr><td>Гильдия инженеров + AI &amp; R&amp;D</td><td>Готовят рекомендацию: критерии, пилот, данные, предложенное кольцо радара</td></tr>' +
+          '<tr><td>Команды-участники пилота</td><td>Дают данные и обратную связь</td></tr>' +
+          '<tr><td>ИБ и юристы</td><td>Проверяют обязательные требования, могут остановить (право вето)</td></tr>' +
+          '<tr><td>Архитектурный комитет / CTO</td><td>Принимает решение и отвечает за него, утверждает радар</td></tr>' +
+          '</tbody></table></div>' +
+          '<p class="note">Рекомендация опирается на данные пилота, а не на хайп: «все пользуются» — не аргумент, интервал экономии выше нуля — аргумент.</p>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Выбери «Ассистент А» и уменьши пилот с 20 задач до 6. Что стало с интервалом экономии и с кольцом? Сколько задач нужно, чтобы интервал не захватывал ноль?</li>' +
+          '<li>«Плагин В» — самый быстрый на пилоте. Почему он в Hold? Что должен сделать поставщик, чтобы плагин перешёл в Trial?</li>' +
+          '<li>Поставь весь вес на цену. Какие инструменты переедут из Adopt? Честно ли так выбирать для банка?</li>' +
+          '<li>У «Агента в терминале» экономия значимая, но он в Trial. Что ещё нужно доказать пилотом?</li>' +
+          '<li>Своя модель на серверах банка проходит все требования, но в Trial. Какой пилот ты бы предложил, чтобы решить её судьбу?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Экономия на задаче: <code>d = x̄(без ИИ) − x̄(с ИИ)</code>. Стандартная ошибка по Уэлчу (дисперсии групп разные): <code>se = √(s₁²/n₁ + s₂²/n₂)</code>, степени свободы <code>ν = se⁴ / ((s₁²/n₁)²/(n₁−1) + (s₂²/n₂)²/(n₂−1))</code>.</p>' +
+          '<p>95% доверительный интервал: <code>d ± t(0.975, ν)·se</code>. Квантиль распределения Стьюдента страница находит сама: через неполную бета-функцию и деление отрезка пополам.</p>' +
+          '<p>Оценка по критериям: <code>Σ wᵢ·sᵢ / Σ wᵢ</code>. Кольцо: требования → пилот → интервал → дефекты → оценка ≥ 3.5.</p>' +
+          '<p>Код ниже запускается в Colab целиком и даёт те же числа, что страница для «Ассистента А»:</p>' +
+          '<pre class="pycode"><code>import numpy as np\nfrom scipy import stats\n\n' +
+          '# Часы на задачу в пилоте «Ассистента А»: 20 задач без ИИ и 20 задач с ИИ\n' +
+          'ctrl = np.array([11.0, 12.5, 11.0, 6.5, 12.5, 11.0, 8.5, 11.5, 11.0, 11.0,\n' +
+          '                 10.0, 11.5, 8.0, 9.5, 8.5, 11.5, 10.0, 9.0, 8.0, 9.5])\n' +
+          'ai   = np.array([7.5, 7.0, 11.0, 10.5, 2.0, 2.5, 7.0, 6.5, 8.0, 8.0,\n' +
+          '                 13.5, 4.5, 6.5, 13.5, 9.5, 9.5, 6.0, 3.0, 8.0, 8.0])\n\n' +
+          'for n in [6, 10, 20]:                     # первые n задач каждой группы\n' +
+          '    res = stats.ttest_ind(ctrl[:n], ai[:n], equal_var=False)   # t-тест Уэлча\n' +
+          '    ci = res.confidence_interval(0.95)\n' +
+          '    d = ctrl[:n].mean() - ai[:n].mean()\n' +
+          '    print(f\'n={n:2d}: экономия {d:.2f} ч, 95% интервал {ci.low:.2f} … {ci.high:.2f}\')</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> 8 выдуманных инструментов: обязательные требования, оценки 1–5 по четырём критериям и пилот на 20 + 20 задачах (часы и дефекты). Средние, интервал Уэлча, оценка и кольцо пересчитываются при каждом изменении; ответ в игре — кольцо, которое дают правила. Сверка — <code>tools/check_pro.py</code>.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: попросить группу без подготовки расставить настоящие инструменты, которыми они пользуются, по кольцам. Потом пройти правила страницы и переставить, если что-то изменилось. Хорошо работает на гильдии инженеров: каждый приносит свой случай использования ассистента.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Какие обязательные требования у нашего банка? Какие метрики мы уже собираем (lead time, дефекты) и можно ли по ним провести пилот? Кто у нас принимает решение и кто его оспаривает? Что делать с инструментом, которым команды уже пользуются «втихую»?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('cvPilot').setAttribute('aria-label', T('cvPilotLabel'));
+    el('nTasks').setAttribute('aria-label', T('nLabel'));
+
+    // ======================= Данные =======================
+    // Инструмент: сектор радара, обязательные требования, оценки 1–5 по критериям, пилот (часы на задачу и дефекты 0/1
+    // для 20 задач без ИИ и 20 задач с ИИ) или null. Всё выдумано для примера.
+    var DATA = /* data:start */{
+     "crit": ["q", "fit", "cost", "sup"], "weights": [3, 2, 2, 2], "adoptScore": 3.5,
+     "gates": ["data", "lic", "audit"],
+     "quads": ["ide", "agent", "model", "qa"],
+     "tools": [
+      {"id":"ideA","quad":"ide","gates":{"data":true,"lic":true,"audit":true},"s":[4,4,3,4],
+       "pilot":{"ctrl":[11.0,12.5,11.0,6.5,12.5,11.0,8.5,11.5,11.0,11.0,10.0,11.5,8.0,9.5,8.5,11.5,10.0,9.0,8.0,9.5],"ai":[7.5,7.0,11.0,10.5,2.0,2.5,7.0,6.5,8.0,8.0,13.5,4.5,6.5,13.5,9.5,9.5,6.0,3.0,8.0,8.0],"dc":[0,0,0,1,0,0,0,0,0,0,0,1,1,0,1,0,1,0,0,0],"da":[0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,1]}},
+      {"id":"ideB","quad":"ide","gates":{"data":false,"lic":true,"audit":false},"s":[4,3,5,3],"pilot":null},
+      {"id":"plugin","quad":"ide","gates":{"data":true,"lic":false,"audit":false},"s":[5,4,4,3],
+       "pilot":{"ctrl":[12.5,14.5,3.5,9.5,12.5,13.5,11.5,14.0,11.0,11.5,10.5,7.0,8.0,11.0,8.5,13.5,13.5,14.5,10.0,13.5],"ai":[4.5,5.0,7.0,7.5,3.0,2.5,8.0,5.0,10.0,8.0,8.0,7.5,9.5,6.5,10.0,5.5,6.5,5.0,8.5,7.0],"dc":[0,1,0,0,0,0,1,0,0,1,0,0,0,0,0,0,1,0,0,1],"da":[0,1,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0]}},
+      {"id":"agent","quad":"agent","gates":{"data":true,"lic":true,"audit":true},"s":[4,3,3,3],
+       "pilot":{"ctrl":[10.5,8.5,9.0,2.5,15.5,13.5,9.0,12.5,11.0,8.5,13.0,9.0,9.0,7.5,11.5,9.5,11.5,8.0,10.5,7.5],"ai":[9.5,7.5,8.0,8.0,4.0,9.0,13.0,2.0,2.0,2.5,9.5,7.0,10.0,9.0,7.5,7.5,6.5,9.5,3.5,5.5],"dc":[0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0],"da":[0,1,0,0,1,1,0,0,0,1,0,0,0,1,1,0,0,1,0,0]}},
+      {"id":"prbot","quad":"agent","gates":{"data":true,"lic":true,"audit":true},"s":[4,3,2,2],"pilot":null},
+      {"id":"local","quad":"model","gates":{"data":true,"lic":true,"audit":true},"s":[3,3,4,2],
+       "pilot":{"ctrl":[15.5,3.0,11.0,8.5,8.5,9.5,4.5,9.5,7.5,19.5,10.5,9.0,9.0,8.0,7.0,9.0,11.5,9.5,12.5,9.5],"ai":[9.5,13.5,11.0,8.0,9.0,11.0,15.0,8.5,8.5,12.0,7.0,8.5,12.0,11.0,9.5,11.5,2.0,12.5,6.5,4.5],"dc":[1,0,0,0,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0],"da":[0,0,1,0,0,1,0,1,0,0,0,0,1,0,0,1,0,0,0,0]}},
+      {"id":"review","quad":"qa","gates":{"data":true,"lic":true,"audit":true},"s":[4,4,4,3],
+       "pilot":{"ctrl":[8.5,9.5,14.0,11.5,6.0,10.0,8.5,10.5,6.0,10.5,10.5,14.0,11.0,11.0,6.5,15.5,5.5,12.5,9.0,8.0],"ai":[6.5,6.5,9.0,7.5,11.5,3.5,8.0,6.0,10.0,3.0,7.0,8.5,4.5,10.5,8.5,10.5,10.5,5.5,6.0,7.5],"dc":[0,0,0,1,0,0,0,1,1,1,0,1,0,0,0,0,0,1,0,0],"da":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1]}},
+      {"id":"tests","quad":"qa","gates":{"data":true,"lic":true,"audit":true},"s":[3,3,4,3],
+       "pilot":{"ctrl":[6.0,5.0,7.5,9.0,10.5,8.5,6.5,6.0,10.0,12.0,8.5,5.0,5.5,12.0,8.5,4.0,8.0,5.0,6.5,7.0],"ai":[8.5,11.5,10.0,9.0,11.0,12.0,6.5,9.5,8.0,10.0,7.0,10.0,10.0,9.5,7.5,9.0,7.5,7.0,10.5,7.5],"dc":[0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0],"da":[0,0,1,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0]}}
+     ],
+     "rounds": [["ideA",20],["ideB",20],["local",20],["prbot",20],["tests",20],["ideA",6],["plugin",20],["agent",20],["review",20],["review",10]]
+    }/* data:end */;
+    var TOOLS = DATA.tools, RINGS = ['adopt', 'trial', 'assess', 'hold'];
+    function toolIdx(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return i; return -1; }
+
+    // ======================= Статистика =======================
+    // Квантиль Стьюдента нужен для доверительного интервала; без библиотек — через неполную бета-функцию
+    function lnGamma(x) {
+      var c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+      var y = x, t = x + 5.5; t -= (x + 0.5) * Math.log(t);
+      var s = 1.000000000190015;
+      for (var j = 0; j < 6; j++) s += c[j] / ++y;
+      return -t + Math.log(2.5066282746310005 * s / x);
+    }
+    function betacf(a, b, x) {   // цепная дробь (метод Лентца)
+      var qab = a + b, qap = a + 1, qam = a - 1, c = 1, d = 1 - qab * x / qap, TINY = 1e-300;
+      if (Math.abs(d) < TINY) d = TINY; d = 1 / d;
+      var h = d;
+      for (var m = 1; m <= 300; m++) {
+        var m2 = 2 * m, aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+        d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY; c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY; d = 1 / d; h *= d * c;
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+        d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY; c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY; d = 1 / d;
+        var del = d * c; h *= del;
+        if (Math.abs(del - 1) < 1e-15) break;
+      }
+      return h;
+    }
+    function ibeta(x, a, b) {    // регуляризованная неполная бета-функция I_x(a, b)
+      if (x <= 0) return 0; if (x >= 1) return 1;
+      var bt = Math.exp(lnGamma(a + b) - lnGamma(a) - lnGamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+      return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b;
+    }
+    function tCdf(t, df) { var p = 0.5 * ibeta(df / (df + t * t), df / 2, 0.5); return t >= 0 ? 1 - p : p; }
+    function tInv(p, df) {       // деление отрезка пополам: точность ~1e-13
+      var lo = 0, hi = 1000;
+      for (var k = 0; k < 200; k++) { var mid = (lo + hi) / 2; if (tCdf(mid, df) < p) lo = mid; else hi = mid; }
+      return (lo + hi) / 2;
+    }
+    function mean(a) { return a.reduce(function (s, v) { return s + v; }, 0) / a.length; }
+    function variance(a) { var m = mean(a); return a.reduce(function (s, v) { return s + (v - m) * (v - m); }, 0) / (a.length - 1); }
+    // t-тест Уэлча: экономия d = среднее(без ИИ) − среднее(с ИИ) и её 95% интервал
+    function welch(x, y) {
+      var n1 = x.length, n2 = y.length, v1 = variance(x) / n1, v2 = variance(y) / n2;
+      var se = Math.sqrt(v1 + v2), df = (v1 + v2) * (v1 + v2) / (v1 * v1 / (n1 - 1) + v2 * v2 / (n2 - 1));
+      var d = mean(x) - mean(y), q = tInv(0.975, df);
+      return { d: d, lo: d - q * se, hi: d + q * se, df: df, mc: mean(x), ma: mean(y) };
+    }
+
+    // ======================= Оценка и кольцо =======================
+    function score(t, w) {
+      var sw = w.reduce(function (s, v) { return s + v; }, 0);
+      if (!sw) w = [1, 1, 1, 1], sw = 4;   // все веса 0 — считаем критерии равными
+      return t.s.reduce(function (s, v, i) { return s + v * w[i]; }, 0) / sw;
+    }
+    // Правила радара по порядку: требования → пилот → интервал → дефекты → оценка
+    function evaluate(i, n, w) {
+      var t = TOOLS[i], out = { score: score(t, w), gate: null, st: null, ring: '', why: '' };
+      DATA.gates.forEach(function (g) { if (!out.gate && !t.gates[g]) out.gate = g; });
+      if (t.pilot) {
+        var p = t.pilot;
+        out.st = welch(p.ctrl.slice(0, n), p.ai.slice(0, n));
+        out.defC = p.dc.slice(0, n).reduce(function (s, v) { return s + v; }, 0);
+        out.defA = p.da.slice(0, n).reduce(function (s, v) { return s + v; }, 0);
+      }
+      if (out.gate) { out.ring = 'hold'; out.why = 'gate'; }
+      else if (!t.pilot) { out.ring = 'assess'; out.why = 'nopilot'; }
+      else if (out.st.hi < 0) { out.ring = 'hold'; out.why = 'slow'; }
+      else if (out.st.lo <= 0) { out.ring = 'trial'; out.why = 'ci'; }
+      else if (out.defA > out.defC) { out.ring = 'trial'; out.why = 'def'; }
+      else if (out.score < DATA.adoptScore) { out.ring = 'trial'; out.why = 'score'; }
+      else { out.ring = 'adopt'; out.why = 'adopt'; }
+      return out;
+    }
+    function whyText(r) {
+      return T('why_' + r.why, { g: r.gate ? T('g_' + r.gate) : '', a: r.defA, c: r.defC, t: DATA.adoptScore });
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', sel: 0, n: 20, w: DATA.weights.slice(), game: null };
+    function cur() {
+      if (state.mode === 'game' && state.game) return { sel: state.game.i, n: state.game.n, w: DATA.weights };
+      return { sel: state.sel, n: state.n, w: state.w };
+    }
+
+    // ======================= Радар =======================
+    var cv = el('cv'), g, DOTS = [];
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 1.0 : 0.62);
+      gp = MLViz.fitCanvas(cvP, w < 560 ? 0.6 : 0.36);
+      draw();
+    }
+    function draw() { drawRadar(); drawPilot(); }
+    function drawRadar() {
+      var ctx = g.ctx, fs = MLPro.fs(g), c = cur(), hide = state.mode === 'game' && state.game && !state.game.answered;
+      ctx.clearRect(0, 0, g.w, g.h);
+      var top = fs * 2.2, cx = g.w / 2, cy = top + (g.h - top * 2) / 2, R = Math.min(g.w / 2 - 8, (g.h - top * 2) / 2);
+      // Кольца: Adopt внутри, Hold снаружи. Заливка — ступени поверхности, без цветов видов и частей данных
+      var fills = ['--surface-3', '--surface-2', '--surface-1', '--n-950'];
+      for (var k = 3; k >= 0; k--) {
+        ctx.beginPath(); ctx.arc(cx, cy, R * (k + 1) / 4, 0, 2 * Math.PI);
+        ctx.fillStyle = MLViz.cssVar(fills[k]) || '#222'; ctx.fill();
+        ctx.strokeStyle = MLViz.cssVar('--line-strong'); ctx.lineWidth = 1; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+      // Подписи колец — по верхней оси
+      RINGS.forEach(function (r, k) {
+        MLPro.label(ctx, T('r_' + r), cx, cy - R * (k + 0.5) / 4, { size: fs - 1, align: 'center' });
+      });
+      // Названия секторов — в углах
+      var qpos = [[0, 0, 'left', 'top'], [g.w, 0, 'right', 'top'], [0, g.h, 'left', 'bottom'], [g.w, g.h, 'right', 'bottom']];
+      ctx.font = MLPro.font(fs, true); ctx.fillStyle = MLViz.cssVar('--text-strong');
+      DATA.quads.forEach(function (q, i) {
+        var p = qpos[i]; ctx.textAlign = p[2]; ctx.textBaseline = p[3];
+        ctx.fillText(T('q_' + q), p[0] + (p[2] === 'left' ? 4 : -4), p[1] + (p[3] === 'top' ? 4 : -4));
+      });
+      // Точки: угол — внутри своего сектора, радиус — середина кольца
+      var quadAng = [[-Math.PI, -Math.PI / 2], [-Math.PI / 2, 0], [Math.PI / 2, Math.PI], [0, Math.PI / 2]];
+      DOTS = [];
+      var rad = Math.max(13, fs);
+      TOOLS.forEach(function (t, i) {
+        var qi = DATA.quads.indexOf(t.quad), mates = TOOLS.filter(function (x) { return x.quad === t.quad; }), j = mates.indexOf(t);
+        var a = quadAng[qi], ang = a[0] + (a[1] - a[0]) * (j + 1) / (mates.length + 1);
+        var hidden = hide && i === c.sel;
+        var ring = hidden ? null : evaluate(i, c.sel === i ? c.n : state.mode === 'game' ? 20 : state.n, c.w).ring;
+        var rr = ring ? R * (RINGS.indexOf(ring) + 0.5) / 4 : R * 0.5;
+        var x = cx + rr * Math.cos(ang), y = cy + rr * Math.sin(ang);
+        if (hidden) { x = cx; y = cy; }
+        DOTS.push({ x: x, y: y, r: rad, i: i });
+        if (state.mode === 'game' && i !== c.sel) return;   // в игре на радаре только инструмент раунда
+        ctx.beginPath(); ctx.arc(x, y, rad, 0, 2 * Math.PI);
+        ctx.fillStyle = i === c.sel ? MLViz.cssVar('--accent') : MLViz.cssVar('--paper'); ctx.fill();
+        ctx.lineWidth = i === c.sel ? 3 : 1.5; ctx.strokeStyle = MLViz.cssVar('--ink'); ctx.stroke();
+        ctx.fillStyle = MLViz.cssVar(i === c.sel ? '--accent-ink' : '--ink'); ctx.font = MLPro.font(fs, true);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(hidden ? '?' : String(i + 1), x, y + 1);
+      });
+      // В игре на радаре одна точка — подписываем её. В «Исследуй» названия по номерам — в панели (подписи налезали бы на соседей)
+      var d = DOTS[c.sel];
+      if (state.mode === 'game') MLPro.label(ctx, T('t_' + TOOLS[c.sel].id), d.x, d.y + d.r + 4, { size: fs, bold: true, align: 'center', base: 'top', maxW: g.w - 8 });
+    }
+
+    // ======================= Пилот =======================
+    var cvP = el('cvPilot'), gp;
+    function drawPilot() {
+      var c = cur(), t = TOOLS[c.sel], ctx = gp.ctx, w = gp.w, h = gp.h;
+      ctx.clearRect(0, 0, w, h);
+      el('pilotTitle').textContent = T(t.pilot ? 'pilotTitle' : 'pilotNone', { t: T('t_' + t.id) });
+      if (!t.pilot) return;
+      var pad = MLViz.plotPad(w, 6), sx = MLViz.scale(0, 20, pad.l, w - pad.r), sy = MLViz.scale(-0.5, 1.5, h - pad.b, pad.t);
+      MLViz.drawAxes(ctx, { w: w, h: h, pad: pad, sx: sx, sy: sy, xTicks: MLViz.range(0, 20, 4), yTicks: [0, 1],
+        xLabel: T('xHours'), yLabel: '', yFmt: function (v) { return T(v ? 'rowCtrl' : 'rowAi'); } });
+      var rows = [[t.pilot.ctrl, 1], [t.pilot.ai, 0]], r = Math.max(5, MLPro.fs(gp) * 0.4);
+      rows.forEach(function (row) {
+        var xs = row[0].slice(0, c.n), y0 = sy(row[1]), seen = {};
+        xs.forEach(function (v) {   // одинаковые значения раздвигаем по вертикали, чтобы точки не слипались
+          var k = seen[v] = (seen[v] || 0) + 1, dy = (k % 2 ? 1 : -1) * Math.floor(k / 2) * r * 1.6;
+          ctx.beginPath(); ctx.arc(sx(v), y0 + dy, r, 0, 2 * Math.PI);
+          ctx.fillStyle = MLViz.cssVar('--paper'); ctx.fill();
+        });
+        var m = mean(xs);
+        ctx.strokeStyle = MLViz.cssVar('--accent'); ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sx(m), y0 - r * 4); ctx.lineTo(sx(m), y0 + r * 4); ctx.stroke();
+        MLPro.label(ctx, T('hUnit', { v: MLPro.fix(m, 1) }), sx(m) + 6, y0 - r * 4, { size: MLPro.fs(gp), base: 'middle' });
+      });
+    }
+
+    // ======================= Панель =======================
+    function kpi(label, value, base) { return '<div class="kpi"><small>' + label + '</small><b>' + value + '</b><span class="base">' + base + '</span></div>'; }
+    function renderTools() {
+      el('toolSel').innerHTML = TOOLS.map(function (t, i) { return '<button type="button" data-i="' + i + '">' + (i + 1) + '. ' + esc(T('t_' + t.id)) + '</button>'; }).join('');
+      el('weights').innerHTML = DATA.crit.map(function (k, i) {
+        return '<div style="margin-top:8px"><label for="w_' + k + '"><span>' + T('c_' + k) + '</span>: <b id="wv_' + k + '"></b></label>' +
+          '<input type="range" id="w_' + k + '" data-i="' + i + '" min="0" max="5" step="1" value="' + state.w[i] + '"></div>';
+      }).join('');
+    }
+    function updatePanel() {
+      var c = cur(), t = TOOLS[c.sel], r = evaluate(c.sel, c.n, c.w), hide = state.mode === 'game' && state.game && !state.game.answered;
+      MLViz.setPressed(el('toolSel'), function (b) { return +b.dataset.i === state.sel; });
+      el('nVal').textContent = state.n;
+      DATA.crit.forEach(function (k, i) { el('wv_' + k).textContent = state.w[i]; });
+      el('gates').innerHTML = DATA.gates.map(function (gk) { return '<li class="' + (t.gates[gk] ? '' : 'fail') + '">' + T('g_' + gk) + '</li>'; }).join('');
+      var critLine = DATA.crit.map(function (k, i) { return T('c_' + k) + ' ' + t.s[i]; }).join(' · ');
+      el('kpis').innerHTML =
+        kpi(T('kScore'), MLPro.fix(r.score, 2), T('kScoreSub', { t: DATA.adoptScore })) +
+        (r.st
+          ? kpi(T('kSave'), T('hUnit', { v: MLPro.fix(r.st.d, 1) }), T('pctFaster', { v: Math.round(100 * r.st.d / r.st.mc) }) + '<br>' + T('kSaveSub', { lo: MLPro.fix(r.st.lo, 1), hi: MLPro.fix(r.st.hi, 1) })) +
+            kpi(T('kDef'), r.defA + ' / ' + c.n, T('kDefSub', { c: r.defC, n: c.n }))
+          : kpi(T('kSave'), '—', T('kNoPilot')));
+      el('critLine').textContent = critLine;
+      el('ringOut').hidden = hide;
+      el('ringOut').innerHTML = T('ringIs', { r: T('r_' + r.ring), d: T('rd_' + r.ring) }) + '<br>' + esc(whyText(r)).replace(/&quot;/g, '"');
+    }
+    function refresh() { updatePanel(); draw(); }
+
+    // ======================= Игра «В какое кольцо?» =======================
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: DATA.rounds.length,
+      text: {
+        step: function (q) { var rd = DATA.rounds[q.i]; return T('gameRound', { i: q.i + 1, n: q.n, t: T('t_' + rd[0]), k: rd[1] }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var rd = DATA.rounds[q.i], i = toolIdx(rd[0]), right = evaluate(i, rd[1], DATA.weights);
+        state.game = { i: i, n: rd[1], answered: false };
+        q.choices(el('gameChoices'), RINGS.map(function (r) { return T('r_' + r) + ' — ' + T('rd_' + r); }),
+          function (k) { return RINGS[k] === right.ring; },
+          function (k, ok) {
+            state.game.answered = true;
+            q.answer(ok ? 1 : 0, T('gameLine', { verdict: T(ok ? 'gameRight' : 'gameWrong'), tool: esc(T('t_' + rd[0])), r: T('r_' + right.ring), why: esc(whyText(right)) }));
+            refresh();
+          });
+        refresh();
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; refresh(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else state.game = null;   // настройки «Исследуй» игра не трогает
+      refresh();
+    }
+
+    // ======================= События =======================
+    renderTools();
+    el('toolSel').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state.sel = +b.dataset.i; refresh();
+    });
+    el('nTasks').addEventListener('input', function (e) { state.n = +e.target.value; refresh(); });
+    el('weights').addEventListener('input', function (e) {
+      if (e.target.dataset.i == null) return;
+      state.w[+e.target.dataset.i] = +e.target.value; refresh();
+    });
+    // Нажатие на точку радара выбирает инструмент (то же — кнопки в панели)
+    cv.addEventListener('click', function (e) {
+      if (state.mode !== 'explore') return;
+      var p = MLViz.pointer(cv, e);
+      DOTS.forEach(function (d) { if (Math.hypot(p.x - d.x, p.y - d.y) <= d.r + 4) { state.sel = d.i; refresh(); } });
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    window.PRO_RADAR = { evaluate: evaluate, welch: welch, tInv: tInv, n: TOOLS.length };   // для сверки (tools/check_pro.py)
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>
