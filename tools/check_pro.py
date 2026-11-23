@@ -18,6 +18,8 @@
       согласие судьи-LLM и человека, каппа Коэна            ↔ sklearn.metrics.cohen_kappa_score
   П6  доля остановленных атак и ложных блокировок, 256 комбинаций защит ↔ recall_score и FPR из confusion_matrix
   П8  среднее, медиана, p95 задержки                        ↔ numpy.percentile
+  П9  время цикла, часы человека, дефекты в проде: 4096 комбинаций агент/проверка × 4 уровня контекста
+                                                            ↔ та же модель на numpy
 
 Пример сверки (П5, порог 0.5):
   >>> model = GaussianNB().fit(X_train[['bill_length_mm', 'body_mass_g']], y_train)
@@ -278,10 +280,37 @@ def check_p8(pg):
     report('П8', 3, int(bad))
 
 
+# ---------------------------------------------------------------- П9
+def check_p9(pg):
+    import itertools
+    D = data('pro-ai-sdlc'); S = np.array([[s['H'], s['h'], s['s'], s['a'], s['R']] for s in D['stages']])
+    tc = D['testCatch']
+
+    def run(agent, review, ctx):
+        H, h, s, a, R = S.T
+        agent = np.array(agent, bool); review = np.array(review, bool) & agent
+        t = np.where(agent, H * s + R * review, H)
+        d = np.where(agent, a * (1 - D['ctxEffect'] * ctx) * np.where(review, 1 - D['review'], 1), h)
+        c = tc['human'] if not agent[3] else (tc['agentReviewed'] if review[3] else tc['agent'])
+        prod = (d[:3].sum() * (1 - c) + d[3:].sum()) * D['perFeatures']
+        return t.sum(), np.where(agent, R * review, H).sum(), prod
+
+    combos = [(list(a), list(r)) for a in itertools.product([0, 1], repeat=6) for r in itertools.product([0, 1], repeat=6)]
+    bad = n = 0
+    for ctx in [0, 0.3, 0.6, 1]:
+        js = pg.evaluate(f'(() => {{ const out = []; const C = {json.dumps(combos)};'
+                         f' for (const [a, r] of C) {{ const x = PRO_SDLC.run({{agent: a, review: r, ctx: {ctx}}}); out.push([x.cycle, x.human, x.prod]); }} return out; }})()')
+        for (a, r), j in zip(combos, js):
+            n += 1
+            if np.abs(np.array(j) - np.array(run(a, r, ctx))).max() > 1e-9:
+                bad += 1
+    report('П9', n, bad)
+
+
 if __name__ == '__main__':
     from playwright.sync_api import sync_playwright
     checks = [('pro-embeddings', check_p1), ('pro-rag', check_p2), ('pro-sampling', check_p3), ('pro-hallucinations', check_p4),
-              ('pro-metrics', check_p5), ('pro-guardrails', check_p6), ('pro-architecture', check_p8)]
+              ('pro-metrics', check_p5), ('pro-guardrails', check_p6), ('pro-architecture', check_p8), ('pro-ai-sdlc', check_p9)]
     with sync_playwright() as p:
         b = p.chromium.launch()
         for pid, fn in checks:

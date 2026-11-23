@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI SDLC: разработка с ИИ-агентами · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .feature { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); margin: 0 0 8px; }
+    /* Таблица этапов в панели: флажки «агент» и «проверка» по строкам, каждая ячейка — цель нажатия 44 px */
+    .stages td { vertical-align: middle; }
+    .stages td.c { text-align: center; padding: 0; }
+    .stages label { display: flex; align-items: center; justify-content: center; min-height: var(--tap); min-width: var(--tap); cursor: pointer; }
+    .stages input { width: 22px; height: 22px; accent-color: var(--accent); margin: 0; }
+    .projector .stages input { width: 28px; height: 28px; }
+    .stages input:disabled + .off { display: inline; }
+    .choices.one { grid-template-columns: 1fr; }
+    .choices.one button { text-align: left; }
+    .terms-list { display: flex; flex-direction: column; gap: 10px; }
+    .terms-list div { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-m); padding: 12px 16px; }
+    .terms-list b { color: var(--text-strong); }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="feature" data-i18n="feature"></p>
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0" data-i18n-html="legend"></div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+        <div class="stage viz-extra">
+          <h3 class="sub" data-i18n="tblTitle"></h3>
+          <div class="tbl-wrap"><table class="ptab" id="byStage"></table></div>
+          <p class="note" data-i18n="tblNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="presetTitle"></h3>
+          <div class="seg wrapping" id="presets" style="margin-top:8px">
+            <button type="button" data-p="none" data-i18n="pNone"></button>
+            <button type="button" data-p="wild" data-i18n="pWild"></button>
+            <button type="button" data-p="safe" data-i18n="pSafe"></button>
+          </div>
+          <div class="tbl-wrap" style="margin-top:12px"><table class="ptab stages" id="stages"></table></div>
+          <div style="margin-top:12px">
+            <h3><span data-i18n="ctxLabel"></span>: <span id="ctxVal"></span></h3>
+            <input type="range" id="ctx" min="0" max="100" step="10" value="30">
+            <p class="note" data-i18n="ctxNote"></p>
+          </div>
+        </div>
+
+        <div class="divider">
+          <div class="kpis" id="kpis"></div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameCfg"></p>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="namesTitle"></h2>
+      <div class="terms-list" data-i18n-html="namesBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'AI SDLC: разработка с ИИ-агентами',
+        analogy: '<b>На каждом посту конвейера — быстрый стажёр, а мастер задаёт задачу и проверяет работу.</b> AI SDLC — жизненный цикл разработки, где ИИ-агенты помогают на всех этапах: от требований до поддержки. Человек задаёт рамки и контекст и отвечает за результат.',
+        feature: 'Задача команды: добавить в приложение банка оплату по QR-коду',
+        cvLabel: 'Цикл разработки из 6 этапов: кто работает на каждом этапе, сколько часов и сколько дефектов он вносит',
+        legend: '<span>бумага — работает человек</span><span>толстая рамка — ИИ-агент</span><span>✓ — агента проверяет человек</span><span>пунктир «!» — агент без проверки</span>',
+        simNote: 'Упрощённая модель, настоящие числа другие. Часы, доли дефектов, ускорение агентов и сила проверок заданы для примера; на реальных проектах их меряют по своей истории задач. Расчёт времени цикла и дефектов по этим числам — настоящий.',
+        modeExplore: 'Исследуй', modeGame: 'Игра: где нужен человек?',
+        presetTitle: 'Готовые варианты',
+        pNone: 'Без ИИ', pWild: 'ИИ везде, без проверок', pSafe: 'ИИ везде + проверки человеком',
+        thStage: 'Этап', thAgent: 'Агент', thReview: 'Проверка',
+        ctxLabel: 'Качество контекста для агентов',
+        ctxNote: 'Требования, правила команды, примеры и тесты, которые получает агент. Чем лучше контекст, тем меньше ошибок у агента.',
+        st_req: 'Требования', st_design: 'Проектирование', st_code: 'Код', st_test: 'Тесты', st_deploy: 'Деплой', st_support: 'Поддержка',
+        human: 'человек', agent: 'ИИ-агент', checked: '✓ проверка', unchecked: '! без проверки',
+        nodeNums: '{h} ч · {d} деф.',
+        center1: 'цикл', center2: 'повторяется',
+        kCycle: 'Время цикла', kHuman: 'Часы человека', kDef: 'Дефектов в проде', kBase: 'без ИИ: {v}', kDefUnit: 'на 10 фич',
+        hUnit: '{v} ч',
+        tblTitle: 'По этапам: часы и дефекты одной фичи',
+        tblNote: 'Внесено — сколько дефектов появилось на этапе (в среднем). Тесты ловят часть дефектов, пришедших с требований, проектирования и кода; ошибки деплоя и поддержки попадают в прод сразу.',
+        thHours: 'Часы', thHumanH: 'Из них человек', thIn: 'Внесено дефектов', thTotal: 'Всего',
+        hintExplore: 'Включай агента и проверку на каждом этапе в таблице панели или нажимай на этап на схеме (это включает и выключает агента). Смотри, как меняются время цикла и дефекты в проде.',
+        hintGame: 'Настройки раунда уже на схеме. Какое одно изменение сильнее всего уменьшит дефекты в проде?',
+        gameAsk: 'Что сделать, чтобы дефектов в проде стало меньше всего?',
+        gameCfg: 'Сейчас: агент на этапах <b>{a}</b>; проверка человеком: <b>{r}</b>; контекст <b>{c}%</b>.',
+        gNone: 'нигде',
+        gAddReview: 'Добавить проверку человеком на этапе «{s}»',
+        gCtx: 'Улучшить контекст для агентов до 90%',
+        gameRight: 'Верно!', gameWrong: 'Не лучший шаг.',
+        gameLine: '{verdict} Лучше всего: <b>{best}</b> — дефектов на 10 фич станет {after} вместо {before}.',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий раунд →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Проверка человеком нужна там, где агент вносит больше всего ошибок и где их потом никто не поймает.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Цикл, а не конвейер.</b> Этапы идут по кругу: опыт поддержки становится новыми требованиями. С агентами круг проходится быстрее, поэтому итераций больше.</li>' +
+          '<li><b>Агент ускоряет, но ошибается.</b> Агент делает работу этапа в 2–4 раза быстрее, но без контекста и проверки вносит больше дефектов, чем человек.</li>' +
+          '<li><b>Человек задаёт рамки и проверяет.</b> Проверка (ревью) стоит времени человека, но ловит большую часть ошибок своего этапа — до того, как они уйдут дальше.</li>' +
+          '<li><b>Контекст важнее промпта.</b> Требования, правила, примеры и тесты, которые получает агент, снижают число его ошибок сильнее, чем удачная формулировка просьбы.</li>' +
+          '<li><b>Узкое место переезжает.</b> Если ускорить только код, весь цикл ускорится мало: время уйдёт на требования, тесты и проверки. Поэтому AI SDLC меняет все этапы, а не один.</li>' +
+          '</ol>',
+        namesTitle: 'Как это ещё называют',
+        namesBody:
+          '<div><b>AI-native SDLC</b> — процесс, который с самого начала строят вокруг ИИ, а не просто добавляют помощника к старой схеме.</div>' +
+          '<div><b>Agentic SDLC</b> (agent-based SDLC, agentic software development) — агенты сами выполняют сквозные задачи: собирают контекст, пишут код, запускают проверки.</div>' +
+          '<div><b>AI-DLC</b> (AI-Driven Development Lifecycle) и <b>AI-based SDLC</b> — близкие названия цикла разработки, управляемого ИИ или перестроенного под него.</div>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Сравни три готовых варианта. Какой самый быстрый? Какой даёт меньше всего дефектов? Сколько часов человека стоит разница?</li>' +
+          '<li>Включи агента только на этапе «Код». Во сколько раз ускорился сам код и во сколько — весь цикл? Почему?</li>' +
+          '<li>В варианте «ИИ везде, без проверок» найди одну проверку, которая уменьшит дефекты сильнее всего. Почему именно она?</li>' +
+          '<li>Подвигай качество контекста от 0 до 100% при «ИИ везде + проверки». Что сильнее снижает дефекты: контекст или проверки?</li>' +
+          '<li>Тесты делает агент без проверки. Почему тогда дефектов в проде становится больше, хотя тестов он пишет быстрее?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Для этапа i: время <code>tᵢ = Hᵢ</code> (человек) или <code>Hᵢ·sᵢ + Rᵢ·[проверка]</code> (агент); дефекты <code>dᵢ = hᵢ</code> (человек) или <code>aᵢ·(1 − 0.6·контекст)·(1 − 0.6·[проверка])</code> (агент).</p>' +
+          '<p>Тесты ловят долю <code>c</code> дефектов, пришедших с первых трёх этапов: человек — 60%, агент с проверкой — 75%, агент без проверки — 45%. Дефекты деплоя и поддержки уходят в прод сразу.</p>' +
+          '<p>Время цикла = <code>Σ tᵢ</code>, дефекты в проде = <code>(d₁ + d₂ + d₃)·(1 − c) + d₄ + d₅ + d₆</code>. Ускорение всего цикла при ускорении одного этапа — закон Амдала: чем меньше доля этапа, тем меньше выигрыш.</p>' +
+          '<p>Код ниже запускается в Colab целиком и даёт те же числа, что страница:</p>' +
+          '<pre class="pycode"><code>import numpy as np\n\n' +
+          '#          H    h     s     a     R   (часы, дефекты человека, доля времени и дефекты агента, часы проверки)\n' +
+          'S = np.array([[16, .30, .40, .50, 3],    # требования\n' +
+          '              [12, .25, .40, .40, 3],    # проектирование\n' +
+          '              [40, .80, .25, 1.2, 6],    # код\n' +
+          '              [16, .10, .30, .15, 3],    # тесты\n' +
+          '              [ 6, .10, .50, .20, 1],    # деплой\n' +
+          '              [10, .10, .40, .25, 2]])   # поддержка\n\n' +
+          'def run(agent, review, ctx=0.3):\n' +
+          '    H, h, s, a, R = S.T\n' +
+          '    agent, review = np.array(agent, bool), np.array(review, bool) &amp; np.array(agent, bool)\n' +
+          '    t = np.where(agent, H * s + R * review, H)\n' +
+          '    d = np.where(agent, a * (1 - 0.6 * ctx) * np.where(review, 0.4, 1), h)\n' +
+          '    catch = 0.6 if not agent[3] else (0.75 if review[3] else 0.45)\n' +
+          '    prod = d[3] + (d[:3].sum()) * (1 - catch) + d[4:].sum()\n' +
+          '    human = np.where(agent, R * review, H).sum()\n' +
+          '    return t.sum(), human, prod * 10      # часы цикла, часы человека, дефектов на 10 фич\n\n' +
+          'print(\'без ИИ:          \', np.round(run([0] * 6, [0] * 6), 1))\n' +
+          'print(\'ИИ без проверок: \', np.round(run([1] * 6, [0] * 6), 1))\n' +
+          'print(\'ИИ + проверки:   \', np.round(run([1] * 6, [1] * 6), 1))\n' +
+          'print(\'ИИ только в коде:\', np.round(run([0, 0, 1, 0, 0, 0], [0] * 6), 1))</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Одна фича (оплата по QR-коду) и 6 этапов цикла с условными часами и долями дефектов. Время цикла, часы человека и дефекты в проде пересчитываются при каждом переключении; ответ в игре — то изменение, которое сильнее всего снижает дефекты, оно тоже считается. Сверка — <code>tools/check_pro.py</code>.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: класс голосует — «ИИ везде без проверок» быстрее и лучше? Показываем числа и спорим, где ставить человека. Для инженеров банка — обсудить, какие этапы у них уже с агентами и где проверок не хватает.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Кто отвечает за ошибку в коде, который написал агент? Что должно быть в контексте агента в банке (правила безопасности, требования регулятора)? Как измерить, что агенты действительно помогают?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('ctx').setAttribute('aria-label', T('ctxLabel'));
+
+    // ======================= Данные =======================
+    // Этап: id, H — часы человека, h — дефектов вносит человек (в среднем на фичу), s — доля времени у агента,
+    // a — дефектов вносит агент без контекста, R — часы человека на проверку работы агента. Числа условные.
+    var DATA = /* data:start */{"stages":[
+      {"id":"req","H":16,"h":0.30,"s":0.40,"a":0.50,"R":3},
+      {"id":"design","H":12,"h":0.25,"s":0.40,"a":0.40,"R":3},
+      {"id":"code","H":40,"h":0.80,"s":0.25,"a":1.20,"R":6},
+      {"id":"test","H":16,"h":0.10,"s":0.30,"a":0.15,"R":3},
+      {"id":"deploy","H":6,"h":0.10,"s":0.50,"a":0.20,"R":1},
+      {"id":"support","H":10,"h":0.10,"s":0.40,"a":0.25,"R":2}],
+     "review":0.6, "ctxEffect":0.6, "testCatch":{"human":0.6,"agentReviewed":0.75,"agent":0.45}, "perFeatures":10}/* data:end */;
+    var ST = DATA.stages, N = ST.length, TEST = 3;
+
+    // ======================= Модель цикла =======================
+    // c: { agent: [6 × bool], review: [6 × bool], ctx: 0…1 }. Проверка работает только там, где есть агент
+    function run(c) {
+      var rows = ST.map(function (s, i) {
+        var ag = !!c.agent[i], rv = ag && !!c.review[i];
+        var t = ag ? s.H * s.s + (rv ? s.R : 0) : s.H;
+        var hum = ag ? (rv ? s.R : 0) : s.H;
+        var d = ag ? s.a * (1 - DATA.ctxEffect * c.ctx) * (rv ? 1 - DATA.review : 1) : s.h;
+        return { t: t, hum: hum, d: d, ag: ag, rv: rv };
+      });
+      var tc = DATA.testCatch, catchRate = !rows[TEST].ag ? tc.human : rows[TEST].rv ? tc.agentReviewed : tc.agent;
+      var early = rows[0].d + rows[1].d + rows[2].d;
+      var prod = early * (1 - catchRate) + rows[3].d + rows[4].d + rows[5].d;
+      return {
+        rows: rows, catchRate: catchRate,
+        cycle: rows.reduce(function (s, r) { return s + r.t; }, 0),
+        human: rows.reduce(function (s, r) { return s + r.hum; }, 0),
+        prod: prod * DATA.perFeatures
+      };
+    }
+    function cfg(a, r, ctx) { return { agent: a.slice(), review: r.slice(), ctx: ctx }; }
+    var ALL0 = [0, 0, 0, 0, 0, 0], ALL1 = [1, 1, 1, 1, 1, 1];
+    var BASE = run(cfg(ALL0, ALL0, 0));
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', c: cfg(ALL1, ALL0, 0.3), game: null };
+    function cur() { return state.mode === 'game' && state.game ? state.game.c : state.c; }
+
+    // ======================= Рисование: цикл из 6 этапов =======================
+    var cv = el('cv'), g, NODES = [];
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 1.25 : 0.62);
+      draw();
+    }
+    // Места этапов: на широком экране — по кругу, на телефоне — «подковой» из двух столбцов (тоже цикл)
+    function positions() {
+      var narrow = g.w < 560, out = [];
+      if (!narrow) {
+        var cx = g.w / 2, cy = g.h / 2, rx = g.w * 0.34, ry = g.h * 0.33;
+        for (var i = 0; i < N; i++) { var a = -Math.PI / 2 + i * 2 * Math.PI / N; out.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      } else {
+        var colX = [g.w * 0.26, g.w * 0.74], rowY = [g.h * 0.17, g.h * 0.5, g.h * 0.83];
+        [[0, 0], [0, 1], [0, 2], [1, 2], [1, 1], [1, 0]].forEach(function (p) { out.push({ x: colX[p[0]], y: rowY[p[1]] }); });
+      }
+      return out;
+    }
+    function arrow(ctx, x0, y0, x1, y1) {
+      var ang = Math.atan2(y1 - y0, x1 - x0), hs = 10;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 - hs * Math.cos(ang - 0.45), y1 - hs * Math.sin(ang - 0.45));
+      ctx.lineTo(x1 - hs * Math.cos(ang + 0.45), y1 - hs * Math.sin(ang + 0.45)); ctx.closePath(); ctx.fill();
+    }
+    function edge(b, tx, ty) {
+      var dx = tx - b.cx, dy = ty - b.cy, k = Math.min(Math.abs(b.w / 2 / (dx || 1e-9)), Math.abs(b.h / 2 / (dy || 1e-9)));
+      return { x: b.cx + dx * k, y: b.cy + dy * k };
+    }
+    function draw() {
+      var ctx = g.ctx, fs = MLPro.fs(g), res = run(cur()), pos = positions(), narrow = g.w < 560;
+      var paper = MLViz.cssVar('--paper'), ink = MLViz.cssVar('--ink'), lh = Math.round(fs * 1.3);
+      ctx.clearRect(0, 0, g.w, g.h);
+      var bw = narrow ? g.w * 0.44 : Math.min(230, g.w * 0.26);
+      // Текст блока переносим по словам; высота всех блоков — по самому длинному, чтобы ничего не вылезало
+      var texts = res.rows.map(function (r, i) {
+        ctx.font = MLPro.font(fs, true);
+        var head = MLPro.wrap(ctx, (i + 1) + '. ' + T('st_' + ST[i].id), bw - 16);
+        ctx.font = MLPro.font(fs);
+        var who = MLPro.wrap(ctx, r.ag ? T('agent') + ' · ' + T(r.rv ? 'checked' : 'unchecked') : T('human'), bw - 16);
+        var nums = MLPro.wrap(ctx, T('nodeNums', { h: MLPro.fix(r.t, 1), d: MLPro.fix(r.d, 2) }), bw - 16);
+        return { head: head, body: who.concat(nums) };
+      });
+      var bh = Math.max.apply(null, texts.map(function (t) { return (t.head.length + t.body.length) * lh; })) + 16;
+      NODES = pos.map(function (p, i) { return { cx: p.x, cy: p.y, w: bw, h: bh, x: p.x - bw / 2, y: p.y - bh / 2, i: i }; });
+      // Стрелки цикла (последний этап ведёт обратно к первому)
+      ctx.strokeStyle = MLViz.cssVar('--n-300'); ctx.fillStyle = MLViz.cssVar('--n-300'); ctx.lineWidth = 2;
+      NODES.forEach(function (a, i) {
+        var b = NODES[(i + 1) % N], p0 = edge(a, b.cx, b.cy), p1 = edge(b, a.cx, a.cy);
+        arrow(ctx, p0.x, p0.y, p1.x, p1.y);
+      });
+      if (!narrow) {
+        ctx.fillStyle = MLViz.cssVar('--text-2'); ctx.font = MLPro.font(fs, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(T('center1'), g.w / 2, g.h / 2 - lh / 2); ctx.font = MLPro.font(fs); ctx.fillText(T('center2'), g.w / 2, g.h / 2 + lh / 2);
+      }
+      NODES.forEach(function (b, i) {
+        var r = res.rows[i];
+        MLPro.rr(ctx, b.x, b.y, b.w, b.h, 8); ctx.fillStyle = paper; ctx.fill();
+        if (r.ag && !r.rv) { ctx.setLineDash([6, 4]); ctx.strokeStyle = MLViz.cssVar('--c-odd'); ctx.lineWidth = 3; ctx.stroke(); ctx.setLineDash([]); }
+        else if (r.ag) { ctx.strokeStyle = MLViz.cssVar('--n-200'); ctx.lineWidth = 4; ctx.stroke(); }
+        ctx.fillStyle = ink; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        var tx = texts[i], y = b.y + 8;
+        ctx.font = MLPro.font(fs, true); tx.head.forEach(function (ln) { ctx.fillText(ln, b.x + 8, y); y += lh; });
+        ctx.font = MLPro.font(fs); tx.body.forEach(function (ln) { ctx.fillText(ln, b.x + 8, y); y += lh; });
+      });
+    }
+
+    // ======================= Панель =======================
+    function renderStages() {
+      el('stages').innerHTML = '<thead><tr><th>' + T('thStage') + '</th><th class="n">' + T('thAgent') + '</th><th class="n">' + T('thReview') + '</th></tr></thead><tbody>' +
+        ST.map(function (s, i) {
+          return '<tr><td>' + T('st_' + s.id) + '</td>' +
+            '<td class="c"><label><input type="checkbox" data-k="agent" data-i="' + i + '" aria-label="' + esc(T('thAgent') + ': ' + T('st_' + s.id)) + '"></label></td>' +
+            '<td class="c"><label><input type="checkbox" data-k="review" data-i="' + i + '" aria-label="' + esc(T('thReview') + ': ' + T('st_' + s.id)) + '"></label></td></tr>';
+        }).join('') + '</tbody>';
+    }
+    function kpi(label, value, base) { return '<div class="kpi"><small>' + label + '</small><b>' + value + '</b><span class="base">' + base + '</span></div>'; }
+    function updatePanel() {
+      var c = cur(), res = run(c), hide = state.mode === 'game' && state.game && !state.game.answered;
+      el('stages').querySelectorAll('input').forEach(function (inp) {
+        var i = +inp.dataset.i;
+        inp.checked = !!state.c[inp.dataset.k][i] && (inp.dataset.k === 'agent' || !!state.c.agent[i]);
+        if (inp.dataset.k === 'review') inp.disabled = !state.c.agent[i];   // проверять имеет смысл только работу агента
+      });
+      el('ctxVal').textContent = Math.round(state.c.ctx * 100) + '%';
+      MLViz.setPressed(el('presets'), function (b) { return presetOf(state.c) === b.dataset.p; });
+      el('kpis').innerHTML = hide ? '' :
+        kpi(T('kCycle'), T('hUnit', { v: MLPro.fix(res.cycle, 0) }), T('kBase', { v: T('hUnit', { v: MLPro.fix(BASE.cycle, 0) }) })) +
+        kpi(T('kHuman'), T('hUnit', { v: MLPro.fix(res.human, 0) }), T('kBase', { v: T('hUnit', { v: MLPro.fix(BASE.human, 0) }) })) +
+        kpi(T('kDef') + ' (' + T('kDefUnit') + ')', MLPro.fix(res.prod, 1), T('kBase', { v: MLPro.fix(BASE.prod, 1) }));
+      el('byStage').innerHTML = '<thead><tr><th>' + T('thStage') + '</th><th class="n">' + T('thHours') + '</th><th class="n">' + T('thHumanH') + '</th><th class="n">' + T('thIn') + '</th></tr></thead><tbody>' +
+        res.rows.map(function (r, i) {
+          return '<tr><td>' + T('st_' + ST[i].id) + ' — ' + (r.ag ? T('agent') + (r.rv ? ' ' + T('checked') : ' ' + T('unchecked')) : T('human')) + '</td>' +
+            '<td class="n">' + MLPro.fix(r.t, 1) + '</td><td class="n">' + MLPro.fix(r.hum, 1) + '</td><td class="n">' + MLPro.fix(r.d, 2) + '</td></tr>';
+        }).join('') +
+        '<tr><td><b>' + T('thTotal') + '</b></td><td class="n"><b>' + MLPro.fix(res.cycle, 1) + '</b></td><td class="n"><b>' + MLPro.fix(res.human, 1) + '</b></td><td class="n"></td></tr></tbody>';
+    }
+    function presetOf(c) {
+      var same = function (x, y) { return x.every(function (v, i) { return !!v === !!y[i]; }); };
+      if (same(c.agent, ALL0)) return 'none';
+      if (same(c.agent, ALL1) && same(c.review, ALL0)) return 'wild';
+      if (same(c.agent, ALL1) && same(c.review, ALL1)) return 'safe';
+      return '';
+    }
+    function refresh() { updatePanel(); draw(); }
+
+    // ======================= Игра «Где нужен человек?» =======================
+    // Варианты хода: добавить проверку на этапе с агентом без проверки или улучшить контекст до 90%.
+    // Верный — тот, после которого дефектов в проде меньше всего (считается моделью run).
+    function moves(c) {
+      var out = [];
+      c.agent.forEach(function (a, i) { if (a && !c.review[i]) out.push({ label: T('gAddReview', { s: T('st_' + ST[i].id) }), apply: function (x) { x.review[i] = 1; } }); });
+      if (c.ctx < 0.9) out.push({ label: T('gCtx'), apply: function (x) { x.ctx = 0.9; } });
+      return out.map(function (m) { var x = cfg(c.agent, c.review, c.ctx); m.apply(x); m.after = run(x).prod; return m; });
+    }
+    var ROUNDS = [
+      cfg(ALL1, ALL0, 0.3), cfg([0, 0, 1, 1, 0, 0], ALL0, 0.3), cfg(ALL1, [0, 0, 1, 0, 0, 0], 0.3), cfg([1, 1, 1, 0, 0, 0], ALL0, 0.5),
+      cfg(ALL1, [1, 1, 1, 0, 1, 1], 0.3), cfg([0, 0, 0, 1, 1, 1], ALL0, 0.3), cfg(ALL1, [0, 0, 1, 1, 0, 0], 0), cfg([1, 1, 0, 0, 0, 0], ALL0, 0.3)
+    ];
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var c = ROUNDS[q.i], before = run(c).prod;
+        state.game = { c: c, answered: false };
+        var ms = MLViz.shuffle(moves(c), Math.random).slice(0, 4), best = 0;
+        // Если лучший ход не попал в четыре варианта — добавляем его вместо худшего
+        var all = moves(c), top = all.reduce(function (b, m) { return m.after < b.after ? m : b; }, all[0]);
+        if (ms.indexOf(ms.filter(function (m) { return m.label === top.label; })[0]) === -1) ms[ms.length - 1] = top;
+        ms.forEach(function (m, k) { if (m.after < ms[best].after - 1e-12) best = k; });
+        var names = function (arr) { var n = ST.filter(function (s, i) { return arr[i]; }).map(function (s) { return T('st_' + s.id); }); return n.length ? n.join(', ') : T('gNone'); };
+        el('gameCfg').innerHTML = T('gameCfg', { a: names(c.agent), r: names(c.review.map(function (v, i) { return v && c.agent[i]; })), c: Math.round(c.ctx * 100) });
+        q.choices(el('gameChoices'), ms.map(function (m) { return esc(m.label); }), function (k) { return Math.abs(ms[k].after - ms[best].after) < 1e-12; }, function (k, ok) {
+          state.game.answered = true;
+          q.answer(ok ? 1 : 0, T('gameLine', { verdict: T(ok ? 'gameRight' : 'gameWrong'), best: esc(ms[best].label), after: MLPro.fix(ms[best].after, 1), before: MLPro.fix(before, 1) }));
+          refresh();
+        });
+        refresh();
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameCfg').innerHTML = ''; refresh(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else state.game = null;   // настройки «Исследуй» не меняются игрой
+      refresh();
+    }
+
+    // ======================= События =======================
+    renderStages();
+    el('stages').addEventListener('change', function (e) {
+      var k = e.target.dataset.k, i = +e.target.dataset.i; if (!k) return;
+      state.c[k][i] = e.target.checked ? 1 : 0;
+      if (k === 'agent' && !e.target.checked) state.c.review[i] = 0;
+      refresh();
+    });
+    el('presets').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var p = b.dataset.p;
+      state.c.agent = (p === 'none' ? ALL0 : ALL1).slice();
+      state.c.review = (p === 'safe' ? ALL1 : ALL0).slice();
+      refresh();
+    });
+    el('ctx').addEventListener('input', function (e) { state.c.ctx = +e.target.value / 100; refresh(); });
+    // Нажатие на этап схемы включает или выключает агента (то же самое — флажки в панели)
+    cv.addEventListener('click', function (e) {
+      if (state.mode !== 'explore') return;
+      var p = MLViz.pointer(cv, e);
+      NODES.forEach(function (b, i) {
+        if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+          state.c.agent[i] = state.c.agent[i] ? 0 : 1;
+          if (!state.c.agent[i]) state.c.review[i] = 0;
+          refresh();
+        }
+      });
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    window.PRO_SDLC = { run: run };   // для сверки (tools/check_pro.py)
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

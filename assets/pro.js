@@ -84,11 +84,19 @@
   function pct(x, d) { return (x * 100).toFixed(d || 0) + '%'; }
   function fix(x, d) { return (+x).toFixed(d == null ? 2 : d); }
 
+  // Перенос текста по словам под ширину (для подписей внутри блоков на canvas)
+  function wrap(ctx, text, maxW) {
+    var words = String(text).split(' '), lines = [], line = '';
+    words.forEach(function (w) { var t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; });
+    if (line) lines.push(line);
+    return lines;
+  }
+
   // Перерисовка по resize с задержкой (как на всех страницах курса)
   function onResize(fn) { var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(fn, 120); }); }
 
   window.MLPro = {
     init: init, el: el, esc: esc, font: font, fs: fs, rr: rr, label: label, labelSize: labelSize, overlaps: overlaps,
-    dot: dot, norm: norm, cosine: cosine, euclid: euclid, softmax: softmax, pct: pct, fix: fix, onResize: onResize
+    dot: dot, norm: norm, cosine: cosine, euclid: euclid, softmax: softmax, pct: pct, fix: fix, wrap: wrap, onResize: onResize
   };
 })();
