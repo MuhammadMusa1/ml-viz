@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Оркестрация: цепочка, агент, инструменты · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .reqline { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); margin: 0 0 8px; }
+    .stepbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stepbar .wide { grid-column: 1 / -1; }
+    .ptab.cmp td:first-child { color: var(--text-2); }
+    /* MCP: схема «розетки» из обычных блоков */
+    .mcp { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.3fr); gap: 10px; align-items: center; margin: 12px 0; }
+    .mcp .node { background: var(--surface-1); border: 1px solid var(--line-strong); border-radius: var(--r-m); padding: 10px 12px; font-size: var(--fs-small); line-height: var(--lh-small); }
+    .mcp .node b { display: block; color: var(--text-strong); }
+    .mcp .arr { color: var(--text-2); font-size: 22px; text-align: center; }
+    .mcp ul { margin: 4px 0 0; padding-left: 18px; }
+    @media (max-width: 700px) { .mcp { grid-template-columns: 1fr; } .mcp .arr { transform: rotate(90deg); } }
+    .takeaway { background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--r-m); padding: 14px 18px; font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); }
+    .choices.one { grid-template-columns: 1fr; }
+    .sit { margin: 8px 0 0; color: var(--text-strong); }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="reqline" id="reqLine"></p>
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0" data-i18n-html="legend"></div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 id="stepTitle"></h3>
+          <div class="stepbar" style="margin-top:8px">
+            <button type="button" id="back" data-i18n="back"></button>
+            <button type="button" class="primary" id="fwd" data-i18n="fwd"></button>
+            <button type="button" class="wide" id="reset" data-i18n="reset"></button>
+          </div>
+          <label class="toggle" style="margin-top:12px"><input type="checkbox" id="fail"> <span data-i18n="failLabel"></span></label>
+          <p class="note" data-i18n="failNote"></p>
+          <div class="tbl-wrap" style="margin-top:12px"><table class="ptab cmp" id="cmp"></table></div>
+          <p class="note" data-i18n="cmpNote"></p>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p class="sit" id="gameSit"></p>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mcpTitle"></h2>
+      <p data-i18n-html="mcpLead"></p>
+      <div class="mcp" data-i18n-html="mcpScheme"></div>
+      <p data-i18n-html="mcpText"></p>
+      <p class="takeaway" data-i18n="takeaway"></p>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Оркестрация: цепочка, агент, инструменты',
+        analogy: '<b>Конвейер на заводе или мастер с ящиком инструментов.</b> Цепочка выполняет заранее заданные шаги по порядку. Агент сам решает, какой инструмент взять следующим, — гибко, но дольше и дороже.',
+        cvLabel: 'Пошаговое решение одного запроса цепочкой (слева) и агентом (справа)',
+        request: 'Запрос клиента: «Сколько сомони я получу за 250 долларов и хватит ли на тур за 2 700 сомони?»',
+        legend: '<span>LLM — вызов модели</span><span>инструмент — поиск, калькулятор, справочник курсов</span><span>код — обычная программа</span><span>пунктир — шаг ещё впереди</span>',
+        simNote: 'Упрощённая модель, настоящие числа другие. Шаги агента заданы сценарием, курс 1 USD = 10.92 сомони выдуман, цена и время шагов — условные. Курс, суммы, стоимость, время и надёжность считаются в браузере.',
+        modeExplore: 'Исследуй', modeGame: 'Игра: цепочка или агент?',
+        stepTitle: 'Шаг {i} из {n}', back: '‹ Шаг назад', fwd: 'Шаг вперёд ›', reset: 'В начало',
+        failLabel: 'Справочник курсов не отвечает (сбой)',
+        failNote: 'Посмотри, что сделает цепочка, а что — агент, если один инструмент сломался.',
+        chain: 'Цепочка', agent: 'Агент',
+        rCalls: 'Вызовов модели', rTools: 'Вызовов инструментов', rCost: 'Стоимость, усл. ед.', rTime: 'Время, с', rPoints: 'Точек отказа', rRel: 'Шанс пройти без сбоя', rDone: 'Результат',
+        resOk: 'ответ готов', resFail: 'сбой', resWait: 'в работе',
+        cmpNote: 'Счётчики растут по мере шагов. Точка отказа — каждый шаг, который может сломаться. Шанс без сбоя = произведение надёжностей шагов: модель 99%, инструмент 99.5%, код 99.9%.',
+        tLlm: 'LLM', tTool: 'инструмент', tCode: 'код', tFail: '✕ сбой', tWait: '…', tDone: 'готово',
+        // Шаги сценариев
+        c_parse: 'Код достаёт числа из вопроса: {usd} USD и {tour} сомони',
+        c_rate: 'Справочник курсов: USD → {rate}', c_rateFail: 'Справочник курсов: нет ответа',
+        c_mul: 'Калькулятор: {usd} × {rate} = {sum}', c_sub: 'Калькулятор: {sum} − {tour} = {rest}',
+        c_ans: 'Ответ: «{sum} сомони — на тур хватит, останется {rest}»', c_err: 'Ответ: «Сервис курсов недоступен, попробуйте позже»',
+        a_t1: 'Думаю: нужен курс доллара. Попробую поиск', a_search1: 'Поиск «курс доллара» → «Курс смотрите в справочнике курсов»',
+        a_t2: 'В документах курса нет. Вызову справочник курсов', a_rate: 'Справочник курсов: USD → {rate}', a_rateFail: 'Справочник курсов: нет ответа',
+        a_t2f: 'Справочник молчит. Поищу курс в свежих документах', a_search2: 'Поиск «курс USD сегодня» → «1 USD = {rate} сомони»',
+        a_t3: 'Курс есть. Посчитаю сумму', a_mul: 'Калькулятор: {usd} × {rate} = {sum}',
+        a_t4: 'Сравню с ценой тура', a_sub: 'Калькулятор: {sum} − {tour} = {rest}',
+        a_ans: 'Ответ: «{sum} сомони — на тур хватит, останется {rest}»',
+        hintExplore: 'Нажимай «Шаг вперёд»: слева идёт цепочка, справа — агент, оба решают один и тот же запрос. Таблица в панели считает вызовы, стоимость и время.',
+        hintGame: 'В игре схема не меняется: читай задачу банка и решай, что лучше — цепочка или агент.',
+        gameAsk: 'Что здесь лучше?',
+        task0: 'Каждую ночь выгрузить операции за день, посчитать сумму по каждому клиенту и отправить отчёт в отдел рисков.', tWhy0: 'Шаги всегда одинаковые — цепочка дешевле, быстрее и предсказуемее.',
+        task1: 'Помощник аналитика: вопросы бывают любые — «сравни комиссии за три года», «найди клиентов с ростом оборотов».', tWhy1: 'Путь к ответу каждый раз разный, нужно самому выбирать данные и расчёты — тут агент оправдан.',
+        task2: 'Ответ на вопрос клиента по базе знаний: найти чанки → собрать промпт → ответить со ссылками.', tWhy2: 'Это классический RAG из П2 — фиксированная цепочка шагов.',
+        task3: 'Конвертер валют в приложении: курс из справочника × сумма.', tWhy3: 'Два известных шага — даже модель не нужна, хватит кода.',
+        task4: 'Разбор сложной жалобы: надо прочитать переписку, найти операции, проверить правила и предложить решение сотруднику.', tWhy4: 'Какие проверки нужны, зависит от жалобы — агент, но решение принимает сотрудник.',
+        task5: 'Проверка анкеты на кредит: заполненность полей, формат паспорта, возраст ≥ 18.', tWhy5: 'Правила известны и детерминированы — цепочка (и обычный код) надёжнее.',
+        task6: 'Исследовательский ассистент для юристов: найти похожие дела в архиве, сравнить, составить выводы.', tWhy6: 'Поиск итеративный: по результатам ищем дальше — подходит агент.',
+        task7: 'Ежемесячная рассылка выписок клиентам на почту.', tWhy7: 'Детерминированный процесс — агент здесь только добавит ошибок и стоимости.',
+        gChain: 'Жёсткая цепочка', gAgent: 'Агент с инструментами',
+        gameRight: 'Верно!', gameWrong: 'Не совсем.',
+        gameStep: 'Задача {i} из {n}', next: 'Следующая задача →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Правило: шаги известны заранее — цепочка; путь каждый раз разный — агент, но с белым списком инструментов и подтверждением опасных действий.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Цепочка.</b> Программист заранее записал шаги: достать числа, узнать курс, посчитать, сформулировать ответ. Модель нужна только на последнем шаге.</li>' +
+          '<li><b>Агент.</b> Модель в цикле решает: «какой инструмент вызвать?», смотрит результат и снова решает — пока не будет готов ответ. Каждое решение — ещё один вызов модели.</li>' +
+          '<li><b>Инструменты</b> — обычные программы: поиск по документам, калькулятор, справочник курсов. Модель не считает «в уме» — она вызывает калькулятор.</li>' +
+          '<li><b>Цена гибкости.</b> Больше вызовов модели → дороже, дольше и больше точек отказа. Зато агент может обойти сломанный инструмент.</li>' +
+          '</ol>',
+        mcpTitle: 'MCP: розетка для инструментов',
+        mcpLead: '<b>MCP (Model Context Protocol)</b> — открытый стандарт, как подключать инструменты и данные к модели. Аналогия — розетка: любой прибор со стандартной вилкой работает в любой розетке.',
+        mcpScheme: '<div class="node"><b>Приложение с моделью</b>чат-бот банка, оркестратор</div><div class="arr" aria-hidden="true">⇄</div>' +
+          '<div class="node"><b>MCP-клиент</b>«розетка»: один способ подключения</div><div class="arr" aria-hidden="true">⇄</div>' +
+          '<div class="node"><b>MCP-серверы</b><ul><li>поиск по базе знаний</li><li>калькулятор</li><li>справочник курсов</li></ul></div>',
+        mcpText: 'Без стандарта каждый инструмент подключают к каждому приложению по-своему. С MCP инструмент описывают один раз: название, что делает, какие параметры принимает, — и его может вызвать любое совместимое приложение. Сам MCP ничего не решает: решает модель или цепочка, а MCP только соединяет.',
+        takeaway: 'Агент нужен не везде. Если процесс детерминирован — лучше цепочка.',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Пройди все шаги. Во сколько раз агент дороже цепочки на этом запросе? Почему?</li>' +
+          '<li>Посчитай: если каждый вызов модели ошибается в 1% случаев, как меняется шанс без сбоя с ростом числа шагов?</li>' +
+          '<li>Включи «Справочник курсов не отвечает». Что случилось с цепочкой? Как агент выкрутился и сколько это стоило?</li>' +
+          '<li>Как сделать цепочку устойчивой к этому сбою без агента? (Подсказка: запасной шаг.)</li>' +
+          '<li>Какие инструменты ты бы НЕ дал агенту в банке без подтверждения человеком? Вспомни П6.</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Если шаги независимы, шанс пройти без сбоя: <code>P = p₁ · p₂ · … · pₙ</code>. При 9 шагах по 99% это уже 0.99⁹ ≈ 91%.</p>' +
+          '<p>Стоимость: <code>Σ (токены шага × цена токена)</code>, время: <code>Σ время шагов</code> (шаги агента идут последовательно).</p>' +
+          '<p>Код ниже запускается в Colab: цепочка и простой «агент» со списком инструментов.</p>' +
+          '<pre class="pycode"><code>import numpy as np\n\n' +
+          'RATES = {\'USD\': 10.92}            # выдуманный справочник курсов\n' +
+          'TOOLS = {                          # белый список инструментов агента\n' +
+          '    \'rates\': lambda cur: RATES[cur],\n' +
+          '    \'calc\':  lambda expr: eval(expr, {\'__builtins__\': {}}),\n' +
+          '}\n\n' +
+          'def chain(usd, tour):              # шаги известны заранее\n' +
+          '    total = TOOLS[\'calc\'](f\'{usd} * {TOOLS["rates"]("USD")}\')\n' +
+          '    return total, total - tour\n\n' +
+          'def agent(usd, tour):              # «модель» выбирает следующий шаг (здесь — правило)\n' +
+          '    memory, log = {}, []\n' +
+          '    while True:\n' +
+          '        if \'rate\' not in memory:   step = (\'rates\', \'USD\', \'rate\')\n' +
+          '        elif \'total\' not in memory: step = (\'calc\', f\'{usd} * {memory["rate"]}\', \'total\')\n' +
+          '        elif \'rest\' not in memory:  step = (\'calc\', f\'{memory["total"]} - {tour}\', \'rest\')\n' +
+          '        else:\n' +
+          '            return memory[\'total\'], memory[\'rest\'], log\n' +
+          '        tool, arg, key = step\n' +
+          '        memory[key] = TOOLS[tool](arg)\n' +
+          '        log.append(step)\n\n' +
+          'print(chain(250, 2700))\n' +
+          'print(agent(250, 2700)[:2])\n' +
+          'p = np.array([0.99] * 5 + [0.995] * 4)   # 5 вызовов модели и 4 инструмента\n' +
+          'print(\'шанс без сбоя:\', round(p.prod(), 3))</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Один запрос и два сценария решения (цепочка и агент), со сбоем справочника и без. Шаги заданы сценарием, а курс, суммы, счётчики, стоимость, время и надёжность считаются в браузере на каждом шаге.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: два ученика у доски играют «цепочку» и «агента», класс считает вызовы. Потом пошаговая схема на проекторе и блок про MCP.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему модель вызывает калькулятор, а не считает сама? Где в банке процесс детерминирован? Что опасного может сделать агент, если дать ему все инструменты?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('reqLine').textContent = T('request');
+
+    // ======================= Данные =======================
+    // Запрос и условные параметры шагов: токены (стоимость), время, надёжность по типу шага.
+    var DATA = /* data:start */{"usd":250,"tour":2700,"rate":10.92,"price":0.002,
+      "kind":{"llm":{"tokens":600,"ms":1400,"rel":0.99},"tool":{"tokens":0,"ms":300,"rel":0.995},"code":{"tokens":0,"ms":5,"rel":0.999}},
+      "toolCost":0.1}/* data:end */;
+
+    // ======================= Инструменты (настоящие функции) =======================
+    function rates(cur, broken) { if (broken) return null; return cur === 'USD' ? DATA.rate : null; }
+    function calc(a, op, b) { var v = op === '*' ? a * b : a - b; return Math.round(v * 100) / 100; }
+    function parse(text) { var n = (text.match(/\d[\d ]*/g) || []).map(function (s) { return +s.replace(/\s/g, ''); }); return { usd: n[0], tour: n[1] }; }
+    function fmt(v) { return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+
+    // Сценарии строятся из настоящих вызовов: курс, суммы и ветка при сбое не вписаны руками
+    function scenario(who, broken) {
+      var q = parse(T('request')), steps = [], rate, sum, rest;
+      function add(kind, key, vars, fail) { steps.push({ kind: kind, text: T(key, vars), fail: !!fail }); }
+      var v = function () { return { usd: q.usd, tour: fmt(q.tour), rate: rate, sum: fmt(sum), rest: fmt(rest) }; };
+      if (who === 'chain') {
+        add('code', 'c_parse', { usd: q.usd, tour: fmt(q.tour) });
+        rate = rates('USD', broken);
+        if (rate == null) { add('tool', 'c_rateFail', {}, true); add('code', 'c_err', {}); return steps; }
+        add('tool', 'c_rate', { rate: rate });
+        sum = calc(q.usd, '*', rate); add('tool', 'c_mul', v());
+        rest = calc(sum, '-', q.tour); add('tool', 'c_sub', v());
+        add('llm', 'c_ans', v());
+        return steps;
+      }
+      add('llm', 'a_t1', {}); add('tool', 'a_search1', {});
+      add('llm', 'a_t2', {});
+      rate = rates('USD', broken);
+      if (rate == null) {
+        add('tool', 'a_rateFail', {}, true);
+        add('llm', 'a_t2f', {}); rate = DATA.rate; add('tool', 'a_search2', { rate: rate });   // курс нашёлся в документе
+      } else add('tool', 'a_rate', { rate: rate });
+      add('llm', 'a_t3', {}); sum = calc(q.usd, '*', rate); add('tool', 'a_mul', v());
+      add('llm', 'a_t4', {}); rest = calc(sum, '-', q.tour); add('tool', 'a_sub', v());
+      add('llm', 'a_ans', v());
+      return steps;
+    }
+    // Счётчики по шагам 1…upTo
+    function totals(steps, upTo) {
+      var s = { calls: 0, tools: 0, cost: 0, ms: 0, points: 0, rel: 1, failed: false };
+      steps.slice(0, upTo).forEach(function (st) {
+        var k = DATA.kind[st.kind];
+        if (st.kind === 'llm') s.calls++;
+        if (st.kind === 'tool') { s.tools++; s.cost += DATA.toolCost; }
+        s.cost += k.tokens * DATA.price; s.ms += k.ms; s.points++; s.rel *= k.rel;
+        if (st.fail) s.failed = true;
+      });
+      return s;
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', step: 0, broken: false };
+    function both() { return { chain: scenario('chain', state.broken), agent: scenario('agent', state.broken) }; }
+
+    // ======================= Рисование: две дорожки шагов =======================
+    var cv = el('cv'), g, LAY;
+    function wrapLines(ctx, text, maxW) {
+      var words = text.split(' '), lines = [], line = '';
+      words.forEach(function (w) { var t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; });
+      if (line) lines.push(line);
+      return lines;
+    }
+    function layout(w) {
+      var fs = Math.max(13, MLViz.fontPx(w)), lh = Math.round(fs * 1.3), S = both(), gap = 14, colW = (w - 8 - gap) / 2;
+      var m = document.createElement('canvas').getContext('2d'); m.font = MLPro.font(fs);
+      var lanes = ['chain', 'agent'].map(function (k, li) {
+        var y = fs * 2, x = 4 + li * (colW + gap);
+        var boxes = S[k].map(function (st) {
+          var lines = wrapLines(m, st.text, colW - 16), h = (lines.length + 1) * lh + 14;
+          var b = { x: x, y: y, w: colW, h: h, lines: lines, st: st }; y += h + 18; return b;
+        });
+        return { key: k, x: x, boxes: boxes, end: y };
+      });
+      return { fs: fs, lh: lh, lanes: lanes, h: Math.max(lanes[0].end, lanes[1].end) + 4, n: Math.max(S.chain.length, S.agent.length), S: S };
+    }
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      LAY = layout(w);
+      g = MLViz.fitCanvas(cv, LAY.h / w);
+      draw();
+    }
+    function draw() {
+      var ctx = g.ctx, fs = LAY.fs, paper = MLViz.cssVar('--paper'), paper2 = MLViz.cssVar('--paper-2'), ink = MLViz.cssVar('--ink');
+      ctx.clearRect(0, 0, g.w, g.h);
+      LAY.lanes.forEach(function (ln) {
+        ctx.fillStyle = MLViz.cssVar('--text-strong'); ctx.font = MLPro.font(Math.round(fs * 1.1), true); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText(T(ln.key), ln.x, 2);
+        ln.boxes.forEach(function (b, i) {
+          var shown = i < state.step, current = i === state.step - 1;
+          if (i > 0) {   // стрелка от предыдущего шага
+            var p = ln.boxes[i - 1];
+            ctx.strokeStyle = shown ? MLViz.cssVar('--text-strong') : MLViz.cssVar('--n-600'); ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(b.x + 20, p.y + p.h); ctx.lineTo(b.x + 20, b.y); ctx.stroke();
+          }
+          MLPro.rr(ctx, b.x, b.y, b.w, b.h, 8);
+          if (!shown) {   // шаг впереди: пустая пунктирная рамка, текст скрыт
+            ctx.setLineDash([5, 4]); ctx.strokeStyle = MLViz.cssVar('--n-600'); ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = MLViz.cssVar('--text-muted'); ctx.font = MLPro.font(fs); ctx.fillText(T('tWait'), b.x + 8, b.y + 7);
+            return;
+          }
+          ctx.fillStyle = b.st.kind === 'llm' ? paper : paper2; ctx.fill();
+          if (b.st.fail) { ctx.setLineDash([6, 4]); ctx.strokeStyle = MLViz.cssVar('--c-odd'); ctx.lineWidth = 4; ctx.stroke(); ctx.setLineDash([]); }
+          else if (current) { ctx.strokeStyle = MLViz.cssVar('--n-200'); ctx.lineWidth = 4; ctx.stroke(); }
+          else if (b.st.kind === 'code') { ctx.strokeStyle = MLViz.cssVar('--n-500'); ctx.lineWidth = 2; ctx.stroke(); }
+          ctx.fillStyle = ink; ctx.font = MLPro.font(fs, true);
+          ctx.fillText((i + 1) + '. ' + T(b.st.kind === 'llm' ? 'tLlm' : b.st.kind === 'tool' ? 'tTool' : 'tCode') + (b.st.fail ? '  ' + T('tFail') : ''), b.x + 8, b.y + 7);
+          ctx.font = MLPro.font(fs);
+          b.lines.forEach(function (l, k) { ctx.fillText(l, b.x + 8, b.y + 7 + (k + 1) * LAY.lh); });
+        });
+        if (state.step >= ln.boxes.length && ln.boxes.length) {
+          var last = ln.boxes[ln.boxes.length - 1];
+          MLPro.label(ctx, T('tDone'), last.x + last.w - 4, last.y + last.h + 2, { size: fs, align: 'right', base: 'top', bold: true });
+        }
+      });
+    }
+
+    // ======================= Панель =======================
+    function updatePanel() {
+      var n = LAY.n;
+      el('stepTitle').textContent = T('stepTitle', { i: state.step, n: n });
+      el('back').disabled = state.step <= 0;
+      el('fwd').disabled = state.step >= n;
+      el('fail').checked = state.broken;
+      var rows = ['chain', 'agent'].map(function (k) {
+        var steps = LAY.S[k], t = totals(steps, state.step), done = state.step >= steps.length;
+        return { t: t, res: !done ? T('resWait') : t.failed && k === 'chain' ? T('resFail') : T('resOk') };
+      });
+      var r = function (label, f) { return '<tr><td>' + label + '</td><td class="n">' + f(rows[0]) + '</td><td class="n">' + f(rows[1]) + '</td></tr>'; };
+      el('cmp').innerHTML = '<thead><tr><th></th><th class="n">' + T('chain') + '</th><th class="n">' + T('agent') + '</th></tr></thead><tbody>' +
+        r(T('rCalls'), function (x) { return x.t.calls; }) + r(T('rTools'), function (x) { return x.t.tools; }) +
+        r(T('rCost'), function (x) { return MLPro.fix(x.t.cost, 2); }) + r(T('rTime'), function (x) { return MLPro.fix(x.t.ms / 1000, 1); }) +
+        r(T('rPoints'), function (x) { return x.t.points; }) + r(T('rRel'), function (x) { return MLPro.pct(x.t.rel, 1); }) +
+        r(T('rDone'), function (x) { return x.res; }) + '</tbody>';
+    }
+    function refresh() { resize(); if (state.step > LAY.n) { state.step = LAY.n; draw(); } updatePanel(); }   // при сбое шагов меньше
+
+    // ======================= Игра «Цепочка или агент?» =======================
+    // Ответ — инженерное решение (шаги известны заранее или нет), объяснение показывается после выбора
+    // Задачи банка: тексты — в STR (taskN, tWhyN). Здесь только верный ответ: 0 — цепочка, 1 — агент
+    var TASKS = [0, 1, 0, 0, 1, 0, 1, 0].map(function (a, i) { return { s: T('task' + i), a: a, w: T('tWhy' + i) }; });
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: TASKS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var t = TASKS[q.i];
+        el('gameSit').textContent = t.s;
+        q.choices(el('gameChoices'), [T('gChain'), T('gAgent')], function (k) { return k === t.a; }, function (k, ok) {
+          q.answer(ok ? 1 : 0, '<b>' + T(ok ? 'gameRight' : 'gameWrong') + '</b> ' + esc(t.w));
+        });
+      },
+      onEnd: function () { el('gameChoices').innerHTML = ''; el('gameSit').textContent = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start();
+      refresh();
+    }
+
+    // ======================= События (без автопроигрыша: только кнопки) =======================
+    el('fwd').addEventListener('click', function () { if (state.step < LAY.n) { state.step++; draw(); updatePanel(); } });
+    el('back').addEventListener('click', function () { if (state.step > 0) { state.step--; draw(); updatePanel(); } });
+    el('reset').addEventListener('click', function () { state.step = 0; draw(); updatePanel(); });
+    el('fail').addEventListener('change', function (e) { state.broken = e.target.checked; refresh(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    window.PRO_ORCH = { scenario: scenario, totals: totals };   // для сверки (tools/check_pro.py)
+
+    state.step = 1;
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

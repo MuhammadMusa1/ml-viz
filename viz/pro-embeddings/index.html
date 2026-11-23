@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Эмбеддинги: поиск по смыслу · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Поле запроса и кнопка «Найти» в одну строку, на узкой панели — друг под другом */
+    .qrow { display: flex; gap: 8px; flex-wrap: wrap; }
+    .qrow input { flex: 1 1 160px; min-width: 0; min-height: var(--tap); font: inherit; font-size: var(--fs-small); color: var(--text-strong);
+      background: var(--n-950); border: 1.5px solid var(--control-line); border-radius: var(--r-m); padding: 8px 12px; }
+    .hits { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .hits li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline;
+      font-size: var(--fs-label); line-height: var(--lh-label); padding: 6px 0; border-bottom: 1px solid var(--line); }
+    .hits .rk { color: var(--text-muted); font-family: var(--font-code); }
+    .hits .v { font-family: var(--font-code); font-weight: 700; color: var(--text-strong); }
+    .shape { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border: 2px solid var(--n-300); }
+    .shape.s0 { border-radius: 50%; background: var(--n-300); }
+    .shape.s1 { width: 0; height: 0; border: 7px solid transparent; border-bottom: 12px solid var(--n-300); border-top: 0; }
+    .shape.s2 { background: transparent; }
+    .choices.one { grid-template-columns: 1fr; }
+    .choices.one button { text-align: left; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i class="shape s0"></i><span data-i18n="topic0"></span></span>
+            <span><i class="shape s1"></i><span data-i18n="topic1"></span></span>
+            <span><i class="shape s2"></i><span data-i18n="topic2"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="queryTitle"></h3>
+          <div class="seg wrapping" id="presets" style="margin-top:8px"></div>
+          <form class="qrow" id="qForm" style="margin-top:10px">
+            <input type="text" id="qInput" autocomplete="off" maxlength="80">
+            <button type="submit" data-i18n="find"></button>
+          </form>
+          <p class="note" id="unk"></p>
+
+          <div style="margin-top:14px">
+            <h3><span data-i18n="kLabel"></span> = <span id="kVal"></span></h3>
+            <input type="range" id="k" min="1" max="10" step="1" value="3">
+          </div>
+
+          <div style="margin-top:14px">
+            <h3 data-i18n="metricTitle"></h3>
+            <div class="seg" id="metric" style="margin-top:8px">
+              <button type="button" data-m="cos" data-i18n="metricCos"></button>
+              <button type="button" data-m="euc" data-i18n="metricEuc"></button>
+            </div>
+            <p class="note" id="metricNote"></p>
+          </div>
+
+          <div class="divider" style="margin-top:14px">
+            <h3 data-i18n="hitsTitle"></h3>
+            <ol class="hits" id="hits" style="margin-top:8px"></ol>
+          </div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <p style="margin:6px 0 0"><b id="gameQuery"></b></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Эмбеддинги: поиск по смыслу',
+        analogy: '<b>Библиотекарь ищет книгу по смыслу, а не по точным словам.</b> Каждая фраза превращается в список чисел — эмбеддинг. Похожие по смыслу фразы получают похожие числа и на карте лежат рядом.',
+        cvLabel: 'Карта 39 фраз про банк, пингвинов и школу; запрос и линии к ближайшим фразам',
+        topic0: 'банк', topic1: 'пингвины', topic2: 'школа',
+        simNote: 'Упрощённая модель, настоящие числа другие. Здесь у слова 8 чисел («смысловые оси»: деньги, карта, кредит, безопасность, птицы, природа, учёба, оценки), а у настоящих моделей — 384–3072 числа, выученных на миллиардах текстов. Карта приблизительная: расстояния на плоскости примерно повторяют косинусные (метод MDS), а точное сходство в списке считается по всем 8 числам.',
+        modeExplore: 'Исследуй',
+        modeGame: 'Игра: угадай раньше модели',
+        queryTitle: 'Запрос',
+        qPlaceholder: 'Напиши свой запрос…',
+        qAria: 'Свой запрос',
+        find: 'Найти',
+        unk: 'Незнакомые слова (у модели нет для них чисел, она их пропускает): {w}',
+        unkNone: 'Все слова запроса модели знакомы.',
+        unkAll: 'Ни одного знакомого слова — модели не за что зацепиться. Попробуй слова про банк, пингвинов или школу.',
+        kLabel: 'Сколько фраз показать (k)',
+        metricTitle: 'Как мерить похожесть',
+        metricCos: 'Косинус',
+        metricEuc: 'Евклидово расстояние',
+        noteCos: 'Косинус: 1 — смотрят в одну сторону, 0 — не связаны. Чем больше, тем похожее.',
+        noteEuc: 'Расстояние «по линейке» между концами векторов. Чем меньше, тем похожее. Зависит от длины вектора: служебные слова её уменьшают.',
+        hitsTitle: 'Ближайшие фразы',
+        hintExplore: 'Каждая фигурка — фраза. Ромб — твой запрос. Линии ведут к k ближайшим фразам, у каждой — число сходства. Нажми на фигурку — она станет запросом.',
+        hintGame: 'Ромб — запрос. Цифрами 1–3 отмечены варианты. Какую фразу модель назовёт самой похожей?',
+        query: 'Запрос',
+        gameAsk: 'Какая из трёх фраз окажется самой похожей на запрос по косинусу?',
+        gameLine: '{verdict} Модель: <b>{best}</b>.<br>Косинусы: {list}',
+        gameRight: 'Верно!', gameWrong: 'Не угадал.',
+        gameNote_trap: ' Смотри: «не» почти не меняет вектор — для модели «одобрен» и «не одобрен» почти одно и то же.',
+        gameNote_bank: ' Слово «банк» тянет к финансам, но «задачи» и «математика» перевешивают: модель складывает слова, а не понимает фразу целиком. Сравни косинусы.',
+        gameNote_money: ' Слово «деньги» перетянуло: по смыслу клиенту нужна блокировка карты, а модель ближе всего поставила перевод.',
+        gameNote_course: ' «Курс» бывает и денежный, и учебный: у модели одно число на оба значения, поэтому «Курс доллара» тоже оказывается близко.',
+        gameStep: 'Раунд {i} из {n}',
+        next: 'Следующий запрос →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Обрати внимание на раунды-ловушки: там модель «права» по числам, но не по смыслу.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Слово → числа.</b> У каждого слова есть вектор — список чисел. В настоящей модели их выучили по огромному количеству текстов: слова, которые встречаются в похожем окружении, получают похожие векторы.</li>' +
+          '<li><b>Фраза → эмбеддинг.</b> Здесь вектор фразы — среднее векторов её слов. Настоящие модели собирают фразу умнее (attention), но идея та же: фраза — тоже точка в пространстве.</li>' +
+          '<li><b>Запрос → та же точка.</b> Запрос превращаем в вектор тем же способом и сравниваем с каждой фразой.</li>' +
+          '<li><b>Сравнение.</b> Косинус смотрит на угол между векторами, евклидово расстояние — на расстояние между их концами. Берём k самых похожих — это и есть «поиск по смыслу».</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Выбери запрос «Кредит не одобрен». Какая фраза ближайшая и какой у неё косинус? Почему модель почти не замечает «не»?</li>' +
+          '<li>Напиши «банк задач». Куда тянет слово «банк»? Что бы ты добавил в запрос, чтобы найти школьные фразы?</li>' +
+          '<li>Переключи косинус на евклидово расстояние для запроса «Пингвин не умеет летать». Поменялся ли порядок? Подсказка: служебные слова делают вектор короче.</li>' +
+          '<li>Подвигай k от 1 до 10. С какого k в список попадают фразы из чужой темы? Что будет, если такие фразы попадут в промпт модели?</li>' +
+          '<li>Напиши запрос из слов, которых модель не знает. Что она вернёт и почему это опасно в банковском чат-боте?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Косинусное сходство векторов <i>a</i> и <i>b</i>:</p>' +
+          '<p><code>cos θ = (a · b) / (|a| · |b|)</code>, где <code>a · b = a₁b₁ + a₂b₂ + … + a₈b₈</code>, а <code>|a| = √(a · a)</code> — длина вектора.</p>' +
+          '<p>Евклидово расстояние: <code>d = √((a₁ − b₁)² + … + (a₈ − b₈)²)</code>. Если оба вектора нормировать до длины 1, то <code>d² = 2 − 2·cos θ</code>: порядок соседей у двух мер совпадёт. Здесь векторы не нормированы, поэтому порядок иногда разный.</p>' +
+          '<p>Код ниже запускается в Colab целиком и даёт те же числа, что страница (часть словаря):</p>' +
+          '<pre class="pycode"><code>import numpy as np\n' +
+          'from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances\n\n' +
+          '# 8 «смысловых осей»: деньги, карта, кредит, безопасность, птицы, природа, учёба, оценки\n' +
+          'LEX = {\n' +
+          '    \'кредит\':  [.5, 0, 1, 0, 0, 0, 0, 0],\n' +
+          '    \'одобр\':   [.2, 0, .5, 0, 0, 0, 0, .15],\n' +
+          '    \'не\':      [.05] * 8,\n' +
+          '    \'как\':     [.03, 0, .03, 0, .03, 0, .03, 0],\n' +
+          '    \'оформ\':   [.3, 0, .4, 0, 0, 0, 0, 0],\n' +
+          '    \'карт\':    [.3, 1, 0, 0, 0, 0, 0, 0],\n' +
+          '    \'заблокир\': [0, .5, 0, .8, 0, 0, 0, 0],\n' +
+          '}\n\n' +
+          'def stem(word):\n' +
+          '    # самая длинная основа из словаря, с которой начинается слово (короткие — только целиком)\n' +
+          '    cands = [s for s in LEX if word == s or (len(s) >= 3 and word.startswith(s))]\n' +
+          '    return max(cands, key=len) if cands else None\n\n' +
+          'def embed(text):\n' +
+          '    words = text.lower().replace(\'ё\', \'е\').split()\n' +
+          '    vecs = [LEX[stem(w)] for w in words if stem(w)]\n' +
+          '    return np.mean(vecs, axis=0)\n\n' +
+          'phrases = [\'Кредит одобрен\', \'Как оформить кредит\', \'Заблокировать карту\']\n' +
+          'E = np.array([embed(p) for p in phrases])\n' +
+          'q = embed(\'Кредит не одобрен\').reshape(1, -1)\n\n' +
+          'print(cosine_similarity(q, E).round(3))    # [[0.998 0.989 0.113]]\n' +
+          'print(euclidean_distances(q, E).round(3))  # чем меньше, тем похожее</code></pre>' +
+          '<p>В настоящей системе вместо словаря — модель эмбеддингов (например, из библиотеки <code>sentence-transformers</code>), а вместо перебора всех фраз — векторная база с быстрым приближённым поиском.</p>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> 39 коротких фраз (банк, пингвины, школа) и словарь из ~110 основ слов с 8 числами. Векторы фраз, карта (MDS) и все сходства считаются в браузере. Сверка с <code>sklearn.metrics.pairwise</code> — <code>tools/check_pro.py</code>.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: класс предлагает запросы, вы вводите их и вместе обсуждаете, почему нашлось именно это. Обязательно покажите «Кредит не одобрен» и «Банк задач по математике» — это лучшие примеры того, что эмбеддинг не понимает смысл, как человек.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему отрицание «не» почти не меняет вектор? Чем опасен поиск по смыслу для кодов ошибок и номеров договоров? Как понять, что k слишком большое?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('qInput').placeholder = T('qPlaceholder');
+    el('qInput').setAttribute('aria-label', T('qAria'));
+    el('k').setAttribute('aria-label', T('kLabel'));
+
+    // ======================= Данные =======================
+    // Словарь основ слов (8 чисел у каждой), 39 фраз с темой (0 — банк, 1 — пингвины, 2 — школа),
+    // запросы-примеры и раунды игры (запрос и три фразы-варианта).
+    // Векторы фраз и карта считаются ниже, здесь только исходные данные. Python-сверка читает этот блок.
+    var DATA = /* data:start */{"axes":["деньги","карта","кредит","безопасность","птицы","природа","учёба","оценки"],"lex":{"банк":[0.9,0.3,0.3,0.1,0.0,0.0,0.0,0.0],"кредит":[0.5,0.0,1,0.0,0.0,0.0,0.0,0.0],"одобр":[0.2,0.0,0.5,0.0,0.0,0.0,0.0,0.15],"ипотек":[0.5,0.0,0.9,0.0,0.0,0.0,0.0,0.0],"ставк":[0.6,0.0,0.6,0.0,0.0,0.0,0.0,0.0],"процент":[0.6,0.0,0.4,0.0,0.0,0.0,0.0,0.1],"вклад":[1,0.0,0.1,0.0,0.0,0.0,0.0,0.0],"деньг":[1,0.2,0.0,0.0,0.0,0.0,0.0,0.0],"денег":[1,0.2,0.0,0.0,0.0,0.0,0.0,0.0],"наличн":[0.8,0.4,0.0,0.0,0.0,0.0,0.0,0.0],"банкомат":[0.6,0.8,0.0,0.0,0.0,0.0,0.0,0.0],"карт":[0.3,1,0.0,0.0,0.0,0.0,0.0,0.0],"лимит":[0.4,0.6,0.3,0.0,0.0,0.0,0.0,0.0],"перевод":[0.7,0.6,0.0,0.0,0.0,0.0,0.0,0.0],"перевест":[0.7,0.6,0.0,0.0,0.0,0.0,0.0,0.0],"платеж":[0.6,0.8,0.0,0.0,0.0,0.0,0.0,0.0],"оплат":[0.5,0.8,0.0,0.0,0.0,0.0,0.0,0.0],"списан":[0.4,0.7,0.0,0.4,0.0,0.0,0.0,0.0],"курс":[0.8,0.0,0.0,0.0,0.0,0.0,0.25,0.0],"доллар":[1,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"сомон":[1,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"погас":[0.4,0.0,0.9,0.0,0.0,0.0,0.0,0.0],"досрочн":[0.0,0.0,0.5,0.0,0.0,0.0,0.0,0.0],"долг":[0.4,0.0,0.9,0.0,0.0,0.0,0.0,0.0],"счет":[0.8,0.3,0.0,0.0,0.0,0.0,0.0,0.0],"заблокир":[0.0,0.5,0.0,0.8,0.0,0.0,0.0,0.0],"блокир":[0.0,0.5,0.0,0.8,0.0,0.0,0.0,0.0],"потер":[0.0,0.2,0.0,0.5,0.0,0.0,0.0,0.0],"украл":[0.0,0.0,0.0,1,0.0,0.0,0.0,0.0],"мошенн":[0.2,0.0,0.0,1,0.0,0.0,0.0,0.0],"подозрит":[0.0,0.0,0.0,0.9,0.0,0.0,0.0,0.0],"звон":[0.0,0.0,0.0,0.3,0.0,0.0,0.0,0.0],"пароль":[0.0,0.3,0.0,0.9,0.0,0.0,0.0,0.0],"код":[0.0,0.3,0.0,0.6,0.0,0.0,0.0,0.0],"клиент":[0.5,0.3,0.0,0.0,0.0,0.0,0.0,0.0],"логотип":[0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"вернуть":[0.4,0.0,0.2,0.0,0.0,0.0,0.0,0.0],"пингвин":[0.0,0.0,0.0,0.0,1,0.5,0.0,0.0],"gentoo":[0.0,0.0,0.0,0.0,1,0.4,0.0,0.0],"adelie":[0.0,0.0,0.0,0.0,1,0.4,0.0,0.0],"chinstrap":[0.0,0.0,0.0,0.0,1,0.4,0.0,0.0],"императорск":[0.0,0.0,0.0,0.0,0.8,0.4,0.0,0.0],"птиц":[0.0,0.0,0.0,0.0,1,0.3,0.0,0.0],"клюв":[0.0,0.0,0.0,0.0,0.9,0.0,0.0,0.0],"крыл":[0.0,0.0,0.0,0.0,0.8,0.1,0.0,0.0],"летать":[0.0,0.0,0.0,0.0,0.6,0.3,0.0,0.0],"ныря":[0.0,0.0,0.0,0.0,0.6,0.7,0.0,0.0],"рыб":[0.0,0.0,0.0,0.0,0.5,0.7,0.0,0.0],"плава":[0.0,0.0,0.0,0.0,0.5,0.7,0.0,0.0],"море":[0.0,0.0,0.0,0.0,0.2,1,0.0,0.0],"холодн":[0.0,0.0,0.0,0.0,0.0,0.9,0.0,0.0],"антарктид":[0.0,0.0,0.0,0.0,0.4,1,0.0,0.0],"остров":[0.0,0.0,0.0,0.0,0.2,0.9,0.0,0.0],"колони":[0.0,0.0,0.0,0.0,0.8,0.3,0.0,0.0],"яйц":[0.0,0.0,0.0,0.0,0.8,0.2,0.0,0.0],"высижива":[0.0,0.0,0.0,0.0,0.8,0.0,0.0,0.0],"зиму":[0.0,0.0,0.0,0.0,0.4,0.7,0.0,0.0],"юг":[0.0,0.0,0.0,0.0,0.0,0.6,0.0,0.0],"масс":[0.0,0.0,0.0,0.0,0.5,0.0,0.0,0.1],"длин":[0.0,0.0,0.0,0.0,0.4,0.0,0.0,0.1],"dream":[0.0,0.0,0.0,0.0,0.4,0.6,0.0,0.0],"живут":[0.0,0.0,0.0,0.0,0.4,0.5,0.0,0.0],"живет":[0.0,0.0,0.0,0.0,0.4,0.5,0.0,0.0],"лед":[0.0,0.0,0.0,0.0,0.0,1,0.0,0.0],"снег":[0.0,0.0,0.0,0.0,0.0,0.9,0.0,0.0],"школ":[0.0,0.0,0.0,0.0,0.0,0.0,1,0.0],"урок":[0.0,0.0,0.0,0.0,0.0,0.0,1,0.2],"учител":[0.0,0.0,0.0,0.0,0.0,0.0,1,0.0],"ученик":[0.0,0.0,0.0,0.0,0.0,0.0,1,0.2],"объясня":[0.0,0.0,0.0,0.0,0.0,0.0,0.8,0.0],"тем":[0.0,0.0,0.0,0.0,0.0,0.0,0.6,0.0],"домашн":[0.0,0.0,0.0,0.0,0.0,0.0,0.9,0.2],"задани":[0.0,0.0,0.0,0.0,0.0,0.0,0.9,0.3],"задач":[0.0,0.0,0.0,0.0,0.0,0.0,0.8,0.3],"математик":[0.0,0.0,0.0,0.0,0.0,0.0,0.9,0.3],"физик":[0.0,0.0,0.0,0.0,0.0,0.0,0.9,0.3],"экзамен":[0.0,0.0,0.0,0.0,0.0,0.0,0.5,1],"контрольн":[0.0,0.0,0.0,0.0,0.0,0.0,0.5,0.9],"оценк":[0.0,0.0,0.0,0.0,0.0,0.0,0.4,1],"двойк":[0.0,0.0,0.0,0.0,0.0,0.0,0.3,1],"пятерк":[0.0,0.0,0.0,0.0,0.0,0.0,0.3,1],"расписани":[0.0,0.0,0.0,0.0,0.0,0.0,0.9,0.0],"каникул":[0.0,0.0,0.0,0.0,0.0,0.2,0.7,0.0],"олимпиад":[0.0,0.0,0.0,0.0,0.0,0.0,0.7,0.8],"библиотек":[0.0,0.0,0.0,0.0,0.0,0.0,0.9,0.0],"подготовк":[0.0,0.0,0.0,0.0,0.0,0.0,0.6,0.6],"реша":[0.0,0.0,0.0,0.0,0.0,0.0,0.7,0.3],"учеб":[0.0,0.0,0.0,0.0,0.0,0.0,1,0.0],"учить":[0.0,0.0,0.0,0.0,0.0,0.0,1,0.0],"пятниц":[0.0,0.0,0.0,0.0,0.0,0.0,0.15,0.15],"лет":[0.0,0.0,0.0,0.0,0.0,0.3,0.2,0.0],"не":[0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05],"как":[0.03,0.0,0.03,0.0,0.03,0.0,0.03,0.0],"мой":[0.03,0.03,0.0,0.0,0.0,0.0,0.0,0.0],"оформ":[0.3,0.0,0.4,0.0,0.0,0.0,0.0,0.0],"открыт":[0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"снят":[0.3,0.2,0.0,0.0,0.0,0.0,0.0,0.0],"умеет":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"ласт":[0.0,0.0,0.0,0.0,0.6,0.5,0.0,0.0],"вместо":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"начина":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"для":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"из":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"и":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"юге":[0.0,0.0,0.0,0.0,0.0,0.6,0.0,0.0],"сегодня":[0.1,0.0,0.0,0.0,0.0,0.0,0.1,0.0],"друг":[0.2,0.0,0.0,0.0,0.0,0.0,0.1,0.0],"под":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"на":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"по":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"за":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"в":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"к":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"с":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"phrases":[["Как оформить кредит",0],["Кредит одобрен",0],["Кредит не одобрен",0],["Заблокировать карту",0],["Карта потеряна",0],["Перевод денег другу",0],["Курс доллара сегодня",0],["Открыть вклад под процент",0],["Подозрительное списание с карты",0],["Мошенники звонят из банка",0],["Снять наличные в банкомате",0],["Погасить кредит досрочно",0],["Лимит по карте",0],["Ставка по ипотеке",0],["Пингвины живут в Антарктиде",1],["Gentoo ныряет за рыбой",1],["Пингвин не умеет летать",1],["Длина клюва пингвина",1],["Колония пингвинов на острове",1],["Императорский пингвин высиживает яйцо",1],["Птицы зимуют на юге",1],["Масса пингвина Adelie",1],["Пингвины плавают в холодном море",1],["Chinstrap живёт на острове Dream",1],["Лёд и снег Антарктиды",1],["Крылья вместо ласт",1],["Домашнее задание по математике",2],["Экзамен в пятницу",2],["Оценка за контрольную",2],["Учитель объясняет тему",2],["Расписание уроков",2],["Каникулы начинаются летом",2],["Подготовка к олимпиаде",2],["Школьная библиотека",2],["Ученик решает задачу",2],["Двойка по физике",2],["Курс математики для школы",2],["Банк задач по математике",2],["Пингвин на логотипе банка",0]],"presets":["Украли карту, что делать", "Кредит не одобрен", "Где живут пингвины", "Банк задач по математике", "Курс", "Подготовка к экзамену"],
+      "rounds":[{"q":"Как вернуть деньги, если украли карту","o":["Заблокировать карту","Перевод денег другу","Пингвины живут в Антарктиде"],"note":"money"},{"q":"Кредит не одобрен","o":["Мошенники звонят из банка","Кредит одобрен","Двойка по физике"],"note":"trap"},{"q":"Банк задач по математике","o":["Ставка по ипотеке","Курс доллара сегодня","Учитель объясняет тему"],"note":"bank"},{"q":"Где зимуют пингвины","o":["Каникулы начинаются летом","Пингвины живут в Антарктиде","Птицы зимуют на юге"]},{"q":"Курс по математике","o":["Курс доллара сегодня","Учитель объясняет тему","Расписание уроков"],"note":"course"},{"q":"Звонок про пароль от карты","o":["Лимит по карте","Мошенники звонят из банка","Подозрительное списание с карты"]},{"q":"Плохая оценка за экзамен","o":["Экзамен в пятницу","Двойка по физике","Оценка за контрольную"]},{"q":"Пингвин на логотипе банка","o":["Открыть вклад под процент","Масса пингвина Adelie","Пингвин не умеет летать"]}]}/* data:end */;
+
+    // Слово → основа из словаря: самая длинная, с которой слово начинается (короткие — только целиком)
+    var STEMS = Object.keys(DATA.lex).map(function (s) { return s.replace(/ё/g, 'е'); });
+    var LEX = {};
+    Object.keys(DATA.lex).forEach(function (s) { LEX[s.replace(/ё/g, 'е')] = DATA.lex[s]; });
+    function stemOf(w) {
+      var best = null;
+      STEMS.forEach(function (s) {
+        if ((w === s || (s.length >= 3 && w.indexOf(s) === 0)) && (!best || s.length > best.length)) best = s;
+      });
+      return best;
+    }
+    function words(text) { return (text.toLowerCase().replace(/ё/g, 'е').match(/[a-zа-я]+/g) || []); }
+    // Эмбеддинг фразы = среднее векторов знакомых слов (как averaged word2vec); незнакомые слова пропускаем
+    function embed(text) {
+      var vs = [], unk = [];
+      words(text).forEach(function (w) { var s = stemOf(w); if (s) vs.push(LEX[s]); else unk.push(w); });
+      var v = [0, 0, 0, 0, 0, 0, 0, 0];
+      vs.forEach(function (x) { for (var i = 0; i < 8; i++) v[i] += x[i] / vs.length; });
+      return { v: v, unk: unk, known: vs.length };
+    }
+    var PH = DATA.phrases.map(function (p) { return { text: p[0], topic: p[1], v: embed(p[0]).v }; });
+
+    // ---------- Карта: MDS (метод SMACOF) — 8 чисел рисуем на плоскости ----------
+    // Расстояние между фразами = √(2 − 2·cos): это расстояние между нормированными векторами.
+    // Точки двигаем так, чтобы расстояния на карте как можно точнее повторяли эти числа.
+    function dist(a, b) { return Math.sqrt(Math.max(0, 2 - 2 * MLPro.cosine(a, b))); }
+    var N = PH.length, D = PH.map(function (p) { return PH.map(function (q) { return dist(p.v, q.v); }); });
+    // Старт без случайности: точки на окружности по порядку тем, потом 300 шагов Гуттмана
+    PH.forEach(function (p, i) { var a = 2 * Math.PI * i / N; p.x = Math.cos(a); p.y = Math.sin(a); });
+    for (var it = 0; it < 300; it++) {
+      var nx = PH.map(function (p, i) {
+        var sx0 = 0, sy0 = 0;
+        PH.forEach(function (q, j) {
+          if (i === j) return;
+          var dx = p.x - q.x, dy = p.y - q.y, d = Math.sqrt(dx * dx + dy * dy) || 1e-9, b = D[i][j] / d;
+          sx0 += q.x + b * dx; sy0 += q.y + b * dy;
+        });
+        return { x: sx0 / (N - 1), y: sy0 / (N - 1) };
+      });
+      PH.forEach(function (p, i) { p.x = nx[i].x; p.y = nx[i].y; });
+    }
+    // Запрос встраиваем в готовую карту тем же правилом, двигая только его точку
+    function project(v) {
+      var d = PH.map(function (p) { return dist(v, p.v); });
+      var ord = d.map(function (x, i) { return i; }).sort(function (a, b) { return d[a] - d[b]; });
+      var q = { x: (PH[ord[0]].x + PH[ord[1]].x) / 2 + 0.01, y: (PH[ord[0]].y + PH[ord[1]].y) / 2 };
+      for (var k = 0; k < 200; k++) {
+        var sx0 = 0, sy0 = 0;
+        PH.forEach(function (p, j) {
+          var dx = q.x - p.x, dy = q.y - p.y, dd = Math.sqrt(dx * dx + dy * dy) || 1e-9, b = d[j] / dd;
+          sx0 += p.x + b * dx; sy0 += p.y + b * dy;
+        });
+        q = { x: sx0 / N, y: sy0 / N };
+      }
+      // Запрос «ни о чём» может уйти далеко от всех фраз — оставляем его в рамке карты
+      return { x: Math.min(EXT.x1, Math.max(EXT.x0, q.x)), y: Math.min(EXT.y1, Math.max(EXT.y0, q.y)) };
+    }
+    var EXT = PH.reduce(function (e, p) {
+      return { x0: Math.min(e.x0, p.x), x1: Math.max(e.x1, p.x), y0: Math.min(e.y0, p.y), y1: Math.max(e.y1, p.y) };
+    }, { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 });
+
+    // ---------- Поиск ----------
+    function score(q, p, m) { return m === 'cos' ? MLPro.cosine(q, p.v) : MLPro.euclid(q, p.v); }
+    function search(qv, k, m) {
+      var r = PH.map(function (p, i) { return { i: i, s: score(qv, p, m) }; });
+      r.sort(function (a, b) { return m === 'cos' ? b.s - a.s : a.s - b.s; });
+      return r.slice(0, k);
+    }
+
+    // ======================= Состояние =======================
+    var PRESETS = DATA.presets;
+    var state = { mode: 'explore', text: PRESETS[0], k: 3, metric: 'cos', game: null };
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g, sx, sy;
+    function resize() {
+      g = MLViz.fitCanvas(cv, MLViz.isProjector() ? 0.62 : 0.7);
+      var m = 18 + MLPro.fs(g) * 2;
+      sx = MLViz.scale(EXT.x0, EXT.x1, m, g.w - m);
+      sy = MLViz.scale(EXT.y0, EXT.y1, g.h - m, m);
+      draw();
+    }
+    function shape(ctx, x, y, topic, r, fill, stroke) {
+      ctx.beginPath();
+      if (topic === 0) ctx.arc(x, y, r, 0, Math.PI * 2);
+      else if (topic === 1) { ctx.moveTo(x, y - r * 1.2); ctx.lineTo(x + r * 1.1, y + r * .8); ctx.lineTo(x - r * 1.1, y + r * .8); ctx.closePath(); }
+      else ctx.rect(x - r * .9, y - r * .9, r * 1.8, r * 1.8);
+      if (topic === 2) { ctx.strokeStyle = stroke || fill; ctx.lineWidth = 2; ctx.stroke(); }
+      else { ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); } }
+    }
+    function diamond(ctx, x, y, r) {
+      ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath();
+      ctx.fillStyle = MLViz.cssVar('--paper'); ctx.fill(); ctx.strokeStyle = MLViz.cssVar('--ink'); ctx.lineWidth = 2; ctx.stroke();
+    }
+    // Этикетки без наложений: пробуем справа, слева, сверху, снизу; занятое место запоминаем
+    function placeLabels(ctx, items) {
+      var fs = MLPro.fs(g), taken = [], maxW = Math.max(140, g.w * 0.46);
+      items.forEach(function (it) {
+        var sz = MLPro.labelSize(ctx, it.text, fs); sz.w = Math.min(sz.w, maxW);
+        var cand = [
+          { x: it.x + 10, y: it.y - sz.h / 2 }, { x: it.x - 10 - sz.w, y: it.y - sz.h / 2 },
+          { x: it.x - sz.w / 2, y: it.y - 12 - sz.h }, { x: it.x - sz.w / 2, y: it.y + 12 }
+        ];
+        for (var dy = 1; dy <= 6; dy++) {
+          cand.push({ x: it.x + 10, y: it.y - sz.h / 2 + dy * sz.h }, { x: it.x + 10, y: it.y - sz.h / 2 - dy * sz.h });
+        }
+        var pick = null;
+        for (var i = 0; i < cand.length && !pick; i++) {
+          var b = { x: Math.max(2, Math.min(g.w - sz.w - 2, cand[i].x)), y: Math.max(2, Math.min(g.h - sz.h - 2, cand[i].y)), w: sz.w, h: sz.h };
+          if (!MLPro.overlaps(b, taken)) pick = b;
+        }
+        if (!pick) pick = { x: Math.max(2, Math.min(g.w - sz.w - 2, it.x + 10)), y: it.y - sz.h / 2, w: sz.w, h: sz.h };
+        taken.push(pick);
+        MLPro.label(ctx, it.text, pick.x, pick.y, { size: fs, base: 'top', maxW: maxW, bold: it.bold });
+      });
+    }
+    function draw() {
+      var ctx = g.ctx, r = MLViz.isProjector() ? 7 : 6;
+      ctx.clearRect(0, 0, g.w, g.h);
+      // Сетка без подписей: у осей карты MDS нет «имён», важны только расстояния между точками
+      ctx.strokeStyle = MLViz.cssVar('--plot-grid'); ctx.lineWidth = 1;
+      for (var i = 1; i < 6; i++) {
+        ctx.beginPath(); ctx.moveTo(g.w * i / 6, 0); ctx.lineTo(g.w * i / 6, g.h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, g.h * i / 6); ctx.lineTo(g.w, g.h * i / 6); ctx.stroke();
+      }
+      var dim = MLViz.cssVar('--n-400'), bright = MLViz.cssVar('--n-200'), white = MLViz.cssVar('--text-strong');
+      var q, hits = [], labels = [];
+      if (state.mode === 'explore') {
+        var e = embed(state.text);
+        if (e.known) { q = project(e.v); hits = search(e.v, state.k, state.metric); }
+      } else if (state.game && state.game.cur) {
+        q = project(embed(state.game.cur.q).v);
+      }
+      var hot = {};
+      hits.forEach(function (h) { hot[h.i] = h; });
+      PH.forEach(function (p, i) { if (!hot[i]) shape(ctx, sx(p.x), sy(p.y), p.topic, r, dim); });
+      if (q) {
+        // Линии к найденным фразам
+        ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.5;
+        hits.forEach(function (h) { var p = PH[h.i]; ctx.beginPath(); ctx.moveTo(sx(q.x), sy(q.y)); ctx.lineTo(sx(p.x), sy(p.y)); ctx.stroke(); });
+        hits.forEach(function (h) {
+          var p = PH[h.i];
+          shape(ctx, sx(p.x), sy(p.y), p.topic, r + 1, bright, white);
+          labels.push({ x: sx(p.x), y: sy(p.y), text: MLPro.fix(h.s, 2) + ' · ' + p.text });
+        });
+        if (state.mode === 'game' && state.game.cur) {
+          state.game.cur.opts.forEach(function (oi, k) {
+            var p = PH[oi];
+            shape(ctx, sx(p.x), sy(p.y), p.topic, r + 1, bright, white);
+            var txt = (k + 1) + ' · ' + (state.game.answered ? MLPro.fix(MLPro.cosine(embed(state.game.cur.q).v, p.v), 2) + ' · ' : '') + p.text;
+            labels.push({ x: sx(p.x), y: sy(p.y), text: txt });
+            if (state.game.answered) {
+              ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.5;
+              ctx.beginPath(); ctx.moveTo(sx(q.x), sy(q.y)); ctx.lineTo(sx(p.x), sy(p.y)); ctx.stroke();
+            }
+          });
+        }
+        diamond(ctx, sx(q.x), sy(q.y), r + 4);
+        labels.unshift({ x: sx(q.x), y: sy(q.y), text: T('query'), bold: true });
+      }
+      placeLabels(ctx, labels);
+    }
+
+    // ======================= Панель =======================
+    function renderPresets() {
+      el('presets').innerHTML = PRESETS.map(function (p, i) { return '<button type="button" data-i="' + i + '">' + esc(p) + '</button>'; }).join('');
+      MLViz.setPressed(el('presets'), function (b) { return PRESETS[+b.dataset.i] === state.text; });
+    }
+    function updatePanel() {
+      el('kVal').textContent = state.k;
+      MLViz.setPressed(el('metric'), function (b) { return b.dataset.m === state.metric; });
+      MLViz.setPressed(el('presets'), function (b) { return PRESETS[+b.dataset.i] === state.text; });
+      el('metricNote').textContent = T(state.metric === 'cos' ? 'noteCos' : 'noteEuc');
+      var e = embed(state.text);
+      el('unk').textContent = !e.known ? T('unkAll') : e.unk.length ? T('unk', { w: e.unk.join(', ') }) : T('unkNone');
+      var hits = e.known ? search(e.v, state.k, state.metric) : [];
+      el('hits').innerHTML = hits.map(function (h, j) {
+        var p = PH[h.i];
+        return '<li><span class="rk">' + (j + 1) + '</span><span><i class="shape s' + p.topic + '" aria-hidden="true"></i>' + esc(p.text) + '</span>' +
+          '<span class="v">' + (state.metric === 'cos' ? 'cos ' : 'd ') + MLPro.fix(h.s, 3) + '</span></li>';
+      }).join('');
+    }
+    function refresh() { updatePanel(); draw(); }
+
+    // ======================= Игра =======================
+    // Раунд: запрос и три фразы. Верный ответ не вписан руками — это фраза с самым большим косинусом, посчитанным ниже.
+    function idx(t) { return DATA.phrases.map(function (p) { return p[0]; }).indexOf(t); }
+    var ROUNDS = DATA.rounds.map(function (r) { return { q: r.q, opts: r.o.map(idx), note: r.note }; });
+
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      start: function (q) {
+        // Порядок вариантов перемешиваем: верный ответ не должен угадываться по месту
+        q.data.r = ROUNDS.map(function (r) { return { q: r.q, opts: MLViz.shuffle(r.opts, Math.random), note: r.note }; });
+      },
+      round: function (q) {
+        var cur = q.data.r[q.i], qv = embed(cur.q).v;
+        var cos = cur.opts.map(function (oi) { return MLPro.cosine(qv, PH[oi].v); });
+        var best = 0; cos.forEach(function (c, k) { if (c > cos[best]) best = k; });
+        state.game = { cur: cur, answered: false };
+        el('gameQuery').textContent = '«' + cur.q + '»';
+        q.choices(el('gameChoices'), cur.opts.map(function (oi) { return esc(PH[oi].text); }), function (k) { return k === best; }, function (k, ok) {
+          state.game.answered = true;
+          var list = cur.opts.map(function (oi, j) { return esc(PH[oi].text) + ' — <b>' + MLPro.fix(cos[j], 3) + '</b>'; }).join('; ');
+          q.answer(ok ? 1 : 0, T('gameLine', { verdict: T(ok ? 'gameRight' : 'gameWrong'), best: esc(PH[cur.opts[best]].text), list: list }) +
+            (cur.note ? T('gameNote_' + cur.note) : ''));
+          draw();
+        });
+        draw();
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameQuery').textContent = ''; draw(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else state.game = null;
+      refresh();   // настройки «Исследуй» (запрос, k, мера) не сбрасываются игрой
+    }
+
+    // ======================= События =======================
+    el('presets').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state.text = PRESETS[+b.dataset.i]; el('qInput').value = ''; refresh();
+    });
+    el('qForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = el('qInput').value.trim(); if (!v) return;
+      state.text = v; refresh();
+    });
+    el('k').addEventListener('input', function (e) { state.k = +e.target.value; refresh(); });
+    el('metric').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state.metric = b.dataset.m; refresh();
+    });
+    // Нажатие на фигурку делает фразу запросом (то же доступно с клавиатуры через поле запроса)
+    cv.addEventListener('click', function (e) {
+      if (state.mode !== 'explore') return;
+      var p = MLViz.pointer(cv, e), best = -1, bd = 1e9;
+      PH.forEach(function (ph, i) { var d = Math.hypot(sx(ph.x) - p.x, sy(ph.y) - p.y); if (d < bd) { bd = d; best = i; } });
+      if (best >= 0 && bd < 24) { state.text = PH[best].text; el('qInput').value = PH[best].text; refresh(); }
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    window.PRO_EMB = { embed: embed, search: search, phrases: PH };   // для сверки с sklearn (tools/check_pro.py)
+
+    renderPresets();
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

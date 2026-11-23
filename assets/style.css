@@ -593,3 +593,46 @@ button.term:active:not(:disabled) { transform: none; }
   .in-lesson .book-link { display: none; }   /* в шапке урока на телефоне место для «‹ Урок N · Урок N ›» */
   .book-text pre { font-size: 13.5px; }
 }
+
+/* ---------- Раздел «Для профи» (П1–П8) ---------- */
+/* Строка под шапкой: раздел пока только на русском (показывает core.js при «Тоҷ») */
+.lang-note { margin: 0; background: var(--surface-2); border-bottom: 1px solid var(--line); color: var(--text-strong);
+  font-size: var(--fs-small); line-height: var(--lh-small); padding: 10px 0; }
+.lang-note .wrap { display: block; }
+/* Главная: строка под заголовком фазы и отдельная полоса прогресса раздела */
+.phase-note { margin: 12px 0 0; color: var(--text-2); font-size: var(--fs-small); line-height: var(--lh-small); }
+.pro-progress { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.pro-progress .head { font-weight: 700; color: var(--text-2); font-size: var(--fs-small); }
+.pro-progress .head b { color: var(--text-strong); }
+.pro-progress .track { height: 8px; }
+/* «Упрощённая модель»: честная пометка там, где числа смоделированы */
+.sim-note { margin: 0; padding: 8px 12px; border: 1px dashed var(--line-strong); border-radius: var(--r-s);
+  color: var(--text-2); font-size: var(--fs-label); line-height: var(--lh-label); }
+/* Таблица данных (golden set, запросы, метрики): цифры моноширинные по ширине */
+.ptab { border-collapse: collapse; width: 100%; font-size: var(--fs-label); line-height: var(--lh-label); }
+.ptab th, .ptab td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.ptab th { color: var(--text-2); font-weight: 700; background: var(--surface-1); }
+.ptab td.n, .ptab th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ptab tr.sel td { background: var(--accent-soft); }
+/* Плитки метрик: число крупно, под ним точка отсчёта */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; }
+.kpi { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 12px; min-width: 0; }
+.kpi small { display: block; color: var(--text-2); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 700; }
+.kpi b { display: block; color: var(--text-strong); font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
+.kpi .base { display: block; color: var(--text-muted); font-size: var(--fs-label); line-height: var(--lh-label); }
+.projector .kpi b { font-size: 44px; }
+.projector .kpis { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+/* Бирка (номер источника [1], уровень защиты): нейтральная рамка, моноширинный шрифт */
+.tag { display: inline-block; padding: 0 6px; border: 1.5px solid var(--control-line); border-radius: var(--r-xs);
+  font-family: var(--font-code); font-size: .85em; font-weight: 700; color: var(--text-strong); line-height: 1.5; white-space: nowrap; }
+/* Рабочий код Python в «Для любопытных» (вставляется в Colab целиком) */
+pre.pycode { background: var(--n-950); border: 1px solid var(--line); border-radius: var(--r-m); padding: 14px 16px; margin: 12px 0;
+  overflow-x: auto; font-family: var(--font-code); font-size: var(--fs-code); line-height: var(--lh-code); color: var(--text); white-space: pre; }
+pre.pycode code { background: none; border: 0; padding: 0; font-size: inherit; }
+/* Широкий список вариантов (запросы, сценарии): кнопки переносятся и растут по высоте */
+.seg.wrapping button { white-space: normal; text-align: left; line-height: 1.25; }
+.projector .panel select { font-size: var(--fs-label); min-height: 56px; }
+/* Выпадающий список (вопрос, запрос) — тот же видимый фокус, что у кнопок и полей */
+select:focus-visible, canvas:focus-visible, pre:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px; }
+/* Флажок с подписью — тоже цель нажатия: на телефоне не ниже 44 px */
+@media (max-width: 900px), (pointer: coarse) { label.toggle { min-height: var(--tap); } }

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAG: конвейер ответа · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    /* Список найденных чанков, промпт и ответ — блоки под графиком */
+    .chunks { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .chunks li { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 12px; font-size: var(--fs-small); line-height: var(--lh-small); }
+    .chunks li.rel { border: 2px solid var(--accent); }
+    .chunks .meta { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: var(--fs-label); color: var(--text-2); margin-bottom: 4px; }
+    .chunks mark { background: transparent; color: var(--text-strong); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+    pre.pycode.prompt { max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .answer { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r-m); padding: 12px 14px; font-size: var(--fs-body); line-height: var(--lh-body); }
+    .qbtn { min-height: var(--tap); text-align: left; white-space: normal; padding: 6px 10px; font-weight: 400; font-size: var(--fs-label); }
+    .qbtn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+    .gcfg { margin: 8px 0 0; padding: 0; list-style: none; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text-2); }
+    .gcfg b { color: var(--text-strong); }
+    .choices.one { grid-template-columns: 1fr; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i class="dash"></i><span data-i18n="legChunk"></span></span>
+            <span><i style="background:var(--n-300)"></i><span data-i18n="legFound"></span></span>
+            <span><i class="ring" style="border-color:var(--accent)"></i><span data-i18n="legRel"></span></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+
+        <div class="stage viz-extra">
+          <h3 class="sub" id="foundTitle"></h3>
+          <ol class="chunks" id="found"></ol>
+        </div>
+        <div class="stage viz-extra">
+          <h3 class="sub" id="promptTitle"></h3>
+          <pre class="pycode prompt" id="prompt"></pre>
+          <h3 class="sub" data-i18n="answerTitle" style="margin-top:12px"></h3>
+          <div class="answer" id="answer" role="status"></div>
+        </div>
+        <div class="stage viz-extra">
+          <h3 class="sub" data-i18n="goldenTitle"></h3>
+          <div class="tbl-wrap"><table class="ptab" id="golden"></table></div>
+          <p class="note" data-i18n="goldenNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="qTitle"></h3>
+          <select id="qSel" style="width:100%; margin-top:8px"></select>
+
+          <div style="margin-top:14px">
+            <h3><span data-i18n="sizeLabel"></span>: <span id="sizeVal"></span></h3>
+            <input type="range" id="size" min="100" max="800" step="50" value="300">
+          </div>
+          <div style="margin-top:10px">
+            <h3><span data-i18n="ovLabel"></span>: <span id="ovVal"></span></h3>
+            <input type="range" id="ov" min="0" max="50" step="5" value="20">
+          </div>
+          <div style="margin-top:10px">
+            <h3><span data-i18n="kLabel"></span> = <span id="kVal"></span></h3>
+            <input type="range" id="k" min="1" max="5" step="1" value="3">
+          </div>
+          <div style="margin-top:12px">
+            <h3 data-i18n="searchTitle"></h3>
+            <div class="seg modes" id="search" style="margin-top:8px">
+              <button type="button" data-s="vec" data-i18n="sVec"></button>
+              <button type="button" data-s="hyb" data-i18n="sHyb"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider">
+          <h3 data-i18n="metricsTitle"></h3>
+          <div class="kpis" id="kpis" style="margin-top:8px"></div>
+          <p class="note" id="kpiNote"></p>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <ul class="gcfg" id="gameCfg"></ul>
+          <p style="margin:8px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'RAG: конвейер ответа',
+        analogy: '<b>Экзамен с открытым учебником.</b> Сначала находишь нужную страницу, потом отвечаешь по ней и показываешь, откуда взял. Так работает RAG: поиск кусков документа → промпт → ответ со ссылками [1], [2].',
+        cvLabel: 'Документ, разрезанный на чанки: рамки чанков, найденные чанки и место ответа',
+        legChunk: 'граница чанка (два ряда — видно перекрытие)', legFound: 'найден (номер — место в выдаче)', legRel: 'чанк с ответом',
+        simNote: 'Упрощённая модель, настоящие числа другие. «Векторный» поиск здесь — словарь из 23 понятий вместо нейросети-эмбеддера; ответ «модели» взят из эталона golden set, а не сгенерирован. Документ, банк и карта выдуманы.',
+        modeExplore: 'Исследуй', modeGame: 'Игра: угадай раньше ретривера',
+        qTitle: 'Вопрос из golden set', qAria: 'Вопрос',
+        sizeLabel: 'Размер чанка', sizeUnit: '{n} символов',
+        ovLabel: 'Перекрытие', kLabel: 'Сколько чанков брать (top-k)',
+        searchTitle: 'Поиск',
+        sVec: 'Только векторный', sHyb: 'Гибридный (BM25 + векторный)',
+        metricsTitle: 'Метрики на 10 вопросах golden set',
+        kRecall: 'Recall@{k}', kMrr: 'MRR@{k}', kPrompt: 'Символов в промпте',
+        baseRandom: 'случайные чанки: {v}', baseAll: 'весь документ: {v}',
+        kpiNote: 'Recall@k — у какой доли вопросов нужный чанк попал в первые k. MRR — в среднем 1 / место первого нужного чанка (нет в top-k — 0). Символы промпта — среднее по вопросам: сколько текста платим модели.',
+        foundTitle: 'Найденные чанки: top-{k} из {n}',
+        foundScoreVec: 'косинус {s}', foundScoreHyb: 'гибрид {s} (BM25 {b})',
+        foundRel: 'содержит ответ', chunkNo: 'чанк {n}',
+        promptTitle: 'Собранный промпт ({n} символов)',
+        promptHead: 'Ты — помощник банка. Отвечай только по фрагментам ниже. После каждого факта ставь номер фрагмента в квадратных скобках. Если ответа во фрагментах нет — так и скажи.',
+        promptQ: 'Вопрос: {q}',
+        answerTitle: 'Ответ модели',
+        ansLabel: 'ответ',
+        answerNo: 'В найденных фрагментах нет ответа на этот вопрос. Уточните вопрос или обратитесь в поддержку.',
+        answerNoNote: 'Нужный чанк не попал в top-{k} — модель честно отказывается (если в промпте есть такая инструкция). Без неё она бы придумала ответ.',
+        goldenTitle: 'Golden set: где нашёлся нужный чанк',
+        goldenNote: 'Место 1 — нужный чанк найден первым. «нет» — не попал в top-k: на этот вопрос модель не сможет ответить по документу. Нажми на вопрос, чтобы открыть его.',
+        thQ: 'Вопрос', thVec: 'Векторный', thHyb: 'Гибридный',
+        rankNo: 'нет', rankOf: '{r}',
+        hintExplore: 'Каждая строка — кусок документа слева направо. Рамки — чанки (верхний и нижний ряд чередуются, чтобы было видно перекрытие). Подпись «ответ» — где в тексте лежит ответ на вопрос.',
+        hintGame: 'Настройки раунда уже применены. Номера найденных чанков скрыты до ответа.',
+        gameAsk: 'Попадёт ли чанк с ответом в выдачу ретривера?',
+        gYes1: 'Да, на 1-е место', gYesN: 'Да, но не первым', gNo: 'Нет, не попадёт в top-k',
+        gameCfgQ: 'Вопрос: <b>{q}</b>',
+        gameCfgS: 'Чанк <b>{s}</b> символов, перекрытие <b>{o}%</b>, top-<b>{k}</b>, поиск: <b>{m}</b>',
+        gameLine: '{verdict} Чанк с ответом на месте <b>{r}</b>.',
+        gameLineNo: '{verdict} Чанк с ответом не попал в top-{k} (его место — {r}).',
+        gameCut: ' Ответ разрезан границей чанков: ни один чанк не содержит его целиком.',
+        gameRight: 'Верно!', gameWrong: 'Не угадал.',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий раунд →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Главное: коды вроде ERR-4012 векторный поиск не видит, а маленький чанк может разрезать ответ пополам.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Режем документ на чанки.</b> Размер — сколько символов в куске, перекрытие — сколько текста повторяется на стыке, чтобы ответ не разрезало пополам.</li>' +
+          '<li><b>Ищем.</b> Векторный поиск сравнивает смысл вопроса и чанка (как в П1). BM25 ищет совпадающие слова и коды. Гибридный складывает обе оценки (каждую сначала приводим к шкале 0…1).</li>' +
+          '<li><b>Собираем промпт.</b> Инструкция + top-k чанков с номерами [1], [2]… + вопрос. Чем больше k и размер чанка, тем длиннее и дороже промпт.</li>' +
+          '<li><b>Модель отвечает со ссылками.</b> Ссылка [n] показывает, из какого чанка взят факт, — так ответ можно проверить.</li>' +
+          '<li><b>Меряем.</b> На golden set (10 вопросов с известным местом ответа) считаем recall@k и MRR. Меняем настройки — смотрим, стало ли лучше.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Выбери вопрос про ERR-4012 и переключи «Только векторный» ↔ «Гибридный». Почему векторный поиск не находит код?</li>' +
+          '<li>Поставь размер чанка 100. Почему recall упал, хотя чанков стало больше? Найди на карте ответ, разрезанный границей.</li>' +
+          '<li>Подними перекрытие с 0 до 50% при размере 150. Что стало с recall и с числом символов в промпте?</li>' +
+          '<li>Поставь размер 800 и k = 5. Recall отличный — но какую часть документа мы теперь отправляем модели? Чем это плохо?</li>' +
+          '<li>Подбери настройки, при которых гибридный поиск даёт recall@3 = 100% и промпт короче 1000 символов.</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p><b>Recall@k</b> = (число вопросов, у которых нужный чанк в первых k) / (число вопросов).</p>' +
+          '<p><b>MRR@k</b> = среднее по вопросам от <code>1 / rank</code>, где rank — место первого нужного чанка; если его нет в top-k — 0.</p>' +
+          '<p><b>BM25</b> для чанка D и вопроса Q: <code>Σ idf(w) · f(w,D)·(k₁+1) / (f(w,D) + k₁·(1 − b + b·|D|/avgdl))</code>, <code>idf(w) = ln((N − n(w) + 0.5)/(n(w) + 0.5) + 1)</code>, k₁ = 1.5, b = 0.75. Слова здесь укорачиваются до основы (первые 4–5 букв).</p>' +
+          '<p><b>Гибрид</b>: <code>0.5 · minmax(косинус) + 0.5 · minmax(BM25)</code>.</p>' +
+          '<p>Код ниже запускается в Colab целиком: режет текст на чанки, ищет по словам через TF-IDF из sklearn (родственник BM25) и считает recall@k и MRR.</p>' +
+          '<pre class="pycode"><code>import numpy as np\n' +
+          'from sklearn.feature_extraction.text import TfidfVectorizer\n' +
+          'from sklearn.metrics.pairwise import cosine_similarity\n\n' +
+          'doc = (\'Дневной лимит на снятие наличных — 5 000 сомони. \'\n' +
+          '       \'Перевод на карту другого банка: комиссия 1% (минимум 3 сомони). \'\n' +
+          '       \'ERR-4012 — операция отклонена: превышен дневной лимит. \'\n' +
+          '       \'Чат поддержки работает с 8:00 до 22:00.\')\n\n' +
+          'def chunk(text, size=60, overlap=0.2):\n' +
+          '    step = int(size * (1 - overlap))\n' +
+          '    return [text[i:i + size] for i in range(0, len(text), step)]\n\n' +
+          'chunks = chunk(doc)\n' +
+          'golden = [  # вопрос и кусок текста, где лежит ответ\n' +
+          '    (\'Что значит ERR-4012?\', \'ERR-4012\'),\n' +
+          '    (\'Какой лимит на наличные?\', \'5 000 сомони\'),\n' +
+          '    (\'Когда работает чат?\', \'8:00 до 22:00\'),\n' +
+          ']\n\n' +
+          'vec = TfidfVectorizer(token_pattern=r\'[\\w-]+\').fit(chunks)\n' +
+          'C = vec.transform(chunks)\n\n' +
+          'def ranks(question):\n' +
+          '    s = cosine_similarity(vec.transform([question]), C)[0]\n' +
+          '    return np.argsort(-s, kind=\'stable\')\n\n' +
+          'k, hits, rr = 2, 0, 0.0\n' +
+          'for q, key in golden:\n' +
+          '    order = ranks(q)[:k]\n' +
+          '    pos = [i for i, c in enumerate(order) if key in chunks[c]]\n' +
+          '    if pos:\n' +
+          '        hits += 1\n' +
+          '        rr += 1 / (pos[0] + 1)\n' +
+          'print(\'recall@k =\', hits / len(golden), \' MRR =\', round(rr / len(golden), 3))\n' +
+          '# recall@k = 0.667  MRR = 0.667: на один вопрос нужный чанк не попал в top-2</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Выдуманная инструкция к карте «Старт» (≈ 530 слов, 13 разделов) и golden set из 10 вопросов: для каждого записан кусок текста, где лежит ответ. Чанк считается нужным, если содержит этот кусок целиком. Нарезка, BM25, «векторный» поиск, recall@k и MRR считаются в браузере при каждом движении ползунка; сверка — <code>tools/check_pro.py</code>.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «угадай раньше ретривера» на проекторе, класс голосует. Потом пусть группы соревнуются: кто найдёт настройки с recall@3 = 100% и самым коротким промптом.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему в банке нельзя полагаться только на векторный поиск? Что дороже: пропустить нужный чанк или отправить модели лишние? Как собрать свой golden set для чат-бота поддержки?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('qSel').setAttribute('aria-label', T('qAria'));
+    el('size').setAttribute('aria-label', T('sizeLabel'));
+    el('ov').setAttribute('aria-label', T('ovLabel'));
+    el('k').setAttribute('aria-label', T('kLabel'));
+
+    // ======================= Данные =======================
+    // doc — документ; questions — [вопрос, кусок текста с ответом, эталонный ответ];
+    // concepts — словарь «понятий» для упрощённого векторного поиска; stop — служебные слова для BM25.
+    var DATA = /* data:start */{"doc":"Инструкция для клиентов: карта «Старт». Учебный документ, банк и карта выдуманы.\n\n1. Выпуск карты\nКарта «Старт» выпускается бесплатно за 3 рабочих дня. Получить её можно в любом отделении банка, нужен только паспорт. Первые 30 дней обслуживание бесплатное, затем 10 сомони в месяц. Карту можно привязать к мобильному приложению, чтобы видеть баланс и историю операций.\n\n2. Лимиты\nДневной лимит на снятие наличных — 5 000 сомони. Месячный лимит на переводы — 50 000 сомони. Лимит можно временно повысить в приложении, раздел «Настройки карты». Повышение действует 24 часа. Для суммы больше 100 000 сомони нужен визит в отделение. Операция сверх лимита будет отклонена автоматически, деньги при этом не списываются.\n\n3. Блокировка карты\nЕсли карта потеряна или украдена, заблокируйте её сразу: в приложении нажмите «Заблокировать» или позвоните на горячую линию 1234. Блокировка срабатывает мгновенно. Новую карту выпустят бесплатно, если вы сообщили о потере в течение суток. Сотрудники банка никогда не спрашивают PIN-код и код из SMS.\n\n4. Переводы\nПеревод по номеру телефона внутри банка проходит мгновенно и без комиссии. Перевод на карту другого банка занимает до 1 рабочего дня, комиссия 1% (минимум 3 сомони). Отменить отправленный перевод нельзя: проверяйте получателя перед отправкой.\n\n5. Кэшбэк\nЗа покупки в аптеках и на транспорте возвращается 3% кэшбэка, за остальные покупки — 1%. Кэшбэк начисляется на счёт раз в месяц, до 5-го числа. Снятие наличных и переводы кэшбэк не приносят.\n\n6. Коды ошибок\nERR-4012 — операция отклонена: превышен дневной лимит. Подождите до 00:00 или повысьте лимит в приложении.\nERR-4051 — недостаточно средств на счёте.\nERR-5003 — карта заблокирована. Обратитесь на горячую линию.\nERR-6100 — неверный PIN-код. После трёх ошибок подряд карта блокируется на 24 часа.\n\n7. Безопасность\nНикому не сообщайте CVV-код с обратной стороны карты. При подозрительном списании сразу заблокируйте карту и напишите в чат поддержки. Банк вернёт деньги, если мошенническая операция подтвердится проверкой, обычно в течение 10 рабочих дней.\n\n8. Валютные операции\nОплата в долларах и евро за границей проходит по курсу банка на день списания. Комиссия за конвертацию — 1,5%. Перед поездкой включите в приложении режим «Поездка за границу», иначе система безопасности может отклонить операцию. Если операция за границей отклонена, проверьте, включён ли этот режим, и повторите покупку через 10 минут.\n\n9. Закрытие карты\nЧтобы закрыть карту, обнулите баланс и подайте заявление в отделении или в приложении. Карта закрывается через 30 дней после заявления: за это время приходят возвраты по последним покупкам.\n\n10. Уведомления\nSMS о каждой операции стоят 5 сомони в месяц, уведомления в приложении бесплатны. В уведомлении указаны сумма, магазин и остаток на счёте. Если вы получили уведомление об операции, которую не совершали, это повод сразу заблокировать карту.\n\n11. Проценты на остаток\nНа остаток по карте начисляется 4% годовых, если в месяце было не меньше пяти покупок. Проценты приходят на счёт в последний день месяца. При отрицательном балансе проценты не начисляются, а операция оплаты будет отклонена.\n\n12. Карта для подростка\nРодитель может выпустить дополнительную карту для ребёнка от 14 лет. Родитель сам задаёт лимиты, видит все покупки в своём приложении и может заблокировать детскую карту в один клик. Операции в магазинах из запрещённого списка будут отклонены.\n\n13. Поддержка\nЧат поддержки работает в приложении с 8:00 до 22:00. Горячая линия 1234 работает круглосуточно. Жалобу можно оставить письменно в отделении, ответ приходит в течение 15 рабочих дней.","questions":[["Что значит ERR-4012?","ERR-4012 — операция отклонена: превышен дневной лимит","Код ERR-4012 значит, что превышен дневной лимит. Подождите до 00:00 или повысьте лимит в приложении"],["Какой лимит на снятие наличных в день?","Дневной лимит на снятие наличных — 5 000 сомони","Снять наличными можно до 5 000 сомони в день"],["Карту украли — как её заблокировать?","в приложении нажмите «Заблокировать» или позвоните на горячую линию 1234","Нажмите «Заблокировать» в приложении или позвоните на горячую линию 1234"],["Сколько стоит перевод на карту другого банка?","комиссия 1% (минимум 3 сомони)","Комиссия 1%, но не меньше 3 сомони; перевод идёт до 1 рабочего дня"],["Сколько кэшбэка за покупки в аптеке?","За покупки в аптеках и на транспорте возвращается 3% кэшбэка","За аптеки и транспорт возвращается 3% кэшбэка"],["Вернёт ли банк деньги при мошенничестве?","Банк вернёт деньги, если мошенническая операция подтвердится проверкой","Да, если проверка подтвердит мошенничество, обычно за 10 рабочих дней"],["Сколько дней выпускают новую карту?","выпускается бесплатно за 3 рабочих дня","Карту выпускают бесплатно за 3 рабочих дня"],["Можно ли отменить отправленный перевод?","Отменить отправленный перевод нельзя","Нет, отправленный перевод отменить нельзя — проверяйте получателя"],["Что будет после трёх неверных PIN?","После трёх ошибок подряд карта блокируется на 24 часа","После трёх неверных PIN подряд карта блокируется на 24 часа"],["Когда работает чат поддержки?","Чат поддержки работает в приложении с 8:00 до 22:00","Чат поддержки в приложении работает с 8:00 до 22:00"]],"concepts":{"карта":["карт"],"выпуск":["выпуск","выпуст","получ","нов"],"срок":["дня","дней","день","суток","сутки","срок","ждать","мгновен","сколько"],"лимит":["лимит","огранич","максим"],"наличные":["наличн","снят","снима","банкомат"],"перевод":["перевод","отправ","получател"],"комиссия":["комисс","стоит","стоим","бесплат","сомони"],"блокировка":["заблок","блокир","блокиров"],"кража":["потер","украд","украл","укра"],"звонок":["горяч","звон","позвон","телефон","лини"],"приложение":["приложен"],"кэшбэк":["кэшбэк","возвращ","бонус"],"покупки":["аптек","транспорт","покупк","оплат"],"мошенничество":["мошен","подозрит","безопасн"],"возврат":["верн","возврат"],"ошибка":["ошиб","отклон","неверн"],"код":["pin","пин","cvv","sms"],"поддержка":["поддерж","чат","жалоб","обрат"],"время":["круглосуточ","работает","когда","час"],"закрытие":["закры","заявлен","обнул"],"валюта":["валют","доллар","евро","курс","конверт","границ","поездк"],"счёт":["баланс","средств","счет","деньг"],"отмена":["отмен"]},"stop":["бы","в","во","вы","для","до","его","ее","если","её","же","за","и","из","или","их","к","как","ли","можно","мы","на","не","нужен","о","об","от","по","после","при","раз","с","со","только","у","через","что","чтобы","это"]}/* data:end */;
+    var DOC = DATA.doc, QS = DATA.questions, CN = Object.keys(DATA.concepts), STOP = {};
+    DATA.stop.forEach(function (w) { STOP[w] = 1; });
+
+    // ======================= Поиск (тот же алгоритм, что в tools/check_pro.py) =======================
+    function words(t) { return t.toLowerCase().replace(/ё/g, 'е').match(/[a-zа-я0-9]+(?:-[a-z0-9]+)*/g) || []; }
+    // «Векторный» поиск: слово → понятие по самой длинной основе, вектор чанка = сколько раз встретилось каждое понятие
+    function cvec(t) {
+      var v = CN.map(function () { return 0; });
+      words(t).forEach(function (w) {
+        var best = -1, bl = 0;
+        CN.forEach(function (c, ci) { DATA.concepts[c].forEach(function (st) { if (w.indexOf(st) === 0 && st.length > bl) { best = ci; bl = st.length; } }); });
+        if (best >= 0) v[best]++;
+      });
+      return v;
+    }
+    // BM25: слово укорачиваем до основы, коды и числа оставляем как есть («err-4012» — одно слово)
+    function bstem(w) { if (/[0-9a-z]/.test(w)) return w; var n = w.length; return n <= 4 ? w : n <= 6 ? w.slice(0, 4) : w.slice(0, 5); }
+    function btoks(t) { return words(t).filter(function (w) { return !STOP[w]; }).map(bstem); }
+    function bm25(chTok, q) {
+      var N = chTok.length, avg = chTok.reduce(function (s, c) { return s + c.length; }, 0) / N, df = {};
+      chTok.forEach(function (c) { var seen = {}; c.forEach(function (w) { if (!seen[w]) { seen[w] = 1; df[w] = (df[w] || 0) + 1; } }); });
+      var uq = []; q.forEach(function (w) { if (uq.indexOf(w) === -1) uq.push(w); });
+      uq.sort();
+      return chTok.map(function (c) {
+        var s = 0;
+        uq.forEach(function (w) {
+          if (!df[w]) return;
+          var idf = Math.log((N - df[w] + 0.5) / (df[w] + 0.5) + 1), f = 0;
+          c.forEach(function (x) { if (x === w) f++; });
+          s += idf * f * 2.5 / (f + 1.5 * (0.25 + 0.75 * c.length / avg));
+        });
+        return s;
+      });
+    }
+    // Нарезка: окно size символов, конец сдвигаем к пробелу (не режем слова), следующий чанк начинается раньше на overlap
+    function chunk(S, o) {
+      var L = DOC.length, out = [], pos = 0, ov = Math.floor(S * o + 0.5);
+      for (;;) {
+        var end = Math.min(L, pos + S);
+        if (end < L) {
+          var lo = pos + Math.floor(S / 2);
+          var cut = Math.max(DOC.lastIndexOf(' ', end - 1), DOC.lastIndexOf('\n', end - 1));
+          if (cut >= lo && cut > pos) end = cut;
+        }
+        out.push({ s: pos, e: end });
+        if (end >= L) break;
+        var nx = Math.max(pos + 1, end - ov);
+        while (nx > 0 && nx < L && !/\s/.test(DOC[nx - 1])) nx++;
+        if (nx >= end) nx = end;
+        while (nx < L && /\s/.test(DOC[nx])) nx++;
+        pos = nx;
+      }
+      return out;
+    }
+    function rankOf(sc) {
+      return sc.map(function (s, i) { return i; }).sort(function (a, b) { var d = sc[b] - sc[a]; return Math.abs(d) > 1e-12 ? d : a - b; });
+    }
+    function minmax(x) {
+      var lo = Math.min.apply(null, x), hi = Math.max.apply(null, x);
+      return x.map(function (v) { return hi > lo ? (v - lo) / (hi - lo) : 0; });
+    }
+    // Нарезка и векторы чанков от вопроса не зависят — кешируем по (размер, перекрытие)
+    var cache = {};
+    function index(S, o) {
+      var key = S + '|' + o;
+      if (!cache[key]) {
+        var ch = chunk(S, o);
+        ch.forEach(function (c) { c.text = DOC.slice(c.s, c.e); c.v = cvec(c.text); c.tok = btoks(c.text); });
+        cache[key] = ch;
+      }
+      return cache[key];
+    }
+    // Выдача для вопроса: порядок чанков и оценки
+    function retrieve(S, o, mode, qi) {
+      var ch = index(S, o), q = QS[qi][0], qv = cvec(q);
+      var cs = ch.map(function (c) { return MLPro.cosine(qv, c.v); });
+      var bs = bm25(ch.map(function (c) { return c.tok; }), btoks(q));
+      var sc = cs;
+      if (mode === 'hyb') { var a = minmax(cs), b = minmax(bs); sc = a.map(function (x, i) { return 0.5 * x + 0.5 * b[i]; }); }
+      var key = QS[qi][1], at = DOC.indexOf(key);
+      var rel = ch.map(function (c, i) { return c.s <= at && at + key.length <= c.e ? i : -1; }).filter(function (i) { return i >= 0; });
+      var order = rankOf(sc), first = -1;
+      order.forEach(function (c, j) { if (first < 0 && rel.indexOf(c) !== -1) first = j; });
+      return { ch: ch, order: order, sc: sc, cs: cs, bs: bs, rel: rel, first: first, at: at, key: key };
+    }
+    // recall@k, MRR@k и средний размер промпта на всех 10 вопросах — считаются заново при каждом изменении
+    function metrics(S, o, mode, k) {
+      var rec = 0, mrr = 0, chars = 0, rnd = 0, rndMrr = 0;
+      QS.forEach(function (q, qi) {
+        var r = retrieve(S, o, mode, qi);
+        if (r.first >= 0 && r.first < k) { rec++; mrr += 1 / (r.first + 1); }
+        r.order.slice(0, k).forEach(function (c) { chars += r.ch[c].text.length; });
+        // Точка отсчёта: ретривер, который берёт k случайных чанков (точное ожидание, без жребия)
+        var n = r.ch.length, m = r.rel.length, pNone = 1;
+        for (var i = 0; i < k; i++) {
+          var pHere = pNone * m / (n - i);   // первые i — не нужные, i-й — нужный
+          rndMrr += m ? pHere / (i + 1) : 0;
+          pNone *= m ? (n - m - i) / (n - i) : 1;
+        }
+        rnd += m ? 1 - pNone : 0;
+      });
+      var N = QS.length;
+      return { recall: rec / N, mrr: mrr / N, chars: Math.round(chars / N), rnd: rnd / N, rndMrr: rndMrr / N, n: index(S, o).length };
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', q: 0, size: 300, ov: 20, k: 3, search: 'hyb', game: null };
+    function cfg() { return state.mode === 'game' && state.game ? state.game.cfg : state; }
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g, rows, perRow, rowH, padL = 8, padT = 8;
+    function layout() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      var fs = Math.max(13, MLViz.fontPx(w));
+      rows = w < 500 ? 16 : 12;
+      perRow = Math.ceil(DOC.length / rows);
+      rowH = Math.round(fs * 1.5) + 28;   // место под этикетку «ответ» и два ряда рамок
+      return (rows * rowH + padT * 2) / w;
+    }
+    function resize() { g = MLViz.fitCanvas(cv, layout()); draw(); }
+    // Символ документа → точка на канве (документ уложен в строки слева направо)
+    function xy(pos) {
+      var r = Math.min(rows - 1, Math.floor(pos / perRow)), c = pos - r * perRow;
+      return { r: r, x: padL + c / perRow * (g.w - 2 * padL), y: padT + r * rowH };
+    }
+    // Отрезок [s, e) документа, разбитый на куски по строкам канвы
+    function segments(s, e) {
+      var out = [];
+      while (s < e) {
+        var r = Math.floor(s / perRow), rowEnd = Math.min(e, (r + 1) * perRow);
+        var a = xy(s), b = rowEnd === (r + 1) * perRow ? { x: g.w - padL } : xy(rowEnd);
+        out.push({ r: r, x0: a.x, x1: b.x, y: a.y, first: out.length === 0 });
+        s = rowEnd;
+      }
+      return out;
+    }
+    function draw() {
+      var ctx = g.ctx, c = cfg(), r = retrieve(c.size, c.ov / 100, c.search, c.q), fs = MLPro.fs(g);
+      var hideRanks = state.mode === 'game' && state.game && !state.game.answered;
+      ctx.clearRect(0, 0, g.w, g.h);
+      var labH = Math.round(fs * 1.5), laneY = [labH + 4, labH + 14], laneH = 9;
+      // Дорожки строк: светлее там, где есть текст (тёмные промежутки — переносы абзацев)
+      for (var i = 0; i < rows; i++) {
+        var y = padT + i * rowH + laneY[0];
+        ctx.fillStyle = MLViz.cssVar('--n-850');
+        ctx.fillRect(padL, y - 2, g.w - 2 * padL, laneH * 2 + 6);
+      }
+      ctx.fillStyle = MLViz.cssVar('--n-600');
+      for (var p = 0; p < DOC.length; p++) {
+        if (DOC[p] === '\n') { var a = xy(p); ctx.fillRect(a.x - 1, a.y + laneY[0] - 2, 3, laneH * 2 + 6); }
+      }
+      var top = r.order.slice(0, c.k), rankOfChunk = {};
+      top.forEach(function (ci, j) { rankOfChunk[ci] = j + 1; });
+      // Рамки чанков: чётные — верхний ряд, нечётные — нижний; две ступени нейтрального цвета
+      r.ch.forEach(function (ch, ci) {
+        var lane = ci % 2, found = rankOfChunk[ci] && !hideRanks, rel = r.rel.indexOf(ci) !== -1;
+        segments(ch.s, ch.e).forEach(function (sg) {
+          var y = sg.y + laneY[lane];
+          if (found) { ctx.fillStyle = MLViz.cssVar('--n-300'); ctx.fillRect(sg.x0 + 1, y, sg.x1 - sg.x0 - 2, laneH); }
+          ctx.strokeStyle = rel && !hideRanks ? MLViz.cssVar('--accent') : MLViz.cssVar(lane ? '--n-400' : '--n-500');
+          ctx.lineWidth = rel && !hideRanks ? 3 : 1.5;
+          if (!found && !(rel && !hideRanks)) ctx.setLineDash([4, 3]);
+          ctx.strokeRect(sg.x0 + 1, y, Math.max(2, sg.x1 - sg.x0 - 2), laneH);
+          ctx.setLineDash([]);
+        });
+      });
+      // Место ответа: белая скобка под текстом и этикетка «ответ»
+      var ans = segments(r.at, r.at + r.key.length);
+      ans.forEach(function (sg) {
+        var y = sg.y + laneY[1] + laneH + 4;
+        ctx.strokeStyle = MLViz.cssVar('--text-strong'); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(sg.x0, y - 3); ctx.lineTo(sg.x0, y); ctx.lineTo(sg.x1, y); ctx.lineTo(sg.x1, y - 3); ctx.stroke();
+      });
+      var placed = [];
+      if (ans.length) {
+        var a0 = ans[0];
+        placed.push(MLPro.label(ctx, T('ansLabel'), Math.min(g.w - 60, a0.x0), a0.y + 2, { size: fs, base: 'top', bold: true }));
+      }
+      // Номера мест в выдаче — этикетки над началом найденного чанка
+      if (!hideRanks) top.forEach(function (ci, j) {
+        var sg = segments(r.ch[ci].s, r.ch[ci].e)[0], txt = '#' + (j + 1);
+        var sz = MLPro.labelSize(ctx, txt, fs), x = Math.min(g.w - sz.w - 2, sg.x0 + 2), y = sg.y + 2;
+        while (MLPro.overlaps({ x: x, y: y, w: sz.w, h: sz.h }, placed) && x < g.w - sz.w - 2) x += 6;
+        placed.push(MLPro.label(ctx, txt, x, y, { size: fs, base: 'top' }));
+      });
+    }
+
+    // ======================= Панель и блоки под графиком =======================
+    function hl(text, key) {   // ответ внутри чанка подчёркиваем, остальное экранируем
+      var i = text.indexOf(key);
+      return i < 0 ? esc(text) : esc(text.slice(0, i)) + '<mark>' + esc(key) + '</mark>' + esc(text.slice(i + key.length));
+    }
+    function kpi(label, value, base) { return '<div class="kpi"><small>' + label + '</small><b>' + value + '</b><span class="base">' + base + '</span></div>'; }
+    function updatePanel() {
+      var c = cfg();
+      el('sizeVal').textContent = T('sizeUnit', { n: state.size });
+      el('ovVal').textContent = state.ov + '%';
+      el('kVal').textContent = state.k;
+      MLViz.setPressed(el('search'), function (b) { return b.dataset.s === state.search; });
+      el('qSel').value = String(state.q);
+      var m = metrics(c.size, c.ov / 100, c.search, c.k);
+      el('kpis').innerHTML =
+        kpi(T('kRecall', { k: c.k }), MLPro.pct(m.recall), T('baseRandom', { v: MLPro.pct(m.rnd) })) +
+        kpi(T('kMrr', { k: c.k }), MLPro.fix(m.mrr, 2), T('baseRandom', { v: MLPro.fix(m.rndMrr, 2) })) +
+        kpi(T('kPrompt'), m.chars, T('baseAll', { v: DOC.length }));
+      el('kpiNote').textContent = T('kpiNote');
+
+      var r = retrieve(c.size, c.ov / 100, c.search, c.q), top = r.order.slice(0, c.k);
+      el('foundTitle').textContent = T('foundTitle', { k: c.k, n: r.ch.length });
+      var hide = state.mode === 'game' && state.game && !state.game.answered;
+      el('found').innerHTML = hide ? '' : top.map(function (ci, j) {
+        var rel = r.rel.indexOf(ci) !== -1;
+        var score = c.search === 'hyb' ? T('foundScoreHyb', { s: MLPro.fix(r.sc[ci], 2), b: MLPro.fix(r.bs[ci], 1) }) : T('foundScoreVec', { s: MLPro.fix(r.cs[ci], 2) });
+        return '<li class="' + (rel ? 'rel' : '') + '"><div class="meta"><span class="tag">[' + (j + 1) + ']</span><span>' + T('chunkNo', { n: ci + 1 }) + '</span><span>' + score + '</span>' +
+          (rel ? '<b>✓ ' + T('foundRel') + '</b>' : '') + '</div>' + hl(r.ch[ci].text, r.key) + '</li>';
+      }).join('');
+      var prompt = T('promptHead') + '\n\n' + top.map(function (ci, j) { return '[' + (j + 1) + '] ' + r.ch[ci].text.replace(/\s+/g, ' ').trim(); }).join('\n\n') + '\n\n' + T('promptQ', { q: QS[c.q][0] });
+      el('promptTitle').textContent = T('promptTitle', { n: prompt.length });
+      el('prompt').textContent = hide ? '' : prompt;
+      var hitAt = r.first >= 0 && r.first < c.k ? r.first + 1 : 0;
+      el('answer').innerHTML = hide ? '' : hitAt
+        ? esc(QS[c.q][2]) + ' <span class="tag">[' + hitAt + ']</span>'
+        : esc(T('answerNo')) + '<p class="note">' + T('answerNoNote', { k: c.k }) + '</p>';
+      // Golden set: место нужного чанка у обоих видов поиска при текущей нарезке и k
+      el('golden').innerHTML = '<thead><tr><th>' + T('thQ') + '</th><th class="n">' + T('thVec') + '</th><th class="n">' + T('thHyb') + '</th></tr></thead><tbody>' +
+        QS.map(function (q, qi) {
+          var cell = function (mode) { var x = retrieve(c.size, c.ov / 100, mode, qi); return x.first >= 0 && x.first < c.k ? T('rankOf', { r: x.first + 1 }) : T('rankNo'); };
+          return '<tr class="' + (qi === c.q ? 'sel' : '') + '"><td><button type="button" class="qbtn" data-q="' + qi + '" aria-pressed="' + (qi === c.q) + '">' + esc(q[0]) + '</button></td>' +
+            '<td class="n">' + cell('vec') + '</td><td class="n">' + cell('hyb') + '</td></tr>';
+        }).join('') + '</tbody>';
+    }
+    function refresh() { updatePanel(); draw(); }
+
+    // ======================= Игра =======================
+    // Раунд = вопрос + настройки. Правильный ответ не вписан: место чанка считает тот же retrieve()
+    var ROUNDS = [
+      { q: 0, size: 300, ov: 20, k: 3, search: 'vec' },
+      { q: 0, size: 300, ov: 20, k: 3, search: 'hyb' },
+      { q: 1, size: 100, ov: 0, k: 3, search: 'hyb' },
+      { q: 2, size: 300, ov: 20, k: 1, search: 'vec' },
+      { q: 2, size: 300, ov: 20, k: 3, search: 'vec' },
+      { q: 4, size: 800, ov: 20, k: 1, search: 'vec' },
+      { q: 8, size: 200, ov: 0, k: 2, search: 'hyb' },
+      { q: 9, size: 150, ov: 50, k: 3, search: 'vec' }
+    ];
+    var CH = ['gYes1', 'gYesN', 'gNo'];
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var c = ROUNDS[q.i];
+        state.game = { cfg: c, answered: false };
+        var r = retrieve(c.size, c.ov / 100, c.search, c.q);
+        var truth = r.first === 0 ? 0 : r.first > 0 && r.first < c.k ? 1 : 2;
+        el('gameCfg').innerHTML = '<li>' + T('gameCfgQ', { q: esc(QS[c.q][0]) }) + '</li><li>' +
+          T('gameCfgS', { s: c.size, o: c.ov, k: c.k, m: T(c.search === 'vec' ? 'sVec' : 'sHyb') }) + '</li>';
+        q.choices(el('gameChoices'), CH.map(function (x) { return T(x); }), function (k) { return k === truth; }, function (k, ok) {
+          state.game.answered = true;
+          var v = T(ok ? 'gameRight' : 'gameWrong');
+          var line = truth < 2 ? T('gameLine', { verdict: v, r: r.first + 1 })
+            : T('gameLineNo', { verdict: v, k: c.k, r: r.first >= 0 ? r.first + 1 : '—' }) + (r.rel.length ? '' : T('gameCut'));
+          q.answer(ok ? 1 : 0, line);
+          refresh();
+        });
+        refresh();
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameCfg').innerHTML = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else state.game = null;   // настройки «Исследуй» живут отдельно и не портятся игрой
+      refresh();
+    }
+
+    // ======================= События =======================
+    el('qSel').innerHTML = QS.map(function (q, i) { return '<option value="' + i + '">' + esc(q[0]) + '</option>'; }).join('');
+    el('qSel').addEventListener('change', function (e) { state.q = +e.target.value; refresh(); });
+    el('size').addEventListener('input', function (e) { state.size = +e.target.value; refresh(); });
+    el('ov').addEventListener('input', function (e) { state.ov = +e.target.value; refresh(); });
+    el('k').addEventListener('input', function (e) { state.k = +e.target.value; refresh(); });
+    el('search').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state.search = b.dataset.s; refresh(); } });
+    el('golden').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-q]'); if (!b || state.mode !== 'explore') return;
+      state.q = +b.dataset.q; refresh();
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    // Для сверки с Python (tools/check_pro.py): те же функции, без интерфейса
+    window.PRO_RAG = { metrics: metrics, retrieve: retrieve };
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Архитектура LLM-системы в банке · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .stage canvas:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px; }
+    .info h4 { margin: 10px 0 2px; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text-2); }
+    .info p, .info ul { margin: 0; font-size: var(--fs-small); line-height: var(--lh-small); }
+    .info ul { padding-left: 20px; }
+    .info .name { font-size: var(--fs-h3); line-height: var(--lh-h3); color: var(--text-strong); margin: 0; }
+    .blocks { display: flex; flex-wrap: wrap; gap: 6px; }
+    .blocks button { font-size: var(--fs-label); padding: 6px 10px; font-weight: 400; }
+    .blocks button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+    .choices.one { grid-template-columns: 1fr; }
+    .choices.one button { text-align: left; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv" tabindex="0"></canvas>
+          <div class="legend" style="padding:8px 4px 0" data-i18n-html="legend"></div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <div class="seg modes" id="stageSeg">
+            <button type="button" data-v="proto" data-i18n="proto"></button>
+            <button type="button" data-v="prod" data-i18n="prod"></button>
+          </div>
+          <p class="note" id="stageNote"></p>
+          <h3 data-i18n="blocksTitle" style="margin-top:12px"></h3>
+          <div class="blocks" id="blocks" style="margin-top:6px"></div>
+          <div class="info divider" id="info" role="region" aria-live="polite" style="margin-top:12px"></div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Архитектура LLM-системы в банке',
+        analogy: '<b>План здания: где вход, где охрана, где архив и где камеры.</b> Модель — только одна комната. Вокруг неё стоят пропускной пункт, защиты, поиск по документам, журналы и регулярные проверки. И всё это внутри контура банка, без облака.',
+        cvLabel: 'Схема LLM-системы банка. Выбери блок стрелками и нажми Enter',
+        legend: '<span>бумага — блок есть</span><span>пунктир — нет в прототипе, добавляется в проде</span><span>пунктирная рамка снаружи — контур банка</span>',
+        simNote: 'Упрощённая схема, в настоящей системе блоков больше (кеш, очереди, резервирование). Задержки для p95 — пример из 200 запросов, расчёт среднего и p95 — настоящий.',
+        modeExplore: 'Исследуй', modeGame: 'Игра: найди слабое место',
+        proto: 'Прототип', prod: 'Продакшн',
+        protoNote: 'Прототип: модель, поиск и оркестратор. Хватает, чтобы показать идею, но не чтобы пустить клиентов.',
+        prodNote: 'Продакшн: добавлены вход через шлюз, защиты, журналы, eval-контур и мониторинг.',
+        blocksTitle: 'Блоки схемы',
+        perimeter: 'Контур банка (свои серверы, без облака)', cloud: 'Облако (за пределами банка)',
+        inProd: '(в проде)', missing: '(нет)',
+        hWhy: 'Зачем нужен', hBreak: 'Что ломается без него', hMetrics: 'Какие метрики снимать',
+        pickHint: 'Нажми на блок схемы (или выбери кнопкой выше), чтобы узнать, зачем он нужен.',
+        latTitle: 'Задержка ответа: 200 последних запросов',
+        latMean: 'Среднее: <b>{m} с</b>', latMed: 'Медиана: <b>{md} с</b>', latP95: 'p95: <b>{p} с</b> — 5% клиентов ждут дольше',
+        // Блоки
+        b_user: 'Пользователь', b_gate: 'Шлюз и аутентификация', b_gin: 'Guardrails входа', b_orch: 'Оркестратор', b_ret: 'Ретривер',
+        b_vdb: 'Векторная БД', b_llm: 'LLM на своих серверах', b_gout: 'Guardrails выхода', b_ans: 'Ответ', b_logs: 'Логи и трейсы',
+        b_eval: 'Eval-контур: golden set → регрессия → отчёт', b_mon: 'Мониторинг',
+        b_llm_cloud: 'Облачный API модели', b_vdb_cloud: 'Векторная БД в облаке',
+        w_user: 'Клиент в приложении или сотрудник банка.', k_user: '—', m_user: 'доля эскалаций на человека|оценка ответа клиентом по шкале 1–5',
+        w_gate: 'Проверяет, кто спрашивает, и ограничивает частоту запросов.', k_gate: 'Бот доступен кому угодно, можно перебором выведать чужие данные или «положить» сервис потоком запросов.', m_gate: 'доля отказов в доступе|запросов в секунду|латентность p95 шлюза',
+        w_gin: 'Маскирует ПДн, ловит prompt injection и вопросы не по теме (П6).', k_gin: 'Номера карт уходят в модель и логи, инъекции доходят до модели.', m_gin: 'доля остановленных атак|доля ложных блокировок|утечки ПДн',
+        w_orch: 'Ведёт запрос по шагам: поиск, вызов модели, проверки, инструменты (П7).', k_orch: 'Некому собрать промпт и вызвать нужные шаги — система не работает.', m_orch: 'число вызовов модели на запрос|стоимость запроса|доля ошибок шагов',
+        w_ret: 'Находит нужные куски документов под вопрос (П2).', k_ret: 'Модель отвечает «из памяти» — растут галлюцинации.', m_ret: 'recall@k|MRR|латентность поиска',
+        w_vdb: 'Хранит эмбеддинги чанков и быстро ищет ближайшие (П1).', k_vdb: 'Поиск по смыслу невозможен или очень медленный.', m_vdb: 'латентность p95|свежесть индекса (когда обновлён)',
+        w_llm: 'Пишет ответ по промпту. Стоит внутри банка: данные клиентов не уходят наружу.', k_llm: 'Нет ответа. А если модель в облаке — данные клиентов покидают банк.', m_llm: 'латентность p95|стоимость (токены)|доля отказов отвечать',
+        w_gout: 'Проверяет ответ: формат, опору на документы, отсутствие ПДн (П4, П6).', k_gout: 'Клиент получает выдумку или чужие данные.', m_gout: 'faithfulness|доля заблокированных ответов|доля эскалаций на человека',
+        w_ans: 'Ответ клиенту со ссылками на документы.', k_ans: '—', m_ans: 'answer relevance|correctness на golden set',
+        w_logs: 'Записывает каждый шаг запроса (трейс): что спросили, что нашли, что ответили.', k_logs: 'Нельзя разобрать жалобу или инцидент: непонятно, почему бот так ответил.', m_logs: 'доля запросов с полным трейсом|объём логов|ПДн в логах = 0',
+        w_eval: 'Перед каждым обновлением прогоняет golden set и сравнивает с прошлой версией (П5).', k_eval: 'Новая версия может стать хуже, и никто не узнает, пока не пожалуются клиенты.', m_eval: 'recall@k|faithfulness|correctness|согласие судьи-LLM с людьми',
+        w_mon: 'Следит за системой в реальном времени и поднимает тревогу.', k_mon: 'Медленные ответы и сбои замечают только по жалобам.', m_mon: 'латентность p95|доля отказов|стоимость в день|доля эскалаций',
+        // Игра
+        e_gout: 'Нет guardrails на выходе: выдумки и ПДн уходят клиенту',
+        e_llm: 'Модель в облаке: данные клиентов уходят за пределы банка',
+        e_eval: 'Нет eval-контура: ухудшение после обновления никто не заметит',
+        e_gate: 'Нет аутентификации: ботом может пользоваться кто угодно',
+        e_logs: 'Нет логов и трейсов: инцидент невозможно разобрать',
+        e_vdb: 'Документы банка лежат в облачной векторной БД',
+        hintExplore: 'Нажимай на блоки схемы или выбирай их стрелками ← → и Enter. Переключи «Прототип / Продакшн», чтобы увидеть, что добавляется при выходе в прод.',
+        hintGame: 'На схеме одна ошибка: чего-то не хватает или что-то стоит не на своём месте. Найди её.',
+        gameAsk: 'Где слабое место этой схемы?',
+        gameRight: 'Верно!', gameWrong: 'Не совсем.', gameWas: 'Слабое место: {e}.',
+        gameStep: 'Схема {i} из {n}', next: 'Следующая схема →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. В проде важны не только модель и поиск, но и защиты, журналы, проверки и контур без облака.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Путь запроса.</b> Пользователь → шлюз (кто ты?) → guardrails входа → оркестратор → ретривер и векторная БД → LLM → guardrails выхода → ответ.</li>' +
+          '<li><b>Контур банка.</b> Модель, база документов и логи стоят на своих серверах: данные клиентов не уходят в облако.</li>' +
+          '<li><b>Наблюдаемость.</b> Логи и трейсы записывают каждый шаг, мониторинг считает задержку p95, отказы, стоимость и эскалации.</li>' +
+          '<li><b>Eval-контур.</b> Перед выкладкой новой версии прогоняем golden set и сравниваем с прошлой (регрессия). Стало хуже — не выкладываем.</li>' +
+          '<li><b>Прототип → прод.</b> Прототип доказывает идею; прод добавляет всё, что делает систему безопасной и управляемой.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Переключи «Прототип / Продакшн». Какие блоки добавились? Для каждого назови одну беду, от которой он защищает.</li>' +
+          '<li>Открой «Мониторинг». Почему p95 почти в 4 раза больше среднего? Что из этого почувствует клиент?</li>' +
+          '<li>Какие метрики из П2, П4, П5 и П6 попадают в eval-контур, а какие — в мониторинг?</li>' +
+          '<li>Почему guardrails стоят и до модели, и после неё? Чего не поймает каждый уровень в одиночку?</li>' +
+          '<li>Нарисуй на бумаге схему для бота, который отвечает сотрудникам банка по внутренним инструкциям. Что можно упростить, а что нельзя?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p><b>p95</b> — 95-й перцентиль: сортируем задержки по возрастанию и берём значение, ниже которого 95% запросов. С линейной интерполяцией (как <code>numpy.percentile</code>): позиция <code>h = (n − 1) · 0.95</code>, ответ <code>x[⌊h⌋] + (h − ⌊h⌋) · (x[⌊h⌋+1] − x[⌊h⌋])</code>.</p>' +
+          '<p>Регрессия в eval-контуре: <code>Δ = метрика_новой − метрика_старой</code> на одном и том же golden set. Выкладываем, только если ни одна важная метрика не упала больше допуска.</p>' +
+          '<pre class="pycode"><code>import numpy as np\n\n' +
+          'rng = np.random.default_rng(7)\n' +
+          'latency = np.concatenate([rng.lognormal(np.log(0.9), 0.25, 186),   # обычные ответы\n' +
+          '                          rng.uniform(4, 9, 14)])                  # медленный «хвост»\n' +
+          'print(\'среднее:\', latency.mean().round(2), \' медиана:\', np.median(latency).round(2),\n' +
+          '      \' p95:\', np.percentile(latency, 95).round(2))\n\n' +
+          '# регрессия на golden set: старая и новая версии бота\n' +
+          'old = {\'recall@3\': 0.80, \'faithfulness\': 0.78, \'correctness\': 0.60}\n' +
+          'new = {\'recall@3\': 0.90, \'faithfulness\': 0.71, \'correctness\': 0.70}\n' +
+          'tolerance = 0.02\n' +
+          'for m in old:\n' +
+          '    delta = new[m] - old[m]\n' +
+          '    print(f\'{m:13s} {delta:+.2f}\', \'ХУЖЕ — не выкладываем\' if delta < -tolerance else \'ок\')</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Схема из 12 блоков с описаниями; 200 задержек — пример с «хвостом» медленных ответов, среднее, медиана и p95 считаются в браузере (сверка с <code>numpy.percentile</code> — <code>tools/check_pro.py</code>). Слабое место в игре находится сравнением схемы раунда с эталонной.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «Найди слабое место» на проекторе. Потом группы получают по блоку и за 3 минуты объясняют классу: зачем он, что сломается без него, какую метрику снимать.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему банк держит модель на своих серверах? Что дороже: сделать eval-контур или разбирать жалобы клиентов? Кто в банке должен смотреть на мониторинг?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    // Блоки: id, место в сетке (c — столбец, r — строка, w — ширина в столбцах), prod — только в продакшн-версии.
+    // Связи — путь запроса. lat — задержки 200 запросов, секунды (пример для p95).
+    var DATA = /* data:start */{"blocks":[
+      {"id":"user","c":0,"r":0},{"id":"gate","c":1,"r":0,"prod":true},{"id":"gin","c":2,"r":0,"prod":true},{"id":"orch","c":3,"r":0},
+      {"id":"ret","c":3,"r":1},{"id":"vdb","c":4,"r":1},{"id":"llm","c":2,"r":1},{"id":"gout","c":1,"r":1,"prod":true},{"id":"ans","c":0,"r":1},
+      {"id":"logs","c":0,"r":2,"w":1.5,"prod":true},{"id":"eval","c":1.6,"r":2,"w":2,"prod":true},{"id":"mon","c":3.7,"r":2,"w":1.3,"prod":true}],
+     "links":[["user","gate"],["gate","gin"],["gin","orch"],["orch","ret"],["ret","vdb"],["ret","llm"],["llm","gout"],["gout","ans"],["ans","user"]],
+     "lat":[0.96, 0.88, 0.84, 0.67, 0.89, 0.9, 6.84, 1.09, 1.26, 0.73, 1.18, 0.92, 0.74, 0.91, 0.98, 6.69, 0.65, 0.79, 1.02, 0.98, 0.92, 0.85, 1.12, 0.9, 0.79, 0.7, 0.85, 1.2, 1.07, 1.04, 0.72, 0.77, 0.77, 0.68, 0.93, 0.77, 0.64, 4.11, 0.92, 4.19, 0.59, 0.85, 0.7, 0.82, 0.83, 0.89, 0.65, 1.15, 1.29, 1.12, 1.06, 0.58, 0.83, 0.55, 1.01, 0.84, 0.68, 0.65, 0.94, 1.29, 1.07, 0.8, 0.89, 0.73, 0.48, 0.71, 0.83, 0.67, 0.58, 1.06, 0.87, 1.48, 0.91, 0.56, 0.93, 7.39, 0.79, 0.86, 1.26, 1.02, 0.69, 0.98, 1.17, 1.05, 0.86, 1.26, 0.93, 0.86, 0.83, 1.32, 0.78, 0.87, 0.68, 0.85, 0.79, 0.75, 0.9, 1.58, 1.28, 0.89, 0.91, 0.91, 0.74, 0.8, 0.81, 0.98, 0.81, 0.81, 0.87, 6.95, 0.88, 0.83, 7.05, 1.04, 1.02, 1.07, 0.8, 0.53, 1.23, 0.66, 0.7, 0.79, 0.92, 0.89, 0.74, 0.86, 5.24, 1.2, 0.86, 1.17, 0.8, 1.11, 0.82, 0.87, 0.61, 0.97, 0.8, 0.93, 0.73, 0.92, 1.23, 7.29, 0.76, 1.06, 0.77, 0.78, 4.83, 0.89, 0.66, 8.69, 0.76, 0.97, 4.94, 0.89, 0.76, 0.71, 0.77, 0.94, 0.87, 1.09, 0.95, 0.94, 0.61, 0.8, 1.06, 0.95, 0.89, 0.83, 0.86, 1.36, 0.61, 0.96, 1.13, 8.06, 0.99, 0.88, 0.78, 1.15, 0.64, 0.89, 0.74, 0.54, 0.72, 0.57, 1.07, 0.93, 0.83, 0.65, 0.9, 0.55, 0.9, 0.66, 1.08, 0.63, 0.78, 0.74, 1.09, 5.55, 0.69, 1.23]}/* data:end */;
+    var ORDER = DATA.blocks.map(function (b) { return b.id; });
+
+    // ======================= p95 (как numpy.percentile, линейная интерполяция) =======================
+    function percentile(a, q) {
+      var s = a.slice().sort(function (x, y) { return x - y; }), h = (s.length - 1) * q / 100, f = Math.floor(h);
+      return f + 1 < s.length ? s[f] + (h - f) * (s[f + 1] - s[f]) : s[f];
+    }
+    var LAT = { mean: DATA.lat.reduce(function (s, v) { return s + v; }, 0) / DATA.lat.length, med: percentile(DATA.lat, 50), p95: percentile(DATA.lat, 95) };
+
+    // ======================= Варианты схемы (игра) =======================
+    // Схема = эталонный продакшн с одной поломкой: блок убран (drop) или вынесен в облако (cloud)
+    var ROUNDS = [{ drop: 'gout' }, { cloud: 'llm' }, { drop: 'eval' }, { drop: 'gate' }, { drop: 'logs' }, { cloud: 'vdb' }];
+    function schema(stage, variant) {
+      return DATA.blocks.map(function (b) {
+        var x = { id: b.id, c: b.c, r: b.r, w: b.w || 1, dashed: stage === 'proto' && !!b.prod, gone: false, cloud: false };
+        if (variant && variant.drop === b.id) x.gone = true;
+        if (variant && variant.cloud === b.id) x.cloud = true;
+        return x;
+      });
+    }
+    // Слабое место ищем сравнением с эталоном: какого блока нет или какой ушёл за контур
+    function weakSpot(sc) {
+      var ref = schema('prod', null);
+      for (var i = 0; i < sc.length; i++) {
+        if (sc[i].gone && !ref[i].gone) return sc[i].id;
+        if (sc[i].cloud && !ref[i].cloud) return sc[i].id;
+      }
+      return null;
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', stage: 'prod', sel: 'orch', focus: 3, game: null };
+    function curSchema() { return state.mode === 'game' && state.game ? schema('prod', state.game.v) : schema(state.stage, null); }
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g, BOX = [];
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 620 ? 1.9 : 0.6);
+      draw();
+    }
+    function wrapLines(ctx, text, maxW) {
+      var words = text.split(' '), lines = [], line = '';
+      words.forEach(function (w) { var t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; });
+      if (line) lines.push(line);
+      return lines;
+    }
+    function name(b) { return T(b.cloud ? 'b_' + b.id + '_cloud' : 'b_' + b.id); }
+    function draw() {
+      var ctx = g.ctx, fs = MLPro.fs(g), sc = curSchema(), narrow = g.w < 620;
+      ctx.clearRect(0, 0, g.w, g.h);
+      var cloudW = sc.some(function (b) { return b.cloud; }) ? (narrow ? 0 : g.w * 0.2) : 0;
+      var top = fs * 2.2, left = 10, W = g.w - 20 - cloudW, cols = 5, rows = 3;
+      // Раскладка: широкий экран — сетка 5×3, телефон — 3 столбца по рядам
+      BOX = sc.map(function (b, i) {
+        var x, y, w, h;
+        if (!narrow) {
+          var cw = W / cols, rh = (g.h - top - 16) / rows;
+          x = left + b.c * cw + 14; y = top + b.r * rh + 12; w = b.w * cw - 28; h = rh - 28;
+        } else {
+          var k = i, cw2 = W / 2, rh2 = (g.h - top - 16) / 6;
+          x = left + (k % 2) * cw2 + 12; y = top + Math.floor(k / 2) * rh2 + 10; w = cw2 - 24; h = rh2 - 24;
+        }
+        if (b.cloud) {   // вынесенный в облако блок — справа за пределами контура (на телефоне — внизу справа)
+          if (!narrow) { x = g.w - cloudW + 4; w = cloudW - 10; }   // на телефоне блок остаётся на месте: облако видно по названию и рамке
+        }
+        return { b: b, x: x, y: y, w: w, h: h };
+      });
+      // Контур банка
+      ctx.setLineDash([8, 6]); ctx.strokeStyle = MLViz.cssVar('--n-400'); ctx.lineWidth = 2;
+      MLPro.rr(ctx, 4, top - 6, g.w - 8 - cloudW, g.h - top - 2, 12); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = MLViz.cssVar('--text-2'); ctx.font = MLPro.font(fs, true); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(T('perimeter'), 8, 4);
+      if (cloudW) { ctx.textAlign = 'right'; ctx.fillText(T('cloud'), g.w - 6, 4); }
+      // Связи — путь запроса (стрелки между центрами блоков)
+      function c(id) { for (var i = 0; i < BOX.length; i++) if (BOX[i].b.id === id) return BOX[i]; }
+      // Точка на краю блока по направлению к другой точке — стрелка видна в зазоре, а не под блоком
+      function edge(r, tx, ty) {
+        var cx = r.x + r.w / 2, cy = r.y + r.h / 2, dx = tx - cx, dy = ty - cy;
+        var k = Math.min(Math.abs((r.w / 2) / (dx || 1e-9)), Math.abs((r.h / 2) / (dy || 1e-9)));
+        return { x: cx + dx * k, y: cy + dy * k };
+      }
+      function arrow(a, b, dashed) {
+        var p0 = edge(a, b.x + b.w / 2, b.y + b.h / 2), p1 = edge(b, a.x + a.w / 2, a.y + a.h / 2);
+        var ang = Math.atan2(p1.y - p0.y, p1.x - p0.x), hs = 9;
+        ctx.strokeStyle = MLViz.cssVar('--n-200'); ctx.fillStyle = MLViz.cssVar('--n-200'); ctx.lineWidth = 2;
+        ctx.setLineDash(dashed ? [6, 5] : []);
+        ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p1.x - hs * Math.cos(ang - 0.45), p1.y - hs * Math.sin(ang - 0.45));
+        ctx.lineTo(p1.x - hs * Math.cos(ang + 0.45), p1.y - hs * Math.sin(ang + 0.45)); ctx.closePath(); ctx.fill();
+      }
+      DATA.links.forEach(function (l) {
+        var a = c(l[0]), b = c(l[1]); if (a.b.gone || b.b.gone) return;
+        arrow(a, b, false);
+      });
+      // Если блок убран, путь идёт в обход: соединяем соседей пунктиром
+      DATA.links.forEach(function (l, i) {
+        var a = c(l[0]), b = c(l[1]);
+        if (!b.b.gone) return;
+        var nx = DATA.links.filter(function (m) { return m[0] === l[1]; })[0]; if (!nx) return;
+        arrow(a, c(nx[1]), true);
+      });
+      var paper = MLViz.cssVar('--paper'), paper2 = MLViz.cssVar('--paper-2'), ink = MLViz.cssVar('--ink');
+      var hideAns = state.mode === 'game' && state.game && !state.game.answered;
+      BOX.forEach(function (bx, i) {
+        var b = bx.b;
+        if (b.gone) return;   // убранного блока на схеме просто нет — его и надо заметить
+        MLPro.rr(ctx, bx.x, bx.y, bx.w, bx.h, 8);
+        ctx.fillStyle = b.dashed ? paper2 : paper; ctx.fill();
+        if (b.dashed) { ctx.setLineDash([5, 4]); ctx.strokeStyle = MLViz.cssVar('--n-500'); ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); }
+        if (b.cloud && !hideAns) { ctx.setLineDash([6, 4]); ctx.strokeStyle = MLViz.cssVar('--c-odd'); ctx.lineWidth = 4; ctx.stroke(); ctx.setLineDash([]); }
+        var selected = state.mode === 'explore' && b.id === state.sel, focused = state.mode === 'explore' && i === state.focus && document.activeElement === cv;
+        if (selected || focused) { ctx.strokeStyle = MLViz.cssVar('--n-100'); ctx.lineWidth = selected ? 4 : 2; MLPro.rr(ctx, bx.x - 3, bx.y - 3, bx.w + 6, bx.h + 6, 10); ctx.stroke(); }
+        ctx.fillStyle = ink; ctx.font = MLPro.font(fs, true); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        var lines = wrapLines(ctx, name(b), bx.w - 14), lh = Math.round(fs * 1.25);
+        if (b.dashed) lines.push(T('inProd'));
+        var y0 = bx.y + Math.max(6, (bx.h - lines.length * lh) / 2);
+        lines.forEach(function (ln, k) { ctx.font = MLPro.font(fs, k < lines.length - (b.dashed ? 1 : 0)); ctx.fillText(ln, bx.x + 7, y0 + k * lh); });
+      });
+    }
+
+    // ======================= Панель =======================
+    function info(id) {
+      if (!id) return '<p>' + T('pickHint') + '</p>';
+      var m = T('m_' + id).split('|'), html = '<p class="name">' + esc(T('b_' + id)) + '</p>' +
+        '<h4>' + T('hWhy') + '</h4><p>' + esc(T('w_' + id)) + '</p>' +
+        '<h4>' + T('hBreak') + '</h4><p>' + esc(T('k_' + id)) + '</p>' +
+        '<h4>' + T('hMetrics') + '</h4><ul>' + m.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+      if (id === 'mon') html += '<h4>' + T('latTitle') + '</h4><div class="kpis" style="margin-top:6px">' +
+        '<div class="kpi"><small>' + T('latMean', { m: MLPro.fix(LAT.mean, 2) }) + '</small></div>' +
+        '<div class="kpi"><small>' + T('latMed', { md: MLPro.fix(LAT.med, 2) }) + '</small></div>' +
+        '<div class="kpi"><small>' + T('latP95', { p: MLPro.fix(LAT.p95, 2) }) + '</small></div></div>';
+      return html;
+    }
+    function updatePanel() {
+      MLViz.setPressed(el('stageSeg'), function (b) { return b.dataset.v === state.stage; });
+      el('stageNote').textContent = T(state.stage === 'proto' ? 'protoNote' : 'prodNote');
+      el('blocks').innerHTML = ORDER.map(function (id) { return '<button type="button" data-b="' + id + '" aria-pressed="' + (id === state.sel) + '">' + esc(T('b_' + id)) + '</button>'; }).join('');
+      el('info').innerHTML = info(state.sel);
+    }
+    function refresh() { updatePanel(); draw(); }
+    function select(id) { state.sel = id; state.focus = ORDER.indexOf(id); refresh(); }
+
+    // ======================= Игра «Найди слабое место» =======================
+    var ERR = ['gout', 'llm', 'eval', 'gate', 'logs', 'vdb'];
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      start: function (q) { q.data.order = MLViz.shuffle(ROUNDS, Math.random); },
+      round: function (q) {
+        var v = q.data.order[q.i], truth = weakSpot(schema('prod', v));
+        state.game = { v: v, answered: false };
+        // Варианты: верное слабое место + три других из списка (порядок перемешан)
+        var opts = MLViz.shuffle([truth].concat(MLViz.shuffle(ERR.filter(function (e) { return e !== truth; }), Math.random).slice(0, 3)), Math.random);
+        q.choices(el('gameChoices'), opts.map(function (e) { return esc(T('e_' + e)); }), function (k) { return opts[k] === truth; }, function (k, ok) {
+          state.game.answered = true;
+          q.answer(ok ? 1 : 0, '<b>' + T(ok ? 'gameRight' : 'gameWrong') + '</b> ' + T('gameWas', { e: esc(T('e_' + truth)) }) + ' ' + esc(T('k_' + truth)));
+          draw();
+        });
+        draw();
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; draw(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else state.game = null;
+      refresh();
+    }
+
+    // ======================= События =======================
+    el('stageSeg').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state.stage = b.dataset.v; refresh(); } });
+    el('blocks').addEventListener('click', function (e) { var b = e.target.closest('button[data-b]'); if (b) select(b.dataset.b); });
+    cv.addEventListener('click', function (e) {
+      if (state.mode !== 'explore') return;
+      var p = MLViz.pointer(cv, e);
+      BOX.forEach(function (bx) { if (!bx.b.gone && p.x >= bx.x && p.x <= bx.x + bx.w && p.y >= bx.y && p.y <= bx.y + bx.h) select(bx.b.id); });
+    });
+    // Клавиатура на схеме: стрелки — переход между блоками, Enter или пробел — открыть описание
+    cv.addEventListener('keydown', function (e) {
+      if (state.mode !== 'explore') return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { state.focus = (state.focus + 1) % ORDER.length; e.preventDefault(); draw(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { state.focus = (state.focus + ORDER.length - 1) % ORDER.length; e.preventDefault(); draw(); }
+      else if (e.key === 'Enter' || e.key === ' ') { select(ORDER[state.focus]); e.preventDefault(); }
+    });
+    cv.addEventListener('focus', draw); cv.addEventListener('blur', draw);
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    window.PRO_ARCH = { lat: LAT, weakSpot: function (i) { return weakSpot(schema('prod', ROUNDS[i])); } };   // для сверки (tools/check_pro.py)
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

@@ -55,6 +55,9 @@
         allDone: 'Все игры курса доиграны до конца.',
         progressHint: 'Урок отмечается, когда доиграны игры на всех его страницах. Отметки хранятся только в этом браузере.',
         resetProgress: 'Сбросить отметки',
+        proProgress: 'Профи: <b>{d} из {n}</b>',
+        proProgressPlain: 'Профи: {d} из {n}',
+        proHint: 'Раздел «Для профи» считается отдельно и в 24 урока не входит.',
         resetAsk: 'Сбросить все отметки о пройденных уроках в этом браузере?',
         footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Работает офлайн: скачайте папку и откройте <code>index.html</code>.'
       },
@@ -88,11 +91,17 @@
 
     var L = MLViz.lang;
     var DONE = MLViz.doneList();
+    // Отметки основного курса без раздела «Для профи»: от них зависят «Начать / Продолжить» и урок 0
+    function mainDone() { return DONE.filter(function (id) { return PRO.indexOf(id) === -1; }).length; }
 
     // Страницы готовых уроков по номеру урока: у урока 13 две страницы, у урока 17 — три
     var BY_LESSON = {};
+    // Раздел «Для профи» (it.pro) — не уроки курса: в 24 урока и в «Продолжить» не входит, считается отдельно
+    var PRO = [];
     CATALOG.forEach(function (ph) { ph.items.forEach(function (it) {
-      if (it.status === 'ready') (BY_LESSON[it.lesson] = BY_LESSON[it.lesson] || []).push(it.id);
+      if (it.status !== 'ready') return;
+      if (it.pro) { PRO.push(it.id); return; }
+      (BY_LESSON[it.lesson] = BY_LESSON[it.lesson] || []).push(it.id);
     }); });
 
     var LESSONS = Object.keys(BY_LESSON).map(Number).sort(function (x, y) { return x - y; });
@@ -105,7 +114,7 @@
     // непройденного урока 1–24, даже если урок 0 пропустил.
     function nextItem() {
       for (var i = 0; i < LESSONS.length; i++) {
-        if (LESSONS[i] < 1 && DONE.length) continue;
+        if (LESSONS[i] < 1 && mainDone()) continue;
         var ids = BY_LESSON[LESSONS[i]];
         for (var j = 0; j < ids.length; j++) if (!isDone(ids[j])) return ITEM[ids[j]];
       }
@@ -126,6 +135,7 @@
           '<div class="fill" style="width:' + (100 * d / n) + '%"></div></div>' +
         '<p class="note">' + (next ? MLViz.t(STR, 'nextLine', { l: MLViz.lessonLabel(next), t: tx(next.title) }) : MLViz.t(STR, 'allDone')) + '</p>' +
         '<p class="note">' + MLViz.t(STR, 'progressHint') + '</p>' +
+        (PRO.length ? proProgress() : '') +
         (DONE.length ? '<button type="button" class="reset" id="resetProgress">' + MLViz.t(STR, 'resetProgress') + '</button>' : '');
       // Главное действие — продолжить с того места, где остановился
       var old = document.getElementById('continueBtn');
@@ -133,7 +143,7 @@
       if (next) {
         var a = document.createElement('a');
         a.className = 'btn primary'; a.id = 'continueBtn'; a.href = pageHref(next);
-        a.innerHTML = MLViz.icon('arrow') + MLViz.t(STR, DONE.length ? 'continue' : 'start', { l: MLViz.lessonLabel(next) });
+        a.innerHTML = MLViz.icon('arrow') + MLViz.t(STR, mainDone() ? 'continue' : 'start', { l: MLViz.lessonLabel(next) });
         document.getElementById('homeActions').insertBefore(a, document.getElementById('bookBtn'));
       }
       var rb = document.getElementById('resetProgress');
@@ -142,9 +152,18 @@
         MLViz.resetDone(); DONE = []; renderProgress(); renderCatalog();
       });
     }
+    // Отдельная полоса раздела «Для профи»: страница отмечается, когда доиграна её игра
+    function proProgress() {
+      var n = PRO.length, d = PRO.filter(isDone).length;
+      return '<div class="pro-progress"><div class="head"><span>' + MLViz.t(STR, 'proProgress', { d: d, n: n }) + '</span></div>' +
+        '<div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + d + '" aria-label="' +
+        MLViz.t(STR, 'proProgressPlain', { d: d, n: n }) + '"><div class="fill" style="width:' + (100 * d / n) + '%"></div></div>' +
+        '<p class="note">' + MLViz.t(STR, 'proHint') + '</p></div>';
+    }
     var tx = function (o) { return (o && (o[L] || o.ru)) || ''; };
     // Номер на бирке: «№ 05», у урока из нескольких страниц — «№ 13.1»
     function numLabel(it) {
+      if (it.pro) return MLViz.lessonLabel(it);   // «П 03»
       var p = MLViz.lessonPart(it), n = (p.n < 10 ? '0' : '') + p.n;
       // «№» — обычным шрифтом: в Consolas этого знака нет, и он рисуется как «IF»
       return '<span class="no">№</span>' + n + (p.m > 1 ? '.' + p.k : '');
@@ -164,8 +183,10 @@
             '<div class="analogy">' + tx(it.analogy) + '</div>' +
           '</' + (ready ? 'a' : 'div') + '>';
         }).join('');
-        return '<section class="phase"><div class="phase-head"><h2>' + tx(ph.phase) + '</h2>' +
-          '<span class="weeks">' + tx(ph.weeks) + '</span></div><div class="grid">' + cards + '</div></section>';
+        return '<section class="phase"' + (ph.pro ? ' id="pro"' : '') + '><div class="phase-head"><h2>' + tx(ph.phase) + '</h2>' +
+          (tx(ph.weeks) ? '<span class="weeks">' + tx(ph.weeks) + '</span>' : '') + '</div>' +
+          (ph.note ? '<p class="phase-note">' + tx(ph.note) + '</p>' : '') +
+          '<div class="grid">' + cards + '</div></section>';
       }).join('');
       document.getElementById('catalog').innerHTML = html;
     }
@@ -175,6 +196,8 @@
     document.getElementById('roadmapBtn').insertAdjacentHTML('afterbegin', MLViz.icon('map'));
     renderProgress();
     renderCatalog();
+    // Ссылка «К разделу Для профи» (index.html#pro): каталог рисуется скриптом, поэтому прокручиваем сами
+    if (location.hash === '#pro' && document.getElementById('pro')) document.getElementById('pro').scrollIntoView();
   </script>
 </body>
 </html>

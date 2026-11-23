@@ -49,7 +49,8 @@
     root = root || document;
     root.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(dict, el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-html]').forEach(function (el) { el.innerHTML = t(dict, el.dataset.i18nHtml); });
-    document.documentElement.lang = lang;
+    // Страницы «Для профи» пока только на русском — так их и читает программа экранного доступа
+    document.documentElement.lang = (currentItem() || {}).pro ? 'ru' : lang;
     // Название вкладки браузера: в HTML оно русское, на другом языке берём заголовок страницы из перевода
     if (root === document && lang !== 'ru' && dict[lang] && dict[lang].title) {
       document.title = (dict[lang].title + ' · ' + t(UI, 'brand')).replace(/<[^>]+>/g, '');
@@ -72,7 +73,10 @@
           doneNo: 'Доиграй игру на этой странице до конца — и урок отметится как пройденный на главной.',
           book: 'Учебник', readChapter: 'Глава {n} учебника', colab: 'Открыть ноутбук в Colab', warmup: 'Python-разминка к уроку',
           bookLinksTitle: 'К этой главе', vizLink: 'Интерактив: {l} · {t}', copy: 'Скопировать', copied: 'Скопировано ✓',
-          projector: 'Проектор', projectorTip: 'Режим проектора: всё крупнее и контрастнее', less: 'Меньше', more: 'Больше', roadmap: 'Что учить дальше: дорога в ML-инженеры ›' },
+          projector: 'Проектор', projectorTip: 'Режим проектора: всё крупнее и контрастнее', less: 'Меньше', more: 'Больше', roadmap: 'Что учить дальше: дорога в ML-инженеры ›',
+          proLabel: 'П {n}', proEyebrow: 'П {n} · Для профи', proPrev: 'Предыдущая страница: {t}', proNext: 'Следующая страница: {t}',
+          proDone: 'Страница пройдена: ты доиграл игру до конца. Отметка видна на главной.', proNotDone: 'Доиграй игру на этой странице до конца — и страница отметится на главной в разделе «Для профи».',
+          proOnlyRu: 'Этот раздел пока доступен только на русском', proHome: 'К разделу «Для профи» на главной ›' },
     tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓","projector":"Проектор","projectorTip":"Реҷаи проектор: ҳама калонтар ва равшантар","less":"Камтар","more":"Бештар"}
   };
 
@@ -85,6 +89,7 @@
   }
   // «Урок 5» или «Урок 17 · часть 1 из 3» (short — коротко для кнопок шапки: «Урок 17 (1/3)»)
   function lessonLabel(it, short) {
+    if (it.pro) return t(UI, 'proLabel', { n: pad2(it.pro) });   // раздел «Для профи»: «П 03»
     var p = lessonPart(it);
     return p.m > 1 ? t(UI, short ? 'lessonShort' : 'lessonPart', p) : t(UI, 'lesson', p);
   }
@@ -100,6 +105,19 @@
     var ready = [];
     (window.CATALOG || []).forEach(function (ph) { ph.items.forEach(function (it) { if (it.status === 'ready') ready.push(it); }); });
     return ready;
+  }
+  // Листаем только внутри своего раздела: основной курс (24 урока) отдельно, «Для профи» отдельно.
+  // Так Demo Day по-прежнему ведёт на «Дорогу в ML-инженеры», а П8 — не в урок 1.
+  function sectionItems(id) {
+    var all = readyItems(), cur = null;
+    all.forEach(function (it) { if (it.id === id) cur = it; });
+    var pro = !!(cur && cur.pro);
+    return all.filter(function (it) { return !!it.pro === pro; });
+  }
+  function currentItem() {
+    var id = pageId(), cur = null;
+    readyItems().forEach(function (it) { if (it.id === id) cur = it; });
+    return cur;
   }
   function tx(o) { return (o && (o[lang] || o.ru)) || ''; }
   // Фаза урока без номера: «Фаза 2 · Классические алгоритмы» → «Классические алгоритмы»
@@ -128,7 +146,8 @@
   function resetDone() { try { localStorage.removeItem(DONE_KEY); } catch (e) {} }
   function updateDoneNote() {
     var n = document.getElementById('doneNote'), id = pageId();
-    if (n && id) n.textContent = t(UI, doneList().indexOf(id) !== -1 ? 'doneYes' : 'doneNo');
+    var pro = !!(currentItem() || {}).pro, yes = doneList().indexOf(id) !== -1;
+    if (n && id) n.textContent = t(UI, pro ? (yes ? 'proDone' : 'proNotDone') : (yes ? 'doneYes' : 'doneNo'));
   }
 
   // ---------- Значки ----------
@@ -190,12 +209,12 @@
   function renderLessonExtras(root) {
     var id = pageId(), main = document.querySelector('main');
     if (!id || !main) return;
-    var ready = readyItems(), i = ready.map(function (it) { return it.id; }).indexOf(id);
+    var ready = sectionItems(id), i = ready.map(function (it) { return it.id; }).indexOf(id);
     if (i === -1) return;
     var it = ready[i], next = ready[i + 1];
     // «Урок 5 · Классические алгоритмы» — из каталога, чтобы номер и фаза не расходились со страницами
     var eb = main.querySelector('.eyebrow');
-    if (eb) eb.textContent = lessonLabel(it) + ' · ' + phaseName(it);
+    if (eb) eb.textContent = it.pro ? t(UI, 'proEyebrow', { n: pad2(it.pro) }) : lessonLabel(it) + ' · ' + phaseName(it);
     // Перевода мифов может не быть (пары из undefined) — тогда показываем русские
     var myths = it.myths && it.myths[lang] && it.myths[lang][0] && it.myths[lang][0][0] ? it.myths[lang] : it.myths && it.myths.ru;
     if (myths && myths.length) {
@@ -220,7 +239,9 @@
         (hasWarmup(it.lesson) ? '<a class="btn" href="' + root + 'warmup/index.html?lesson=' + it.lesson + '">' + icon('code') + t(UI, 'warmup') + '</a>' : '') +
       '</div>' + (next
         ? '<a class="btn primary" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
-        : '<a class="btn primary" href="' + root + 'roadmap/index.html">' + icon('map') + t(UI, 'roadmap') + '</a>') + '</div>' +
+        : it.pro
+          ? '<a class="btn primary" href="' + root + 'index.html#pro">' + t(UI, 'proHome') + '</a>'
+          : '<a class="btn primary" href="' + root + 'roadmap/index.html">' + icon('map') + t(UI, 'roadmap') + '</a>') + '</div>' +
       '<p class="note" id="doneNote"></p>';
     main.appendChild(br);
     updateDoneNote();
@@ -266,7 +287,11 @@
     G.forEach(function (g, gi) {
       // Границы слова для кириллицы: \b в JS понимает только латиницу
       // На другом языке — своя основа слова (re_tg из перевода каталога); нет её — термин на этом языке не ищем
-      var stem = lang === 'ru' ? g.re : g['re_' + lang];
+      // Термины раздела «Для профи» — только на его страницах. Там текст пока всегда русский,
+      // поэтому и основу слова берём русскую при любом языке
+      var proPage = !!(currentItem() || {}).pro;
+      if (g.pro && !proPage) return;
+      var stem = lang === 'ru' || proPage ? g.re : g['re_' + lang];
       if (!stem) return;
       var re = new RegExp('(^|[^\\p{L}\\p{N}_])(' + stem + ')(?![\\p{L}\\p{N}_])', 'iu');
       for (var k = 0; k < roots.length; k++) {
@@ -295,10 +320,12 @@
   function lessonNav(root) {
     var id = pageId();
     if (!id || !window.CATALOG) return '';
-    var ready = readyItems();
+    var ready = sectionItems(id);
     var i = ready.map(function (it) { return it.id; }).indexOf(id);
     if (i === -1) return '';
+    var pro = !!ready[i].pro;
     function link(it, cls, label, tipKey) {
+      if (pro) tipKey = tipKey === 'prev' ? 'proPrev' : 'proNext';
       var tip = attr(t(UI, tipKey, { t: tx(it.title) || it.id }));
       return '<a class="lesson-step ' + cls + '" href="' + root + 'viz/' + it.id + '/index.html" title="' +
         tip + '" aria-label="' + tip + '">' + label + '</a>';
@@ -357,6 +384,13 @@
       b.addEventListener('click', function () { setLang(b.dataset.lang); });
     });
     if (root) renderLessonExtras(root);
+    // Раздел «Для профи» пока только на русском: на другом языке говорим об этом одной строкой под шапкой
+    if (lang !== 'ru' && (currentItem() || {}).pro && !document.getElementById('langNote')) {
+      var ln = document.createElement('p');
+      ln.id = 'langNote'; ln.className = 'lang-note'; ln.setAttribute('role', 'note'); ln.lang = 'ru';
+      ln.innerHTML = '<span class="wrap">' + t(UI, 'proOnlyRu') + '</span>';
+      h.parentNode.insertBefore(ln, h.nextSibling);
+    }
     addSteppers();
   }
 
@@ -608,6 +642,7 @@
 
   window.MLViz = {
     lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, icon: icon, lessonPart: lessonPart, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
+    isPro: function () { return !!(currentItem() || {}).pro; }, pad2: pad2,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
     fontPx: fontPx, isProjector: isProjector, zoom: zoom, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, compare: compare, quiz: quiz
   };

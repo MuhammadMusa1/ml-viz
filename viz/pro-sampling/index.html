@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Температура и выбор следующего токена · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .ctx-line { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); margin: 0 0 8px; }
+    .ctx-line span { border-bottom: 2px dashed var(--n-400); }
+    .draws { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+    .draws li { font-size: var(--fs-label); line-height: var(--lh-label); padding: 2px 8px; border: 1.5px solid var(--control-line); border-radius: var(--r-xs); }
+    .draws li.bad { border-style: dashed; color: var(--text-2); }
+    .choices.one { grid-template-columns: 1fr; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="ctx-line" id="ctxLine"></p>
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0">
+            <span><i style="background:var(--n-300); border-radius:2px"></i><span data-i18n="legKept"></span></span>
+            <span><i class="dash" style="border-radius:2px"></i><span data-i18n="legCut"></span></span>
+            <span data-i18n="legMarks"></span>
+          </div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+        <div class="stage viz-extra">
+          <h3 class="sub" id="histTitle"></h3>
+          <canvas id="hist"></canvas>
+          <ol class="draws" id="draws" aria-live="polite"></ol>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="ctxTitle"></h3>
+          <div class="seg modes" id="ctx" style="margin-top:8px">
+            <button type="button" data-c="0" data-i18n="ctx0Short"></button>
+            <button type="button" data-c="1" data-i18n="ctx1Short"></button>
+          </div>
+          <div style="margin-top:14px">
+            <h3><span data-i18n="tLabel"></span> = <span id="tVal"></span></h3>
+            <input type="range" id="temp" min="0" max="2" step="0.05" value="1">
+            <p class="note" id="tNote"></p>
+          </div>
+          <div style="margin-top:10px">
+            <h3><span data-i18n="pLabel"></span> = <span id="pVal"></span></h3>
+            <input type="range" id="topp" min="0.1" max="1" step="0.05" value="1">
+          </div>
+          <button type="button" class="primary" id="gen" style="margin-top:14px; width:100%" data-i18n="gen"></button>
+        </div>
+
+        <div class="divider">
+          <div class="kpis" id="kpis"></div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameCfg"></p>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Температура и выбор следующего токена',
+        analogy: '<b>Лотерейный барабан, где у шаров разный вес.</b> Модель не «знает» следующее слово — она даёт каждому кандидату вес и тянет шар. Температура делает веса острее или ровнее, top-p выкидывает из барабана лёгкие шары.',
+        cvLabel: 'Вероятности 8 кандидатов на следующее слово',
+        histLabel: 'Сколько раз выпало каждое слово в 20 генерациях',
+        legKept: 'в выборке', legCut: 'выкинут top-p', legMarks: '✓ верно по фактам · ✕ неверно',
+        simNote: 'Упрощённая модель, настоящие числа другие. Логиты 8 кандидатов придуманы для примера; у настоящей модели кандидатов ~100 000 токенов, а слово часто состоит из нескольких токенов. Расчёт softmax, температуры и top-p — настоящий.',
+        modeExplore: 'Исследуй', modeGame: 'Игра: угадай раньше модели',
+        ctxTitle: 'Начало фразы',
+        ctx0Short: 'Где живёт Gentoo', ctx1Short: 'Когда описан Gentoo',
+        ctx0: 'Пингвин Gentoo живёт в', ctx1: 'Вид Gentoo учёные описали в',
+        ctx1Note: 'Верный ответ — 1781 (Иоганн Форстер). Но у модели самый большой логит у 1758: этот год часто встречается в текстах о других видах.',
+        tLabel: 'Температура (temperature)', pLabel: 'Top-p',
+        tGreedy: 'T = 0 — «жадный» выбор: всегда самое вероятное слово, без случайности.',
+        tLow: 'T < 1 — распределение острее: сильные кандидаты становятся ещё сильнее.',
+        tOne: 'T = 1 — вероятности как есть (обычный softmax).',
+        tHigh: 'T > 1 — распределение ровнее: слабые кандидаты выпадают чаще.',
+        gen: 'Сгенерировать 20 раз',
+        kRight: 'Шанс верного слова', kKept: 'Слов в выборке', kTop: 'Самое вероятное',
+        kRightBase: 'при T = 1, p = 1: {v}', kKeptBase: 'из {n} кандидатов', kTopBase: '{p}',
+        histTitle: '20 генераций: {r} верных из {n}',
+        histEmpty: 'Нажми «Сгенерировать 20 раз»',
+        axisP: 'Вероятность, %', axisN: 'Сколько раз выпало',
+        hintExplore: 'Длина столбика — вероятность слова после softmax(логиты / T). Пунктир — слова, которые top-p выкинул: их модель не выберет никогда.',
+        hintGame: 'Настройки раунда применены к графику. Сначала подумай, потом смотри на столбики.',
+        gameAsk: 'Какой будет шанс, что модель выберет верное по фактам слово?',
+        g0: 'Меньше 30%', g1: 'От 30% до 70%', g2: 'Больше 70%',
+        gameCfg: '«{c} …», T = <b>{t}</b>, top-p = <b>{p}</b>',
+        gameLine: '{verdict} Шанс верного слова: <b>{v}</b>.',
+        gameRight: 'Верно!', gameWrong: 'Не угадал.',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий раунд →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Запомни: T = 0 убирает случайность, но не ошибку — если самое вероятное слово неверное, модель будет повторять его всегда.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Логиты.</b> Модель выдаёт каждому кандидату на следующее слово число — логит. Чем больше, тем «увереннее».</li>' +
+          '<li><b>Температура.</b> Логиты делим на T. Маленькое T растягивает разницу, большое — сжимает.</li>' +
+          '<li><b>Softmax.</b> Превращает логиты в вероятности: все положительные, в сумме 100%.</li>' +
+          '<li><b>Top-p.</b> Сортируем слова по вероятности и берём, пока сумма не дойдёт до p. Остальные выкидываем и снова делим на сумму, чтобы было 100%.</li>' +
+          '<li><b>Жребий.</b> Тянем одно слово по этим вероятностям, дописываем его и повторяем для следующего слова.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Во фразе «Когда описан Gentoo» поставь T = 0 и сгенерируй 20 раз. Сколько верных? Помогла ли «надёжность» T = 0?</li>' +
+          '<li>Подними T до 2. Сколько разных слов выпало? Какие из них — явная ерунда?</li>' +
+          '<li>При T = 1.5 опусти top-p до 0.5. Сколько слов осталось в выборке и что стало с шансом ерунды?</li>' +
+          '<li>Во фразе «Где живёт Gentoo» найди настройки, при которых шанс верного слова больше 95%, но в выборке остаётся больше одного слова.</li>' +
+          '<li>Почему для банковского чат-бота обычно ставят низкую температуру, а для придумывания названий — повыше?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Вероятность слова i при температуре T:</p>' +
+          '<p><code>pᵢ = exp(zᵢ / T) / Σⱼ exp(zⱼ / T)</code>, где zᵢ — логит. При T → 0 вся вероятность уходит самому большому логиту.</p>' +
+          '<p>Top-p (nucleus sampling): сортируем pᵢ по убыванию, оставляем самый короткий список, сумма которого ≥ p, и делим оставшиеся на их сумму.</p>' +
+          '<p>Код ниже запускается в Colab целиком и даёт те же числа, что страница:</p>' +
+          '<pre class="pycode"><code>import numpy as np\n\n' +
+          'words  = [\'1758\', \'1781\', \'1840\', \'1820\', \'1775\', \'1900\', \'1912\', \'2001\']\n' +
+          'logits = np.array([3.4, 2.9, 2.0, 1.7, 1.3, 1.0, 0.5, -0.8])\n' +
+          'right  = \'1781\'   # верный ответ\n\n' +
+          'def probs(z, T, top_p=1.0):\n' +
+          '    if T == 0:                       # жадный выбор\n' +
+          '        p = np.zeros_like(z); p[np.argmax(z)] = 1.0\n' +
+          '    else:\n' +
+          '        e = np.exp((z - z.max()) / T)\n' +
+          '        p = e / e.sum()\n' +
+          '    order = np.argsort(-p, kind=\'stable\')\n' +
+          '    keep = np.cumsum(p[order]) - p[order] < top_p - 1e-9   # берём, пока сумма до слова < p\n' +
+          '    mask = np.zeros_like(p, dtype=bool); mask[order[keep]] = True\n' +
+          '    p = np.where(mask, p, 0.0)\n' +
+          '    return p / p.sum()\n\n' +
+          'for T in [0, 0.5, 1, 2]:\n' +
+          '    p = probs(logits, T)\n' +
+          '    print(f\'T={T}: шанс верного = {p[words.index(right)]:.1%}\')\n\n' +
+          'rng = np.random.default_rng(42)\n' +
+          'print(rng.choice(words, size=20, p=probs(logits, 1.0, top_p=0.9)))</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Две фразы и по 8 кандидатов с придуманными логитами. Во второй фразе самый вероятный кандидат неверный — это нужно, чтобы показать: низкая температура не лечит галлюцинации. Softmax, температура, top-p и жребий считаются в браузере; сверка — <code>tools/check_pro.py</code>.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: вопрос классу «если поставить T = 0, модель перестанет врать?». Голосуем, потом показываем фразу про 1758 с T = 0 и 20 генерациями.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Чем «уверенность» модели отличается от правды? Что на самом деле лечит галлюцинации (подсказка: П2 и П4)? Когда случайность полезна?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('hist').setAttribute('aria-label', T('histLabel'));
+    el('temp').setAttribute('aria-label', T('tLabel'));
+    el('topp').setAttribute('aria-label', T('pLabel'));
+
+    // ======================= Данные =======================
+    // Две фразы: кандидаты [слово, логит, верно ли по фактам]. Логиты придуманы для примера.
+    var DATA = /* data:start */{"contexts":[
+      [["Антарктике",3.6,true],["Антарктиде",3.2,true],["колонии",2.4,true],["Арктике",2.3,false],["Гренландии",0.9,false],["Африке",0.8,false],["Австралии",0.4,false],["пустыне",-0.6,false]],
+      [["1758",3.4,false],["1781",2.9,true],["1840",2.0,false],["1820",1.7,false],["1775",1.3,false],["1900",1.0,false],["1912",0.5,false],["2001",-0.8,false]]
+    ]}/* data:end */;
+
+    // ======================= Модель выбора =======================
+    // Вероятности после температуры и top-p. T = 0 — жадный выбор (вся вероятность у самого большого логита)
+    function probs(ci, temp, topP) {
+      var z = DATA.contexts[ci].map(function (c) { return c[1]; }), p;
+      if (temp < 1e-9) {
+        var best = 0; z.forEach(function (v, i) { if (v > z[best]) best = i; });
+        p = z.map(function (v, i) { return i === best ? 1 : 0; });
+      } else p = MLPro.softmax(z, temp);
+      var raw = p.slice();
+      // Top-p: берём слова по убыванию, пока сумма ДО слова меньше p (как в Python-коде ниже)
+      var order = p.map(function (v, i) { return i; }).sort(function (a, b) { return p[b] - p[a] || a - b; });
+      var keep = p.map(function () { return false; }), acc = 0;
+      // 1e-9 — запас на округление, такой же в Python
+      order.forEach(function (i) { if (acc < topP - 1e-9) keep[i] = true; acc += p[i]; });
+      var s = 0; p.forEach(function (v, i) { if (keep[i]) s += v; });
+      return { raw: raw, p: p.map(function (v, i) { return keep[i] ? v / s : 0; }), keep: keep };
+    }
+    function rightChance(r, ci) { return DATA.contexts[ci].reduce(function (s, c, i) { return s + (c[2] ? r.p[i] : 0); }, 0); }
+    // Жребий по вероятностям (генератор с зерном — как random_state)
+    var seed = 1;
+    function sample(p, rand) { var u = rand(), acc = 0; for (var i = 0; i < p.length; i++) { acc += p[i]; if (u < acc) return i; } return p.length - 1; }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', ctx: 0, t: 1, p: 1, draws: null, game: null };
+    function cfg() { return state.mode === 'game' && state.game ? state.game.cfg : state; }
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), hv = el('hist'), g, gh;
+    function resize() {
+      // На телефоне график выше: 8 строк со словами не должны слипаться
+      var narrow = cv.parentElement.clientWidth < 520;
+      g = MLViz.fitCanvas(cv, narrow ? 0.9 : MLViz.isProjector() ? 0.5 : 0.62);
+      gh = MLViz.fitCanvas(hv, narrow ? 0.8 : 0.45);
+      draw();
+    }
+    // Горизонтальные столбики: слева слово (вне поля графика), справа значение на бумажной этикетке
+    function bars(gg, items, max, axisLabel, fmt, tick) {
+      var ctx = gg.ctx, fs = MLPro.fs(gg), font = MLPro.font(fs, true);
+      ctx.clearRect(0, 0, gg.w, gg.h);
+      ctx.font = font;
+      var lw = Math.max.apply(null, items.map(function (it) { return ctx.measureText(it.name + ' ✓').width; }));
+      var pad = MLViz.plotPad(gg.w, 2); pad.l = Math.ceil(lw) + 16; pad.r = Math.max(pad.r, 18);
+      var sx = MLViz.scale(0, max, pad.l, gg.w - pad.r);
+      var bandH = (gg.h - pad.t - pad.b) / items.length;
+      var sy = function (i) { return pad.t + i * bandH; };
+      MLViz.drawAxes(ctx, { w: gg.w, h: gg.h, pad: pad, sx: sx, sy: function () { return -100; }, xTicks: MLViz.range(0, max, tick), yTicks: [], xLabel: axisLabel, yLabel: '', xFmt: fmt });
+      items.forEach(function (it, i) {
+        var y = sy(i) + bandH * 0.18, h = bandH * 0.64, w = sx(it.v) - pad.l;
+        ctx.fillStyle = MLViz.cssVar('--text-2'); ctx.font = font; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.fillText(it.name + (it.ok ? ' ✓' : ' ✕'), pad.l - 8, y + h / 2);
+        if (it.cut) {
+          var wr = sx(it.ghost) - pad.l;
+          ctx.setLineDash([5, 4]); ctx.strokeStyle = MLViz.cssVar('--n-400'); ctx.lineWidth = 2;
+          ctx.strokeRect(pad.l, y, Math.max(2, wr), h); ctx.setLineDash([]);
+        } else if (w > 0) {
+          ctx.fillStyle = MLViz.cssVar('--n-300'); ctx.fillRect(pad.l, y, w, h);
+        }
+        var x = pad.l + Math.max(w, it.cut ? sx(it.ghost) - pad.l : 0) + 6, txt = it.label;
+        var sz = MLPro.labelSize(ctx, txt, fs);
+        MLPro.label(ctx, txt, Math.min(x, gg.w - pad.r - sz.w), y + h / 2, { size: fs, dashed: it.cut });
+      });
+    }
+    function draw() {
+      var c = cfg(), r = probs(c.ctx, c.t, c.p), C = DATA.contexts[c.ctx];
+      var hide = state.mode === 'game' && state.game && !state.game.answered;
+      el('ctxLine').innerHTML = esc(T('ctx' + c.ctx)) + ' <span>…</span>';
+      bars(g, C.map(function (w, i) {
+        var cut = !r.keep[i];
+        return { name: w[0], ok: w[2], v: hide ? 0 : r.p[i], cut: cut && !hide, ghost: r.raw[i],
+                 label: hide ? '?' : cut ? '0% (' + MLPro.pct(r.raw[i]) + ')' : MLPro.pct(r.p[i], r.p[i] < 0.01 && r.p[i] > 0 ? 1 : 0) };
+      }), 1, T('axisP'), function (v) { return Math.round(v * 100); }, 0.25);
+      // Гистограмма 20 генераций
+      var d = state.mode === 'explore' ? state.draws : null;
+      var counts = C.map(function () { return 0; });
+      if (d) d.forEach(function (i) { counts[i]++; });
+      bars(gh, C.map(function (w, i) { return { name: w[0], ok: w[2], v: counts[i], label: String(counts[i]) }; }), 20, T('axisN'), String, 5);
+      var right = d ? d.filter(function (i) { return C[i][2]; }).length : 0;
+      el('histTitle').textContent = d ? T('histTitle', { r: right, n: d.length }) : T('histEmpty');
+      el('draws').innerHTML = d ? d.map(function (i) { return '<li class="' + (C[i][2] ? '' : 'bad') + '">' + esc(C[i][0]) + (C[i][2] ? ' ✓' : ' ✕') + '</li>'; }).join('') : '';
+    }
+    function updatePanel() {
+      var c = cfg(), r = probs(c.ctx, c.t, c.p), C = DATA.contexts[c.ctx];
+      el('tVal').textContent = MLPro.fix(state.t, 2);
+      el('pVal').textContent = MLPro.fix(state.p, 2);
+      el('tNote').textContent = T(state.t < 1e-9 ? 'tGreedy' : state.t < 1 ? 'tLow' : Math.abs(state.t - 1) < 1e-9 ? 'tOne' : 'tHigh') + (state.ctx === 1 ? ' ' + T('ctx1Note') : '');
+      MLViz.setPressed(el('ctx'), function (b) { return +b.dataset.c === state.ctx; });
+      var hide = state.mode === 'game' && state.game && !state.game.answered;
+      var best = 0; r.p.forEach(function (v, i) { if (v > r.p[best]) best = i; });
+      var kept = r.keep.filter(Boolean).length;
+      el('kpis').innerHTML = hide ? '' :
+        '<div class="kpi"><small>' + T('kRight') + '</small><b>' + MLPro.pct(rightChance(r, c.ctx)) + '</b><span class="base">' + T('kRightBase', { v: MLPro.pct(rightChance(probs(c.ctx, 1, 1), c.ctx)) }) + '</span></div>' +
+        '<div class="kpi"><small>' + T('kKept') + '</small><b>' + kept + '</b><span class="base">' + T('kKeptBase', { n: C.length }) + '</span></div>' +
+        '<div class="kpi"><small>' + T('kTop') + '</small><b>' + esc(C[best][0]) + '</b><span class="base">' + (C[best][2] ? '✓' : '✕') + ' ' + MLPro.pct(r.p[best]) + '</span></div>';
+    }
+    function refresh() { updatePanel(); draw(); }
+
+    // ======================= Игра =======================
+    // Ответ раунда считается по тем же probs(): шанс верного слова попадает в одну из трёх корзин
+    var ROUNDS = [
+      { ctx: 0, t: 1, p: 1 }, { ctx: 1, t: 0, p: 1 }, { ctx: 1, t: 1, p: 1 }, { ctx: 0, t: 2, p: 1 },
+      { ctx: 0, t: 0.3, p: 1 }, { ctx: 1, t: 2, p: 1 }, { ctx: 1, t: 1, p: 0.5 }, { ctx: 0, t: 1.5, p: 0.6 }
+    ];
+    function bucket(v) { return v < 0.3 ? 0 : v <= 0.7 ? 1 : 2; }
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var c = ROUNDS[q.i];
+        state.game = { cfg: c, answered: false };
+        var v = rightChance(probs(c.ctx, c.t, c.p), c.ctx), truth = bucket(v);
+        el('gameCfg').innerHTML = T('gameCfg', { c: esc(T('ctx' + c.ctx)), t: MLPro.fix(c.t, 1), p: MLPro.fix(c.p, 1) });
+        q.choices(el('gameChoices'), [T('g0'), T('g1'), T('g2')], function (k) { return k === truth; }, function (k, ok) {
+          state.game.answered = true;
+          q.answer(ok ? 1 : 0, T('gameLine', { verdict: T(ok ? 'gameRight' : 'gameWrong'), v: MLPro.pct(v, 1) }));
+          refresh();
+        });
+        refresh();
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameCfg').innerHTML = ''; refresh(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else state.game = null;
+      refresh();
+    }
+
+    // ======================= События =======================
+    el('ctx').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state.ctx = +b.dataset.c; state.draws = null; refresh(); } });
+    el('temp').addEventListener('input', function (e) { state.t = +e.target.value; state.draws = null; refresh(); });
+    el('topp').addEventListener('input', function (e) { state.p = +e.target.value; state.draws = null; refresh(); });
+    el('gen').addEventListener('click', function () {
+      var r = probs(state.ctx, state.t, state.p), rand = MLViz.rng(seed++), d = [];
+      for (var i = 0; i < 20; i++) d.push(sample(r.p, rand));
+      state.draws = d; refresh();
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    window.PRO_SAMPLING = { probs: probs };   // для сверки с Python (tools/check_pro.py)
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

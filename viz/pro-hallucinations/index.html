@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Галлюцинации · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .qline { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); margin: 0 0 8px; }
+    /* Предложения ответа: опора — значок ✓ и сплошное подчёркивание; нет опоры — ✕ и пунктир «подозрительного» цвета */
+    .sents { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .sents li { font-size: var(--fs-body); line-height: var(--lh-body); }
+    .sents .t { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+    .sents .ok .t { text-decoration-style: solid; text-decoration-color: var(--text-strong); }
+    .sents .bad .t { text-decoration-style: dashed; text-decoration-color: var(--c-odd); }
+    .sents .gone .t { text-decoration: line-through; color: var(--text-muted); }
+    .sents .cap { display: block; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text-2); margin-top: 2px; }
+    .sents .ic2 { font-weight: 700; margin-right: 6px; }
+    .choices.one { grid-template-columns: 1fr; }
+    .choices.one button { text-align: left; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="qline" id="qline"></p>
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0" data-i18n-html="legend"></div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+        <div class="stage viz-extra">
+          <h3 class="sub" data-i18n="answerTitle"></h3>
+          <ol class="sents" id="sents"></ol>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="scTitle"></h3>
+          <div class="seg wrapping" id="scen" style="margin-top:8px; display:flex; flex-direction:column">
+            <button type="button" data-s="0" data-i18n="sc0"></button>
+            <button type="button" data-s="1" data-i18n="sc1"></button>
+            <button type="button" data-s="2" data-i18n="sc2"></button>
+          </div>
+          <h3 data-i18n="defTitle" style="margin-top:14px"></h3>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px">
+            <label class="toggle"><input type="checkbox" id="dCtx"> <span data-i18n="dCtx"></span></label>
+            <label class="toggle"><input type="checkbox" id="dCite"> <span data-i18n="dCite"></span></label>
+            <label class="toggle"><input type="checkbox" id="dCheck"> <span data-i18n="dCheck"></span></label>
+          </div>
+        </div>
+
+        <div class="divider">
+          <div class="kpis" id="kpis"></div>
+          <p class="note" data-i18n="kpiNote"></p>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameCfg"></p>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Галлюцинации',
+        analogy: '<b>Ученик у доски не знает ответа, но говорит уверенно.</b> Модель тоже продолжает текст правдоподобно, а не проверяет факты. Защиты заставляют её опираться на документы и показывают, где опоры нет.',
+        cvLabel: 'Связи предложений ответа с найденными документами и с памятью модели',
+        legend: '<span>✓ сплошная линия — опирается на документ</span><span>✕ пунктир — не опирается (из памяти модели)</span>',
+        simNote: 'Упрощённая модель, настоящие числа другие. Ответы «модели» заготовлены заранее, а поведение с защитами задано правилами. Настоящая проверка опоры — это вторая модель (NLI или судья-LLM), а не поиск точной фразы. Расчёт faithfulness — настоящий.',
+        modeExplore: 'Исследуй', modeGame: 'Игра: найди ошибку',
+        scTitle: 'Сценарий',
+        sc0: 'Ответ есть в контексте', sc1: 'Ответа в контексте нет', sc2: 'Контекст противоречит памяти модели',
+        defTitle: 'Защиты',
+        dCtx: 'Инструкция «отвечай только по контексту»', dCite: 'Требовать ссылку [n] у каждого факта', dCheck: 'Проверка опоры (удалять факты без опоры)',
+        kFaith: 'Faithfulness', kFaithBase: 'без защит: {v}', kBad: 'Без опоры', kBadBase: 'из {n} предложений', kOk: 'Ответ верный?', kOkBase: '{why}',
+        yes: 'да', no: 'нет', okWhy0: 'есть нужный факт', okWhy1: 'честный отказ', okWhy2: 'актуальный факт',
+        badWhy: 'есть факт без опоры', missWhy: 'нет нужного факта',
+        kpiNote: 'Faithfulness = доля предложений ответа, которые подтверждаются контекстом. Честный отказ («в документах нет ответа») ничего не утверждает и считается опорным.',
+        answerTitle: 'Ответ модели по предложениям',
+        capOk: 'опора: {src}', capBad: 'нет опоры в {src}', capBadAll: 'нет опоры ни в одном документе',
+        capFake: 'ссылка [{n}] есть, но в документе [{n}] этого факта нет', capGone: 'удалено проверкой опоры',
+        capRefuse: 'отказ: ничего не утверждает',
+        memory: 'Память модели (не из документов)', docs: 'Найденные документы', answer: 'Ответ',
+        empty: 'После проверки опоры в ответе ничего не осталось — система отвечает: «Не могу подтвердить ответ по документам, передаю оператору».',
+        hintExplore: 'Слева — найденные документы, справа — предложения ответа. Линия показывает, откуда взят факт. Включай защиты и смотри, как меняются ответ и faithfulness.',
+        hintGame: 'Прочитай ответ и документы. Какое предложение не опирается на документы?',
+        gameAsk: 'Какое предложение ответа — галлюцинация?',
+        gameNone: 'Все предложения опираются на документы',
+        gameCfg: 'Сценарий: <b>{s}</b>. Защиты: <b>{d}</b>',
+        gameNoDef: 'нет',
+        gameLine: '{verdict} {why}',
+        gameWhyBad: 'Без опоры: «{t}».', gameWhyNone: 'Здесь у всех предложений есть опора.',
+        gameRight: 'Верно!', gameWrong: 'Не угадал.',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий ответ →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Обрати внимание: ссылка [1] рядом с фактом ещё не значит, что факт есть в документе [1].',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Модель продолжает текст.</b> Если ответа нет в документах, она всё равно пишет правдоподобный текст — из своей памяти (обучающих данных), которая может быть устаревшей или неверной.</li>' +
+          '<li><b>Инструкция «только по контексту»</b> снижает долю выдумок, но не до нуля: модель может её проигнорировать.</li>' +
+          '<li><b>Требование ссылок</b> делает ответ проверяемым. Но ссылку модель тоже может приписать наугад.</li>' +
+          '<li><b>Проверка опоры</b> — отдельный шаг после модели: для каждого предложения ищем подтверждение в документе. Нет подтверждения — предложение удаляем или передаём человеку.</li>' +
+          '<li><b>Faithfulness</b> считает долю предложений с опорой. Это одна из главных метрик LLM-системы в банке.</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>В сценарии «Ответа нет» без защит: какой факт модель придумала? Какую защиту достаточно включить, чтобы получить честный отказ?</li>' +
+          '<li>В сценарии «Ответ есть» включи только «отвечай по контексту». Почему одно предложение всё равно осталось без опоры?</li>' +
+          '<li>Включи «требовать ссылку» без проверки опоры. Стало ли честнее? Найди фальшивую ссылку.</li>' +
+          '<li>В сценарии «Контекст противоречит памяти» какая ставка верная: из памяти или из документа? Почему?</li>' +
+          '<li>Может ли faithfulness быть 100%, а ответ — бесполезным? Найди такую комбинацию.</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p><code>faithfulness = (число утверждений ответа с опорой в контексте) / (число утверждений ответа)</code></p>' +
+          '<p>Здесь «утверждение» — предложение, а «опора» — нужный факт есть в тексте документа (если ссылка указана — именно в этом документе). В настоящих системах опору проверяет модель NLI или судья-LLM: «следует ли это предложение из этого текста?».</p>' +
+          '<p>Код запускается в Colab целиком:</p>' +
+          '<pre class="pycode"><code>import numpy as np\n\n' +
+          'context = {\n' +
+          '    1: \'Перевод на карту другого банка: комиссия 1%, минимум 3 сомони.\',\n' +
+          '    2: \'Перевод по номеру телефона внутри банка — без комиссии.\',\n' +
+          '}\n' +
+          '# предложения ответа: (текст, факт для проверки, ссылка или None)\n' +
+          'answer = [\n' +
+          '    (\'Комиссия за перевод — 1%.\',            \'комиссия 1%\',      1),\n' +
+          '    (\'Минимальная комиссия — 3 сомони.\',      \'минимум 3 сомони\', 1),\n' +
+          '    (\'Перевод приходит за 5 минут.\',          \'за 5 минут\',       1),  # ссылка фальшивая\n' +
+          ']\n\n' +
+          'def supported(fact, ref):\n' +
+          '    docs = [context[ref]] if ref else list(context.values())\n' +
+          '    return any(fact.lower() in d.lower() for d in docs)\n\n' +
+          'ok = np.array([supported(f, r) for _, f, r in answer])\n' +
+          'print(\'опора:\', ok)                          # [ True  True False]\n' +
+          'print(\'faithfulness =\', round(ok.mean(), 3))  # 0.667\n' +
+          '# «проверка опоры»: оставить только предложения с опорой\n' +
+          'print([t for (t, _, _), s in zip(answer, ok) if s])</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Три сценария про выдуманный банк: в каждом вопрос, 2 документа и заготовленные ответы модели без защит и с инструкцией «только по контексту». Опора каждого предложения и faithfulness считаются в браузере по тексту документов; сверка — <code>tools/check_pro.py</code>.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «Найди ошибку» — класс ищет галлюцинацию раньше компьютера. Потом сценарий «Ответа нет»: по очереди включаем защиты и обсуждаем, что дала каждая.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему модели «врут» уверенно? Почему в банке честный отказ лучше красивого ответа? Что делать, если документ в базе устарел?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    // Сценарий: вопрос, документы, ответ модели без защит (raw). Предложение: текст, факт для проверки опоры,
+    // источник, на который модель сошлётся при «требовать ссылку» (у выдумки — фальшивая ссылка).
+    // ctx: что модель пишет вместо этого предложения при инструкции «только по контексту»
+    //      ("drop" — убирает, null — игнорирует инструкцию, объект — переписывает по документу).
+    // key — факт, без которого ответ не полезен (null — правильное поведение — отказ).
+    var DATA = /* data:start */{"scenarios":[
+      {"q":"Какая комиссия за перевод на карту другого банка?",
+       "docs":["Перевод на карту другого банка: комиссия 1%, минимум 3 сомони. Деньги приходят до конца следующего рабочего дня.","Перевод по номеру телефона внутри банка проходит мгновенно и без комиссии."],
+       "key":"комиссия 1%",
+       "raw":[{"t":"Комиссия за перевод на карту другого банка — 1%.","f":"комиссия 1%","cite":1,"ctx":"keep"},
+              {"t":"Минимальная комиссия — 3 сомони.","f":"минимум 3 сомони","cite":1,"ctx":"keep"},
+              {"t":"Обычно перевод приходит за 5 минут.","f":"за 5 минут","cite":1,"ctx":null}]},
+      {"q":"Сколько стоит выпуск металлической карты?",
+       "docs":["Карта «Старт» выпускается бесплатно за 3 рабочих дня.","Обслуживание карты «Старт» после первых 30 дней стоит 10 сомони в месяц."],
+       "key":null,
+       "raw":[{"t":"Металлическая карта стоит 500 сомони.","f":"500 сомони","cite":2,"ctx":"drop"},
+              {"t":"Её выпускают за 3 рабочих дня.","f":"за 3 рабочих дня","cite":1,"ctx":"drop"},
+              {"t":"Обслуживание стоит 10 сомони в месяц.","f":"10 сомони в месяц","cite":2,"ctx":"drop"}],
+       "refuse":"В документах нет данных о металлической карте. Могу рассказать о карте «Старт» или передать вопрос оператору."},
+      {"q":"Какая сейчас ставка по вкладу «Копилка»?",
+       "docs":["С 1 ноября ставка по вкладу «Копилка» — 9% годовых.","Проценты по вкладу «Копилка» начисляются ежемесячно."],
+       "key":"9% годовых",
+       "raw":[{"t":"Ставка по вкладу «Копилка» — 7% годовых.","f":"7% годовых","cite":1,"ctx":{"t":"Ставка по вкладу «Копилка» — 9% годовых.","f":"9% годовых","cite":1}},
+              {"t":"Проценты начисляются ежемесячно.","f":"начисляются ежемесячно","cite":2,"ctx":"keep"}]}
+    ]}/* data:end */;
+
+    // ======================= Модель ответа и проверка опоры =======================
+    function norm(s) { return s.toLowerCase().replace(/ё/g, 'е'); }
+    // Опора: факт есть в тексте документа. Со ссылкой — только в том документе, на который сослались
+    function support(sc, s, cite) {
+      if (cite) return norm(sc.docs[s.cite - 1]).indexOf(norm(s.f)) !== -1;
+      return sc.docs.some(function (d) { return norm(d).indexOf(norm(s.f)) !== -1; });
+    }
+    // Ответ при выбранных защитах: список предложений {t, f, cite, ok, gone, refuse}
+    function answer(si, d) {
+      var sc = DATA.scenarios[si], out = [];
+      if (d.ctx && sc.refuse) out.push({ t: sc.refuse, refuse: true, ok: true });
+      else sc.raw.forEach(function (s) {
+        var x = s;
+        if (d.ctx) { if (s.ctx === 'drop') return; if (s.ctx && typeof s.ctx === 'object') x = s.ctx; }
+        out.push({ t: x.t, f: x.f, cite: x.cite, ok: support(sc, x, d.cite), anyOk: support(sc, x, false) });
+      });
+      if (d.check) out.forEach(function (s) { if (!s.ok) s.gone = true; });
+      return out;
+    }
+    // faithfulness — по предложениям, которые остались в ответе
+    function metrics(si, d) {
+      var sc = DATA.scenarios[si], a = answer(si, d), live = a.filter(function (s) { return !s.gone; });
+      var good = live.filter(function (s) { return s.ok; }).length;
+      var faith = live.length ? good / live.length : 1;
+      var bad = live.length - good;
+      var hasKey = sc.key ? live.some(function (s) { return s.ok && s.f && norm(s.f) === norm(sc.key); }) : live.every(function (s) { return s.refuse; }) && live.length > 0;
+      return { a: a, faith: faith, bad: bad, n: live.length, correct: bad === 0 && hasKey, hasKey: hasKey };
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', sc: 0, d: { ctx: false, cite: false, check: false }, game: null };
+    function cfg() { return state.mode === 'game' && state.game ? state.game.cfg : state; }
+
+    // ======================= Рисование: документы ↔ предложения ответа =======================
+    var cv = el('cv'), g, L = null;
+    function wrap(ctx, text, maxW) {
+      var words = text.split(' '), lines = [], cur = '';
+      words.forEach(function (w) {
+        var t = cur ? cur + ' ' + w : w;
+        if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t;
+      });
+      if (cur) lines.push(cur);
+      return lines;
+    }
+    // Раскладка считается до fitCanvas: от неё зависит высота графика
+    function layout(w) {
+      var c = cfg(), sc = DATA.scenarios[c.sc], a = answer(c.sc, c.d);
+      var fs = Math.max(13, MLViz.fontPx(w)), lh = Math.round(fs * 1.35), pad = 8;
+      var m = document.createElement('canvas').getContext('2d');
+      m.font = MLPro.font(fs);
+      var stacked = w < 560, colW = stacked ? w - 16 : (w - 16 - 70) / 2;
+      function box(text, x, y, caption) {
+        var lines = wrap(m, text, colW - 2 * pad - 4), capLines = caption ? wrap(m, caption, colW - 2 * pad - 4) : [];
+        return { x: x, y: y, w: colW, h: (lines.length + capLines.length) * lh + 2 * pad + (caption ? 4 : 0), lines: lines, cap: capLines };
+      }
+      var head = lh + 10, y = head, docs = [], sents = [], mem;
+      sc.docs.forEach(function (d, i) { var b = box('[' + (i + 1) + '] ' + d, 8, y); docs.push(b); y += b.h + 10; });
+      mem = box(T('memory'), 8, y); y += mem.h + 10;
+      var leftEnd = y, x2 = stacked ? 8 : w - 8 - colW, y2 = stacked ? leftEnd + 40 + head : head;
+      a.forEach(function (s) {
+        var mark = s.refuse ? '✓ ' : s.ok ? '✓ ' : '✕ ';
+        var text = mark + s.t + (c.d.cite && s.cite && !s.refuse ? ' [' + s.cite + ']' : '');
+        var cap = s.gone ? T('capGone') : s.refuse ? T('capRefuse') : s.ok ? T('capOk', { src: '[' + (c.d.cite ? s.cite : srcOf(sc, s)) + ']' })
+          : c.d.cite && s.anyOk ? T('capBad', { src: '[' + s.cite + ']' }) : c.d.cite ? T('capFake', { n: s.cite }) : T('capBadAll');
+        var b = box(text, x2, y2, cap); b.s = s; sents.push(b); y2 += b.h + 10;
+      });
+      return { fs: fs, lh: lh, pad: pad, docs: docs, mem: mem, sents: sents, stacked: stacked, head: head, x2: x2, h: Math.max(leftEnd, y2) + 6, sc: sc, startY2: stacked ? leftEnd + 40 : 0 };
+    }
+    function srcOf(sc, s) { for (var i = 0; i < sc.docs.length; i++) if (norm(sc.docs[i]).indexOf(norm(s.f)) !== -1) return i + 1; return '—'; }
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      L = layout(w);
+      g = MLViz.fitCanvas(cv, L.h / w);
+      draw();
+    }
+    function drawBox(ctx, b, o) {
+      MLPro.rr(ctx, b.x, b.y, b.w, b.h, 6);
+      ctx.fillStyle = o.fill; ctx.fill();
+      if (o.stroke) { ctx.setLineDash(o.dash || []); ctx.strokeStyle = o.stroke; ctx.lineWidth = o.lw || 2; ctx.stroke(); ctx.setLineDash([]); }
+      ctx.fillStyle = o.ink; ctx.font = MLPro.font(L.fs); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      b.lines.forEach(function (ln, i) {
+        var y = b.y + L.pad + i * L.lh;
+        ctx.fillText(ln, b.x + L.pad, y);
+        if (o.under) {   // подчёркивание: сплошное — есть опора, пунктир — нет
+          var tw = ctx.measureText(ln).width;
+          ctx.strokeStyle = o.under; ctx.lineWidth = 2; ctx.setLineDash(o.underDash || []);
+          ctx.beginPath(); ctx.moveTo(b.x + L.pad, y + L.fs + 3); ctx.lineTo(b.x + L.pad + tw, y + L.fs + 3); ctx.stroke(); ctx.setLineDash([]);
+        }
+        if (o.strike) { var sw = ctx.measureText(ln).width; ctx.strokeStyle = o.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(b.x + L.pad, y + L.fs * .55); ctx.lineTo(b.x + L.pad + sw, y + L.fs * .55); ctx.stroke(); }
+      });
+      ctx.font = MLPro.font(Math.max(13, L.fs - 1), true);
+      b.cap.forEach(function (ln, i) { ctx.fillText(ln, b.x + L.pad, b.y + L.pad + (b.lines.length + i) * L.lh + 4); });
+    }
+    function draw() {
+      var ctx = g.ctx, paper = MLViz.cssVar('--paper'), ink = MLViz.cssVar('--ink'), odd = MLViz.cssVar('--c-odd');
+      ctx.clearRect(0, 0, g.w, g.h);
+      var hide = state.mode === 'game' && state.game && !state.game.answered;
+      // Заголовки колонок — светлым текстом вне «бумаги»
+      ctx.fillStyle = MLViz.cssVar('--text-2'); ctx.font = MLPro.font(L.fs, true); ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      ctx.fillText(T('docs'), 8, 4);
+      ctx.fillText(T('answer'), L.x2, L.stacked ? L.startY2 + 4 : 4);
+      // Линии: предложение → документ-опора (сплошная) или → память модели (пунктир)
+      L.sents.forEach(function (b) {
+        var s = b.s; if (s.refuse || hide) return;
+        var src = s.ok ? (cfg().d.cite ? s.cite : srcOf(L.sc, s)) : null;
+        var t = src ? L.docs[src - 1] : L.mem;
+        var x1 = L.stacked ? b.x + 24 : b.x, y1 = L.stacked ? b.y : b.y + b.h / 2;
+        var x0 = L.stacked ? t.x + t.w - 24 : t.x + t.w, y0 = L.stacked ? t.y + t.h : t.y + t.h / 2;
+        ctx.strokeStyle = src ? MLViz.cssVar('--text-strong') : odd; ctx.lineWidth = 2;
+        ctx.setLineDash(src ? [] : [6, 4]);
+        ctx.beginPath(); ctx.moveTo(x0, y0);
+        if (L.stacked) ctx.bezierCurveTo(x0, y0 + 20, x1, y1 - 20, x1, y1); else ctx.bezierCurveTo(x0 + 35, y0, x1 - 35, y1, x1, y1);
+        ctx.stroke(); ctx.setLineDash([]);
+      });
+      L.docs.forEach(function (b) { drawBox(ctx, b, { fill: paper, ink: ink }); });
+      drawBox(ctx, L.mem, { fill: MLViz.cssVar('--n-800'), ink: MLViz.cssVar('--text-2'), stroke: odd, dash: [6, 4] });
+      L.sents.forEach(function (b) {
+        var s = b.s;
+        if (hide) drawBox(ctx, b, { fill: paper, ink: ink });
+        else if (s.gone) drawBox(ctx, b, { fill: MLViz.cssVar('--n-800'), ink: MLViz.cssVar('--text-muted'), stroke: MLViz.cssVar('--n-500'), dash: [4, 4], strike: true });
+        else if (s.ok) drawBox(ctx, b, { fill: paper, ink: ink, under: ink });
+        else drawBox(ctx, b, { fill: paper, ink: ink, stroke: odd, dash: [6, 4], lw: 3, under: odd, underDash: [5, 3] });
+      });
+    }
+
+    // ======================= Панель =======================
+    function kpi(label, value, base) { return '<div class="kpi"><small>' + label + '</small><b>' + value + '</b><span class="base">' + base + '</span></div>'; }
+    function updatePanel() {
+      var c = cfg(), m = metrics(c.sc, c.d), m0 = metrics(c.sc, { ctx: false, cite: false, check: false });
+      var hide = state.mode === 'game' && state.game && !state.game.answered;
+      el('qline').textContent = DATA.scenarios[c.sc].q;
+      MLViz.setPressed(el('scen'), function (b) { return +b.dataset.s === state.sc; });
+      el('dCtx').checked = state.d.ctx; el('dCite').checked = state.d.cite; el('dCheck').checked = state.d.check;
+      var why = m.correct ? T('okWhy' + c.sc) : m.bad ? T('badWhy') : T('missWhy');
+      el('kpis').innerHTML = hide ? '' :
+        kpi(T('kFaith'), MLPro.pct(m.faith), T('kFaithBase', { v: MLPro.pct(m0.faith) })) +
+        kpi(T('kBad'), m.bad, T('kBadBase', { n: m.n })) +
+        kpi(T('kOk'), T(m.correct ? 'yes' : 'no'), T('kOkBase', { why: why }));
+      var live = m.a.filter(function (s) { return !s.gone; });
+      el('sents').innerHTML = hide ? '' : m.a.map(function (s) {
+        var cls = s.gone ? 'gone' : s.ok ? 'ok' : 'bad';
+        var cap = s.gone ? T('capGone') : s.refuse ? T('capRefuse') : s.ok ? T('capOk', { src: '[' + (c.d.cite ? s.cite : srcOf(DATA.scenarios[c.sc], s)) + ']' }) : c.d.cite && !s.anyOk ? T('capFake', { n: s.cite }) : c.d.cite ? T('capBad', { src: '[' + s.cite + ']' }) : T('capBadAll');
+        return '<li class="' + cls + '"><span class="ic2" aria-hidden="true">' + (s.ok || s.refuse ? '✓' : '✕') + '</span><span class="t">' + esc(s.t) + '</span>' +
+          (c.d.cite && s.cite && !s.refuse ? ' <span class="tag">[' + s.cite + ']</span>' : '') + '<span class="cap">' + cap + '</span></li>';
+      }).join('') + (live.length ? '' : '<li class="ok"><span class="t">' + esc(T('empty')) + '</span></li>');
+    }
+    function refresh() { updatePanel(); if (g) resize(); }
+
+    // ======================= Игра «Найди ошибку» =======================
+    // Раунд = сценарий + защиты. Верный ответ — предложение без опоры (или «ошибок нет»), считается support()
+    var ROUNDS = [
+      { sc: 0, d: { ctx: false, cite: false, check: false } }, { sc: 1, d: { ctx: false, cite: false, check: false } },
+      { sc: 2, d: { ctx: false, cite: false, check: false } }, { sc: 0, d: { ctx: true, cite: false, check: false } },
+      { sc: 2, d: { ctx: true, cite: true, check: false } }, { sc: 0, d: { ctx: false, cite: true, check: false } },
+      { sc: 1, d: { ctx: true, cite: false, check: false } }, { sc: 2, d: { ctx: false, cite: true, check: false } }
+    ];
+    function defNames(d) {
+      var n = []; if (d.ctx) n.push(T('dCtx')); if (d.cite) n.push(T('dCite')); if (d.check) n.push(T('dCheck'));
+      return n.length ? n.join('; ') : T('gameNoDef');
+    }
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var c = ROUNDS[q.i], a = answer(c.sc, c.d).filter(function (s) { return !s.gone; });
+        state.game = { cfg: c, answered: false };
+        var bad = a.map(function (s, i) { return s.ok ? -1 : i; }).filter(function (i) { return i >= 0; });
+        var labels = a.map(function (s) { return esc(s.t) + (c.d.cite && s.cite && !s.refuse ? ' [' + s.cite + ']' : ''); }).concat([T('gameNone')]);
+        el('gameCfg').innerHTML = T('gameCfg', { s: T('sc' + c.sc), d: esc(defNames(c.d)) });
+        q.choices(el('gameChoices'), labels, function (k) { return bad.length ? bad.indexOf(k) !== -1 : k === a.length; }, function (k, ok) {
+          state.game.answered = true;
+          var why = bad.length ? T('gameWhyBad', { t: esc(a[bad[0]].t) }) : T('gameWhyNone');
+          q.answer(ok ? 1 : 0, T('gameLine', { verdict: T(ok ? 'gameRight' : 'gameWrong'), why: why }));
+          refresh();
+        });
+        refresh();
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameCfg').innerHTML = ''; refresh(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else state.game = null;
+      refresh();
+    }
+
+    // ======================= События =======================
+    el('scen').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { state.sc = +b.dataset.s; refresh(); } });
+    [['dCtx', 'ctx'], ['dCite', 'cite'], ['dCheck', 'check']].forEach(function (p) {
+      el(p[0]).addEventListener('change', function (e) { state.d[p[1]] = e.target.checked; refresh(); });
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    window.PRO_HALLU = { metrics: metrics };   // для сверки с Python (tools/check_pro.py)
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>

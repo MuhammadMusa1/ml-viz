@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Метрики: классические и для LLM · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .part-title { margin: 32px 0 12px; font-size: var(--fs-h2); line-height: var(--lh-h2); }
+    .part-lead { margin: 0 0 16px; color: var(--text-2); max-width: 900px; }
+    .ptab td.miss { border-bottom: 1px solid var(--line); }
+    .ptab .mark { font-weight: 700; }
+    .ptab tr.dis td { background: var(--surface-1); }
+    .ptab tr.dis td:first-child { box-shadow: inset 3px 0 0 var(--c-odd); }
+    .choices.one { grid-template-columns: 1fr; }
+    .choices.one button { text-align: left; }
+    .sit { margin: 8px 0 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-strong); }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <h2 class="part-title" data-i18n="p1Title"></h2>
+    <p class="part-lead" data-i18n="p1Lead"></p>
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0" data-i18n-html="cmLegend"></div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <div class="stage viz-extra">
+          <h3 class="sub" data-i18n="rocTitle"></h3>
+          <canvas id="roc"></canvas>
+          <p class="note" id="rocNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3><span data-i18n="thLabel"></span> = <span id="thVal"></span></h3>
+          <input type="range" id="th" min="0.34" max="0.99" step="0.01" value="0.5">
+          <p class="note" data-i18n="thNote"></p>
+          <div class="kpis" id="kpis" style="margin-top:12px"></div>
+          <div class="tbl-wrap" style="margin-top:12px"><table class="ptab" id="perClass"></table></div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p class="sit" id="gameSit"></p>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <h2 class="part-title" data-i18n="p2Title"></h2>
+    <p class="part-lead" data-i18n="p2Lead"></p>
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <canvas id="agree"></canvas>
+          <div class="legend" style="padding:8px 4px 0" data-i18n-html="agLegend"></div>
+        </div>
+        <div class="stage viz-extra">
+          <h3 class="sub" data-i18n="gsTitle"></h3>
+          <div class="tbl-wrap"><table class="ptab" id="gs"></table></div>
+          <p class="note" data-i18n="gsNote"></p>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+      </div>
+      <aside class="panel">
+        <h3><span data-i18n="jLabel"></span> ≥ <span id="jVal"></span></h3>
+        <input type="range" id="jth" min="1" max="5" step="1" value="4">
+        <p class="note" data-i18n="jNote"></p>
+        <div class="kpis" id="kpis2"></div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Метрики: классические и для LLM',
+        analogy: '<b>Градусник, весы и линейка: у каждой задачи свой прибор.</b> Одна метрика никогда не говорит всё. Сначала смотрим, какие ошибки дороже, и только потом выбираем, по какому числу судить модель.',
+        p1Title: 'Часть 1. Классика на пингвинах',
+        p1Lead: 'Модель (наивный Байес) угадывает вид по длине клюва и массе и говорит, насколько уверена. Если уверенность ниже порога, модель отвечает «не уверена».',
+        cvLabel: 'Матрица ошибок 3 на 4: правда по строкам, ответ модели по столбцам, включая «не уверена»',
+        rocLabel: 'ROC-кривая для задачи «Gentoo или не Gentoo»',
+        cmLegend: '<span>сплошная рамка — верные ответы</span><span>пунктир — ошибки</span><span>«не уверена» — модель отказалась отвечать</span>',
+        modeExplore: 'Исследуй', modeGame: 'Игра: какую метрику смотреть?',
+        thLabel: 'Порог уверенности',
+        thNote: 'Модель называет вид, только если её уверенность (вероятность) не меньше порога. Иначе — «не уверена».',
+        truth: 'Правда', pred: 'Ответ модели', abstain: 'не уверена',
+        kAcc: 'Точность (accuracy)', kAccBase: '«ленивая» ({sp}): {a} · случайный ответ: 33%',
+        kF1: 'Macro-F1', kF1Base: '«ленивая»: {f}',
+        kAbs: '«Не уверена»', kAbsBase: 'из {n} пингвинов test',
+        thSp: 'Вид', thP: 'Precision', thR: 'Recall', thF: 'F1',
+        rocTitle: 'Отдельная задача: «Gentoo или не Gentoo» — ROC-кривая',
+        rocNote: 'AUC = {auc} (монетка: 0.50). Точка — порог {t}: поймано {tpr} Gentoo (TPR), ложных тревог {fpr} (FPR).',
+        axFpr: 'Доля ложных тревог (FPR)', axTpr: 'Доля пойманных Gentoo (TPR)',
+        rocPoint: 'порог {t}', rocCoin: 'монетка',
+        hintExplore: 'Строки — настоящий вид, столбцы — ответ модели. Двигай порог: чем он выше, тем меньше ошибок, но тем чаще модель говорит «не уверена».',
+        hintGame: 'В игре график не нужен: читай ситуацию из банка и выбирай метрику.',
+        p2Title: 'Часть 2. Оценка LLM-системы на golden set',
+        p2Lead: 'Чат-бот банка ответил на 10 вопросов golden set. Каждый ответ оценили автоматические метрики, судья-LLM (оценка 1–5) и человек (принят / не принят).',
+        agLabel: 'Оценки судьи-LLM и человека по 10 вопросам; расхождения отмечены',
+        agLegend: '<span>✓ принят · ✕ не принят</span><span>пунктирная рамка — судья и человек разошлись</span>',
+        gsTitle: 'Golden set: метрики по каждому вопросу',
+        gsNote: 'Recall@3 — нашёлся ли нужный чанк (П2). Faithfulness — доля предложений с опорой (П4). Relevance — насколько ответ про вопрос (0–1). Correctness — совпал ли ответ с эталоном.',
+        gq: 'Вопрос', gRec: 'Recall@3', gFaith: 'Faith.', gRel: 'Relev.', gCor: 'Correct', gJudge: 'Судья', gHuman: 'Человек', gLen: 'Слов',
+        jLabel: 'Судья «принимает» ответ при оценке',
+        jNote: 'Порог переводит оценку судьи 1–5 в «принят / не принят», чтобы сравнить с человеком.',
+        k2Rec: 'Recall@3', k2Faith: 'Faithfulness', k2Rel: 'Answer relevance', k2Cor: 'Correctness',
+        k2Judge: 'Судья принял', k2Human: 'Человек принял', k2Agree: 'Согласие судьи и человека', k2Kappa: 'Каппа Коэна',
+        b2Rec: 'случайные 3 чанка из 15: 20%', b2Faith: 'без проверки опоры', b2Rel: 'среднее по 10', b2Cor: 'эталон — человек',
+        b2Judge: 'при пороге {t}', b2Human: 'эталон оценки', b2Agree: 'судья «всегда да»: {a}', b2Kappa: '0 — как случайно, 1 — полное',
+        simNote: 'Упрощённая модель, настоящие числа другие: оценки golden set заданы для примера, но все средние, согласие и каппа считаются в браузере из таблицы.',
+        gameAsk: 'На какую метрику смотреть в первую очередь?',
+        sit0: 'Антифрод: мошеннические операции — 0.2% от всех. Главное — поймать как можно больше мошенников, лишние проверки потом сделает человек.', opt0: 'Accuracy|Recall (полнота)|Precision (меткость)', why0: 'Модель «всё честно» даст accuracy 99.8% и не поймает никого. Нужен recall: из всех мошенников — сколько нашли.',
+        sit1: 'Кредитный скоринг: модель выдаёт балл риска, а порог одобрения отдел рисков меняет каждый квартал.', opt1: 'ROC-AUC|Accuracy при пороге 0.5|Faithfulness', why1: 'AUC оценивает, насколько хорошо модель ранжирует клиентов при любом пороге — порог выберут потом.',
+        sit2: 'Чат-бот поддержки отвечает по базе знаний банка. Главный страх — выдуманные условия по вкладам.', opt2: 'Answer relevance|Faithfulness|Длина ответа', why2: 'Faithfulness показывает, опирается ли каждое утверждение на документы базы знаний.',
+        sit3: 'Команда поменяла нарезку документов на чанки. Надо понять, лучше ли теперь ищутся нужные куски.', opt3: 'Recall@k и MRR|Correctness|Каппа судьи', why3: 'Это проверка поиска (ретривера): попал ли нужный чанк в top-k и на каком месте.',
+        sit4: 'Фильтр подозрительных SMS клиентам: ложно заблокированное SMS с кодом подтверждения хуже пропущенного спама.', opt4: 'Recall|Precision|Macro-F1', why4: 'Ложные блокировки дороже: нужна precision — из всех заблокированных сколько действительно спам.',
+        sit5: 'Новую версию чат-бота хотят проверять каждую ночь на 500 вопросах — людей на это не хватит.', opt5: 'Судья-LLM без проверки|Судья-LLM, сверенный с людьми (согласие, каппа)|Только accuracy', why5: 'Судья дешёвый, но сначала его сверяют с людьми на golden set и следят за согласием.',
+        sit6: 'Обращения клиентов сортируют по 5 отделам. Отдел «жалобы» — всего 3% обращений, но он важен.', opt6: 'Accuracy|Macro-F1|AUC только для одного отдела', why6: 'Macro-F1 усредняет F1 по отделам поровну — редкий отдел не потеряется в общей точности.',
+        sit7: 'Клиенты жалуются: иногда бот отвечает по 20 секунд, хотя «в среднем» всё быстро.', opt7: 'Средняя задержка|Задержка p95|Число токенов в ответе', why7: 'Среднее прячет медленный хвост. p95 — время, быстрее которого обслуживаются 95% запросов.',
+        gameRight: 'Верно!', gameWrong: 'Не совсем.',
+        gameStep: 'Ситуация {i} из {n}', next: 'Следующая ситуация →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Метрику выбирают по цене ошибок и по тому, что именно проверяем: модель, поиск, ответ или скорость.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Матрица ошибок</b> — сколько раз каждый настоящий вид получил каждый ответ. Всё остальное считается из неё.</li>' +
+          '<li><b>Precision и recall по каждому виду.</b> Precision — из всех «это Gentoo» модели сколько верных. Recall — из всех настоящих Gentoo сколько нашли. F1 — их среднее гармоническое; macro-F1 — среднее F1 по видам, чтобы редкий вид не потерялся.</li>' +
+          '<li><b>Порог и ROC.</b> Двигая порог, меняем баланс «поймать больше / тревожить меньше». ROC-кривая показывает все пороги сразу, AUC — площадь под ней.</li>' +
+          '<li><b>LLM-метрики</b> проверяют разные звенья: recall@k — поиск, faithfulness — опору на документы, relevance — ответ по делу, correctness — совпадение с эталоном.</li>' +
+          '<li><b>Судья-LLM</b> дешевле человека, но его сверяют с людьми на golden set: процент согласия и каппа Коэна (согласие сверх случайного).</li>' +
+          '</ol>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Подними порог уверенности до 0.9. Что стало с precision и с recall у Chinstrap? Почему accuracy упала, хотя ошибок стало меньше?</li>' +
+          '<li>Найди порог, при котором ни одного Adelie не назвали Chinstrap. Сколько пингвинов модель при этом пропустила?</li>' +
+          '<li>На ROC-кривой найди точку, где поймано 100% Gentoo. Сколько при этом ложных тревог?</li>' +
+          '<li>В части 2 поставь порог судьи 3, потом 5. При каком пороге согласие с человеком самое высокое? Почему каппа может быть низкой при высоком проценте согласия?</li>' +
+          '<li>Найди в golden set ответ, который судья оценил на 5, а человек не принял. Что в нём не так?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p><code>precision = TP / (TP + FP)</code>, <code>recall = TP / (TP + FN)</code>, <code>F1 = 2·P·R / (P + R)</code>, <code>macro-F1 = (F1₁ + F1₂ + F1₃) / 3</code>. Ответ «не уверена» для вида — это FN (пингвина не нашли), но не FP никакому виду.</p>' +
+          '<p>ROC: для каждого порога <code>TPR = TP / P</code>, <code>FPR = FP / N</code>; AUC — площадь под кривой (метод трапеций).</p>' +
+          '<p>Каппа Коэна: <code>κ = (pₒ − pₑ) / (1 − pₑ)</code>, где pₒ — доля совпадений, pₑ — доля совпадений «случайно» при тех же частотах «да» у судьи и человека.</p>' +
+          '<p>Код ниже запускается в Colab целиком и даёт те же числа, что страница:</p>' +
+          '<pre class="pycode"><code># !pip install palmerpenguins\n' +
+          'import numpy as np\n' +
+          'from palmerpenguins import load_penguins\n' +
+          'from sklearn.model_selection import train_test_split\n' +
+          'from sklearn.naive_bayes import GaussianNB\n' +
+          'from sklearn.metrics import (confusion_matrix, accuracy_score, f1_score,\n' +
+          '                             precision_recall_fscore_support, roc_auc_score, cohen_kappa_score)\n\n' +
+          'df = load_penguins().drop(columns=[\'sex\']).dropna().reset_index(drop=True)\n' +
+          'X = df[[\'bill_length_mm\', \'body_mass_g\']]\n' +
+          'y = df[\'species\']\n' +
+          'X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n\n' +
+          'model = GaussianNB().fit(X_train, y_train)\n' +
+          'proba = model.predict_proba(X_test)\n\n' +
+          'threshold = 0.5\n' +
+          'pred = np.where(proba.max(axis=1) >= threshold, model.classes_[proba.argmax(axis=1)], \'не уверена\')\n' +
+          'labels = list(model.classes_)\n' +
+          'print(confusion_matrix(y_test, pred, labels=labels + [\'не уверена\'])[:3])\n' +
+          'print(\'accuracy:\', round(accuracy_score(y_test, pred), 3))\n' +
+          'print(precision_recall_fscore_support(y_test, pred, labels=labels, zero_division=0))\n' +
+          'print(\'macro-F1:\', round(f1_score(y_test, pred, labels=labels, average=\'macro\', zero_division=0), 3))\n\n' +
+          '# «Gentoo или не Gentoo»\n' +
+          'print(\'AUC:\', round(roc_auc_score(y_test == \'Gentoo\', proba[:, labels.index(\'Gentoo\')]), 3))\n\n' +
+          '# Судья-LLM (1–5) и человек (1 — принят) на 10 вопросах golden set\n' +
+          'judge = np.array([5, 5, 5, 4, 4, 3, 5, 5, 2, 1])\n' +
+          'human = np.array([1, 1, 0, 1, 0, 1, 1, 1, 0, 0])\n' +
+          'judge_ok = (judge >= 4).astype(int)\n' +
+          'print(\'согласие:\', (judge_ok == human).mean(), \' каппа:\', round(cohen_kappa_score(judge_ok, human), 3))</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Часть 1 — Palmer Penguins (342 пингвина, разбиение как в Colab: 273 train, 69 test), модель GaussianNB по длине клюва и массе. Вероятности, матрица, метрики, ROC и AUC считаются в браузере и совпадают со sklearn (<code>tools/check_pro.py</code>). Часть 2 — оценки 10 ответов чат-бота заданы для примера, агрегаты и каппа считаются из них.</p>' +
+          '<p><b>Как использовать на уроке.</b> 0–10 мин: игра «Какую метрику смотреть?» — 8 ситуаций банка, класс спорит. Потом порог уверенности: «модель может промолчать — это хорошо или плохо?».</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Почему в антифроде accuracy бесполезна? Кому в банке нужен recall, а кому — precision? Почему судье-LLM нельзя верить без проверки людьми?</p>',
+        footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Раздел «Для профи». Все расчёты выполняются прямо в браузере.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('roc').setAttribute('aria-label', T('rocLabel'));
+    el('agree').setAttribute('aria-label', T('agLabel'));
+    el('th').setAttribute('aria-label', T('thLabel'));
+    el('jth').setAttribute('aria-label', T('jLabel'));
+
+    // ======================= Часть 1: пингвины и наивный Байес (как GaussianNB в sklearn) =======================
+    var SP = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var COLORS = { Adelie: MLViz.cssVar('--adelie'), Chinstrap: MLViz.cssVar('--chinstrap'), Gentoo: MLViz.cssVar('--gentoo') };
+    // Строка PENGUINS: [вид, остров, длина клюва, глубина клюва, крыло, масса, is_test, split_pos, …]
+    var rows = PENGUINS.rows.map(function (r) { return { sp: r[0], x: [r[2], r[5]], test: r[6] === 1, pos: r[7] }; });
+    var train = rows.filter(function (p) { return !p.test; });
+    var test = rows.filter(function (p) { return p.test; }).sort(function (a, b) { return a.pos - b.pos; });
+    // GaussianNB: среднее и дисперсия (ddof=0) по классу + сглаживание 1e-9 · max дисперсии признака по всему train
+    var NB = (function () {
+      function mean(a) { return a.reduce(function (s, v) { return s + v; }, 0) / a.length; }
+      function vr(a) { var m = mean(a); return mean(a.map(function (v) { return (v - m) * (v - m); })); }
+      var eps = 1e-9 * Math.max(vr(train.map(function (p) { return p.x[0]; })), vr(train.map(function (p) { return p.x[1]; })));
+      return SP.map(function (sp) {
+        var c = train.filter(function (p) { return p.sp === sp; });
+        return { prior: c.length / train.length,
+                 mu: [0, 1].map(function (j) { return mean(c.map(function (p) { return p.x[j]; })); }),
+                 v: [0, 1].map(function (j) { return vr(c.map(function (p) { return p.x[j]; })) + eps; }) };
+      });
+    })();
+    function proba(x) {
+      var jll = NB.map(function (c) {
+        var s = Math.log(c.prior);
+        for (var j = 0; j < 2; j++) s += -0.5 * Math.log(2 * Math.PI * c.v[j]) - 0.5 * (x[j] - c.mu[j]) * (x[j] - c.mu[j]) / c.v[j];
+        return s;
+      });
+      return MLPro.softmax(jll, 1);
+    }
+    test.forEach(function (p) { p.p = proba(p.x); });
+    // Ответ с порогом: вид с наибольшей вероятностью, если она ≥ порога; иначе -1 («не уверена»)
+    function predict(p, th) { var b = 0; p.p.forEach(function (v, i) { if (v > p.p[b]) b = i; }); return p.p[b] >= th - 1e-12 ? b : -1; }
+    // Матрица 3×4 и метрики — как confusion_matrix и precision_recall_fscore_support(labels=SP, zero_division=0)
+    function evaluate(preds) {
+      var cm = SP.map(function () { return [0, 0, 0, 0]; });
+      test.forEach(function (p, i) { cm[SP.indexOf(p.sp)][preds[i] < 0 ? 3 : preds[i]]++; });
+      var per = SP.map(function (sp, c) {
+        var tp = cm[c][c], fp = 0, row = cm[c].reduce(function (s, v) { return s + v; }, 0);
+        for (var r = 0; r < 3; r++) if (r !== c) fp += cm[r][c];
+        var P = tp + fp ? tp / (tp + fp) : 0, R = row ? tp / row : 0, F = P + R ? 2 * P * R / (P + R) : 0;
+        return { P: P, R: R, F: F };
+      });
+      var ok = 0; for (var c = 0; c < 3; c++) ok += cm[c][c];
+      return { cm: cm, per: per, acc: ok / test.length, ok: ok, macro: per.reduce(function (s, x) { return s + x.F; }, 0) / 3,
+               abst: test.filter(function (p, i) { return preds[i] < 0; }).length };
+    }
+    function metricsAt(th) { return evaluate(test.map(function (p) { return predict(p, th); })); }
+    // «Ленивая» модель: всегда самый частый вид в train
+    var LAZY = 0; SP.forEach(function (sp, i) { if (train.filter(function (p) { return p.sp === sp; }).length > train.filter(function (p) { return p.sp === SP[LAZY]; }).length) LAZY = i; });
+    var LAZY_M = evaluate(test.map(function () { return LAZY; }));
+    // ROC для «Gentoo или не Gentoo» по P(Gentoo): все пороги, площадь трапециями (как roc_auc_score)
+    var GI = 2, POS = test.filter(function (p) { return p.sp === 'Gentoo'; }).length, NEG = test.length - POS;
+    function rocCurve() {
+      var s = test.map(function (p) { return { v: p.p[GI], y: p.sp === 'Gentoo' }; }).sort(function (a, b) { return b.v - a.v; });
+      var pts = [{ x: 0, y: 0 }], tp = 0, fp = 0;
+      for (var i = 0; i < s.length; i++) {
+        if (s[i].y) tp++; else fp++;
+        if (i === s.length - 1 || s[i + 1].v !== s[i].v) pts.push({ x: fp / NEG, y: tp / POS });
+      }
+      var auc = 0; for (var k = 1; k < pts.length; k++) auc += (pts[k].x - pts[k - 1].x) * (pts[k].y + pts[k - 1].y) / 2;
+      return { pts: pts, auc: auc };
+    }
+    var ROC = rocCurve();
+    function rocAt(th) {
+      var tp = 0, fp = 0;
+      test.forEach(function (p) { if (p.p[GI] >= th - 1e-12) { if (p.sp === 'Gentoo') tp++; else fp++; } });
+      return { tpr: tp / POS, fpr: fp / NEG };
+    }
+
+    // ======================= Часть 2: golden set LLM-системы =======================
+    // Вопрос, нашёлся ли нужный чанк (0/1), опорных предложений / всего, relevance 0–1, correctness 0/1,
+    // оценка судьи-LLM 1–5, человек (1 — принят), длина ответа в словах. Оценки заданы для примера.
+    var DATA = /* data:start */{"golden":[
+      ["Что значит ERR-4012?",1,2,2,0.92,1,5,1,24],
+      ["Какой лимит на снятие наличных в день?",1,1,1,0.95,1,5,1,12],
+      ["Карту украли — как её заблокировать?",1,2,3,0.88,0,5,0,61],
+      ["Сколько стоит перевод на карту другого банка?",1,2,2,0.90,1,4,1,20],
+      ["Сколько кэшбэка за покупки в аптеке?",0,0,2,0.85,0,4,0,45],
+      ["Вернёт ли банк деньги при мошенничестве?",1,3,3,0.80,1,3,1,9],
+      ["Сколько дней выпускают новую карту?",1,1,1,0.93,1,5,1,14],
+      ["Можно ли отменить отправленный перевод?",1,1,1,0.97,1,5,1,11],
+      ["Что будет после трёх неверных PIN?",1,1,2,0.76,0,2,0,38],
+      ["Когда работает чат поддержки?",0,0,1,0.40,0,1,0,30]
+    ]}/* data:end */;
+    var GS = DATA.golden.map(function (r) { return { q: r[0], rec: r[1], sup: r[2], tot: r[3], rel: r[4], cor: r[5], judge: r[6], human: r[7], len: r[8] }; });
+    function mean(a) { return a.reduce(function (s, v) { return s + v; }, 0) / a.length; }
+    // Согласие и каппа Коэна (как sklearn.metrics.cohen_kappa_score) при пороге судьи
+    function llmMetrics(jt) {
+      var j = GS.map(function (r) { return r.judge >= jt ? 1 : 0; }), h = GS.map(function (r) { return r.human; });
+      var po = mean(j.map(function (v, i) { return v === h[i] ? 1 : 0; }));
+      var pj = mean(j), ph = mean(h), pe = pj * ph + (1 - pj) * (1 - ph);
+      return {
+        rec: mean(GS.map(function (r) { return r.rec; })), faith: mean(GS.map(function (r) { return r.sup / r.tot; })),
+        rel: mean(GS.map(function (r) { return r.rel; })), cor: mean(GS.map(function (r) { return r.cor; })),
+        judge: pj, human: ph, agree: po, kappa: pe < 1 ? (po - pe) / (1 - pe) : 1, j: j, alwaysYes: ph
+      };
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', th: 0.5, jt: 4 };
+
+    // ======================= Рисование: матрица ошибок =======================
+    var cv = el('cv'), rv = el('roc'), av = el('agree'), g, gr, ga;
+    function resize() {
+      var narrow = cv.parentElement.clientWidth < 520;
+      g = MLViz.fitCanvas(cv, narrow ? 0.95 : 0.62);
+      gr = MLViz.fitCanvas(rv, narrow ? 0.95 : 0.5);
+      // Высота полосы «судья / человек» — по содержимому: 1 ряд из 10 столбцов или 2 ряда по 5 на телефоне
+      var aw = (av.parentElement.clientWidth - 20) / MLViz.zoom(), afs = Math.max(13, MLViz.fontPx(aw));
+      var aRows = aw < 520 ? 2 : 1, aCh = afs * 2.2;
+      ga = MLViz.fitCanvas(av, aRows * (afs * 1.6 + aCh * 2 + 24) / aw);
+      draw();
+    }
+    function drawCM() {
+      var ctx = g.ctx, fs = MLPro.fs(g), m = metricsAt(state.th);
+      ctx.clearRect(0, 0, g.w, g.h);
+      ctx.font = MLPro.font(fs, true);
+      var lw = Math.max.apply(null, SP.map(function (s) { return ctx.measureText(s).width; })) + 24;
+      var top = fs * 3.2, left = lw + fs * 1.6, cw = (g.w - left - 6) / 4, ch = (g.h - top - 6) / 3;
+      var maxV = Math.max.apply(null, m.cm.map(function (r) { return Math.max.apply(null, r); })) || 1;
+      ctx.fillStyle = MLViz.cssVar('--text-strong'); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(T('pred'), left + cw * 2, 2);
+      ctx.save(); ctx.translate(fs * 0.7, top + ch * 1.5); ctx.rotate(-Math.PI / 2); ctx.textBaseline = 'middle'; ctx.fillText(T('truth'), 0, 0); ctx.restore();
+      // Подписи столбцов и строк — вне поля, светлым; цветная точка — вид (данные)
+      ctx.font = MLPro.font(fs); ctx.fillStyle = MLViz.cssVar('--text-2'); ctx.textBaseline = 'middle';
+      SP.concat([T('abstain')]).forEach(function (s, c) { ctx.textAlign = 'center'; ctx.fillText(s, left + cw * (c + .5), top - fs * .9); });
+      SP.forEach(function (s, r) {
+        ctx.textAlign = 'right'; ctx.fillStyle = MLViz.cssVar('--text-2'); ctx.fillText(s, left - 10, top + ch * (r + .5));
+        ctx.fillStyle = COLORS[s]; ctx.beginPath(); ctx.arc(left - 16 - ctx.measureText(s).width, top + ch * (r + .5), 5, 0, Math.PI * 2); ctx.fill();
+      });
+      for (var r = 0; r < 3; r++) for (var c = 0; c < 4; c++) {
+        var v = m.cm[r][c], x = left + c * cw + 3, y = top + r * ch + 3, w = cw - 6, h = ch - 6, right = r === c;
+        // Заливка — ступени нейтрального: чем больше пингвинов, тем светлее клетка
+        ctx.fillStyle = 'rgba(218,214,236,' + (0.05 + 0.4 * v / maxV) + ')';
+        MLPro.rr(ctx, x, y, w, h, 8); ctx.fill();
+        if (v > 0 || right) {
+          ctx.setLineDash(right ? [] : [6, 4]);
+          ctx.strokeStyle = right ? MLViz.cssVar('--accent') : MLViz.cssVar('--n-300'); ctx.lineWidth = right ? 2.5 : 1.5;
+          MLPro.rr(ctx, x, y, w, h, 8); ctx.stroke(); ctx.setLineDash([]);
+        }
+        MLPro.label(ctx, String(v), x + w / 2, y + h / 2, { size: Math.round(fs * 1.4), bold: true, align: 'center' });
+      }
+      return m;
+    }
+    function drawROC() {
+      var ctx = gr.ctx, pad = MLViz.plotPad(gr.w, 3), fs = MLPro.fs(gr);
+      ctx.clearRect(0, 0, gr.w, gr.h);
+      var sx = MLViz.scale(0, 1, pad.l, gr.w - pad.r), sy = MLViz.scale(0, 1, gr.h - pad.b, pad.t);
+      MLViz.drawAxes(ctx, { w: gr.w, h: gr.h, pad: pad, sx: sx, sy: sy, xTicks: MLViz.range(0, 1, .25), yTicks: MLViz.range(0, 1, .25), xLabel: T('axFpr'), yLabel: T('axTpr') });
+      ctx.setLineDash([6, 5]); ctx.strokeStyle = MLViz.cssVar('--n-400'); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(1), sy(1)); ctx.stroke(); ctx.setLineDash([]);
+      MLPro.label(ctx, T('rocCoin'), sx(.72), sy(.6), { size: fs });
+      ctx.strokeStyle = MLViz.cssVar('--text-strong'); ctx.lineWidth = 3;
+      ctx.beginPath(); ROC.pts.forEach(function (p, i) { if (i) ctx.lineTo(sx(p.x), sy(p.y)); else ctx.moveTo(sx(p.x), sy(p.y)); }); ctx.stroke();
+      var pt = rocAt(state.th);
+      ctx.fillStyle = MLViz.cssVar('--paper'); ctx.strokeStyle = MLViz.cssVar('--ink'); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(sx(pt.fpr), sy(pt.tpr), 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      MLPro.label(ctx, T('rocPoint', { t: MLPro.fix(state.th, 2) }), Math.min(sx(pt.fpr) + 14, gr.w - 120), sy(pt.tpr) + 22, { size: fs });
+      el('rocNote').textContent = T('rocNote', { auc: MLPro.fix(ROC.auc, 3), t: MLPro.fix(state.th, 2), tpr: MLPro.pct(pt.tpr), fpr: MLPro.pct(pt.fpr) });
+    }
+    // Согласие судьи и человека: по столбцу на вопрос, сверху судья (оценка), снизу человек
+    function drawAgree() {
+      var ctx = ga.ctx, fs = MLPro.fs(ga), L2 = llmMetrics(state.jt);
+      ctx.clearRect(0, 0, ga.w, ga.h);
+      ctx.font = MLPro.font(fs, true);
+      var lw = Math.max(ctx.measureText(T('gJudge')).width, ctx.measureText(T('gHuman')).width) + 14;
+      var narrow = ga.w < 520, cols = narrow ? 5 : 10, rowsN = narrow ? 2 : 1;
+      var cw = (ga.w - lw - 4) / cols, bh = ga.h / rowsN, ch = fs * 2.2;
+      GS.forEach(function (r, i) {
+        var col = i % cols, rowB = Math.floor(i / cols), x = lw + col * cw + 3, y0 = rowB * bh + fs * 1.6;
+        var dis = L2.j[i] !== r.human;
+        ctx.fillStyle = MLViz.cssVar('--text-2'); ctx.font = MLPro.font(fs); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText('№' + (i + 1), x + (cw - 6) / 2, rowB * bh + 2);
+        [[T('gJudge'), (L2.j[i] ? '✓ ' : '✕ ') + r.judge], [T('gHuman'), r.human ? '✓' : '✕']].forEach(function (cell, k) {
+          var y = y0 + k * (ch + 6);
+          if (col === 0) { ctx.fillStyle = MLViz.cssVar('--text-2'); ctx.font = MLPro.font(fs, true); ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(cell[0], lw - 8, y + ch / 2); }
+          MLPro.label(ctx, cell[1], x + (cw - 6) / 2, y + ch / 2, { size: fs, bold: true, align: 'center' });
+        });
+        if (dis) {   // расхождение — пунктирная рамка «подозрительного» цвета
+          ctx.setLineDash([5, 4]); ctx.strokeStyle = MLViz.cssVar('--c-odd'); ctx.lineWidth = 2.5;
+          MLPro.rr(ctx, x - 1, y0 - 4, cw - 4, ch * 2 + 14, 6); ctx.stroke(); ctx.setLineDash([]);
+        }
+      });
+      return L2;
+    }
+
+    // ======================= Панели =======================
+    function kpi(label, value, base) { return '<div class="kpi"><small>' + label + '</small><b>' + value + '</b><span class="base">' + base + '</span></div>'; }
+    function draw() {
+      var m = drawCM(); drawROC(); var L2 = drawAgree();
+      el('thVal').textContent = MLPro.fix(state.th, 2);
+      el('kpis').innerHTML =
+        kpi(T('kAcc'), MLPro.pct(m.acc), T('kAccBase', { sp: SP[LAZY], a: MLPro.pct(LAZY_M.acc) })) +
+        kpi(T('kF1'), MLPro.fix(m.macro, 2), T('kF1Base', { f: MLPro.fix(LAZY_M.macro, 2) })) +
+        kpi(T('kAbs'), m.abst, T('kAbsBase', { n: test.length }));
+      el('perClass').innerHTML = '<thead><tr><th>' + T('thSp') + '</th><th class="n">' + T('thP') + '</th><th class="n">' + T('thR') + '</th><th class="n">' + T('thF') + '</th></tr></thead><tbody>' +
+        SP.map(function (s, i) { var x = m.per[i]; return '<tr><td>' + s + '</td><td class="n">' + MLPro.fix(x.P, 2) + '</td><td class="n">' + MLPro.fix(x.R, 2) + '</td><td class="n">' + MLPro.fix(x.F, 2) + '</td></tr>'; }).join('') + '</tbody>';
+      // Часть 2
+      el('jVal').textContent = state.jt;
+      el('kpis2').innerHTML =
+        kpi(T('k2Rec'), MLPro.pct(L2.rec), T('b2Rec')) + kpi(T('k2Faith'), MLPro.pct(L2.faith), T('b2Faith')) +
+        kpi(T('k2Rel'), MLPro.fix(L2.rel, 2), T('b2Rel')) + kpi(T('k2Cor'), MLPro.pct(L2.cor), T('b2Cor')) +
+        kpi(T('k2Judge'), MLPro.pct(L2.judge), T('b2Judge', { t: state.jt })) + kpi(T('k2Human'), MLPro.pct(L2.human), T('b2Human')) +
+        kpi(T('k2Agree'), MLPro.pct(L2.agree), T('b2Agree', { a: MLPro.pct(L2.alwaysYes) })) + kpi(T('k2Kappa'), MLPro.fix(L2.kappa, 2), T('b2Kappa'));
+      el('gs').innerHTML = '<thead><tr><th>№</th><th>' + T('gq') + '</th><th class="n">' + T('gRec') + '</th><th class="n">' + T('gFaith') + '</th><th class="n">' + T('gRel') +
+        '</th><th class="n">' + T('gCor') + '</th><th class="n">' + T('gJudge') + '</th><th class="n">' + T('gHuman') + '</th><th class="n">' + T('gLen') + '</th></tr></thead><tbody>' +
+        GS.map(function (r, i) {
+          var dis = L2.j[i] !== r.human;
+          return '<tr class="' + (dis ? 'dis' : '') + '"><td class="n">' + (i + 1) + '</td><td>' + esc(r.q) + '</td><td class="n">' + r.rec + '</td><td class="n">' + r.sup + '/' + r.tot +
+            '</td><td class="n">' + MLPro.fix(r.rel, 2) + '</td><td class="n">' + r.cor + '</td><td class="n mark">' + (L2.j[i] ? '✓ ' : '✕ ') + r.judge +
+            '</td><td class="n mark">' + (r.human ? '✓' : '✕') + '</td><td class="n">' + r.len + '</td></tr>';
+        }).join('') + '</tbody>';
+    }
+
+    // ======================= Игра «Какую метрику смотреть?» =======================
+    // Ситуации банка: варианты и верный (индекс). Здесь ответ — решение эксперта, а не расчёт: метрику выбирают по цене ошибок
+    // Ситуации банка: тексты — в STR (sitN, optN через «|», whyN). Здесь только номер верного варианта:
+    // ответ — решение эксперта по цене ошибок, а не расчёт
+    var SIT = [1, 0, 1, 0, 1, 1, 1, 1].map(function (a, i) { return { s: T('sit' + i), o: T('opt' + i).split('|'), a: a, w: T('why' + i) }; });
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: SIT.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var s = SIT[q.i];
+        el('gameSit').textContent = s.s;
+        // Порядок вариантов перемешиваем: верный не должен угадываться по месту
+        var ord = MLViz.shuffle(s.o.map(function (x, i) { return i; }), Math.random);
+        q.choices(el('gameChoices'), ord.map(function (i) { return esc(s.o[i]); }), function (k) { return ord[k] === s.a; }, function (k, ok) {
+          q.answer(ok ? 1 : 0, '<b>' + T(ok ? 'gameRight' : 'gameWrong') + '</b> ' + esc(s.w));
+        });
+      },
+      onEnd: function () { el('gameChoices').innerHTML = ''; el('gameSit').textContent = ''; }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start();
+      draw();
+    }
+
+    // ======================= События =======================
+    el('th').addEventListener('input', function (e) { state.th = +e.target.value; draw(); });
+    el('jth').addEventListener('input', function (e) { state.jt = +e.target.value; draw(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    // Для сверки с sklearn (tools/check_pro.py)
+    window.PRO_METRICS = { proba: function () { return test.map(function (p) { return p.p; }); }, metricsAt: metricsAt, auc: ROC.auc, llm: llmMetrics, lazy: LAZY_M };
+
+    resize();
+    setMode('explore');
+  })();
+  </script>
+</body>
+</html>
