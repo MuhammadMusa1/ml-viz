@@ -636,3 +636,27 @@ pre.pycode code { background: none; border: 0; padding: 0; font-size: inherit; }
 select:focus-visible, canvas:focus-visible, pre:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px; }
 /* Флажок с подписью — тоже цель нажатия: на телефоне не ниже 44 px */
 @media (max-width: 900px), (pointer: coarse) { label.toggle { min-height: var(--tap); } }
+
+/* Маршрут из шагов (страницы «Дорога в ML-инженеры» и «Начать с нуля»): слева бирка шага, справа — что делать и где */
+.route { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-direction: column; gap: 16px; max-width: 980px; }
+.route .step { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 20px; padding: 20px 24px; border-radius: var(--r-l);
+  background: var(--surface-1); border: 1px solid var(--line); }
+.route .step.done { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.route .step.next { border-style: dashed; border-color: var(--n-300); }
+.route .step-tag { display: inline-flex; align-items: center; gap: 8px; align-self: start; background: var(--paper); color: var(--ink);
+  border-radius: var(--r-xs); padding: 5px 10px; font-weight: 700; font-size: var(--fs-label); white-space: nowrap; }
+.route .step-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; }
+.route .step h3 { margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.route .step .time { color: var(--text-2); font-size: var(--fs-small); margin: 4px 0 0; }
+.route .step .par { font-weight: 700; color: var(--text-strong); }
+.route .step .link { margin: 12px 0 0; color: var(--text); }
+.route .step .link b { color: var(--text-strong); }
+.route .step ul { margin: 10px 0 0; padding-left: 22px; }
+.route .step li { margin: 4px 0; }
+.route .step li::marker { color: var(--n-400); }
+.route .step .res { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.route .step .res .btn { font-weight: 400; }
+.route .step label.toggle { margin-top: 14px; }
+@media (max-width: 600px) {
+  .route .step { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
+}

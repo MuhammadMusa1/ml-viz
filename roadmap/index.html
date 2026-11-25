@@ -6,29 +6,6 @@
   <title>Дорога в ML-инженеры · Лаборатория ML</title>
   <link rel="stylesheet" href="../assets/style.css">
   <style>
-    /* Только для этой страницы: маршрут из шагов. Слева бирка шага, справа — что учить и где */
-    .route { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-direction: column; gap: 16px; max-width: 980px; }
-    .step { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 20px; padding: 20px 24px; border-radius: var(--r-l);
-      background: var(--surface-1); border: 1px solid var(--line); }
-    .step.done { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-    .step.next { border-style: dashed; border-color: var(--n-300); }
-    .step-tag { display: inline-flex; align-items: center; gap: 8px; align-self: start; background: var(--paper); color: var(--ink);
-      border-radius: var(--r-xs); padding: 5px 10px; font-weight: 700; font-size: var(--fs-label); white-space: nowrap; }
-    .step-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; }
-    .step h3 { margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
-    .step .time { color: var(--text-2); font-size: var(--fs-small); margin: 4px 0 0; }
-    .step .par { font-weight: 700; color: var(--text-strong); }
-    .step .link { margin: 12px 0 0; color: var(--text); }
-    .step .link b { color: var(--text-strong); }
-    .step ul { margin: 10px 0 0; padding-left: 22px; }
-    .step li { margin: 4px 0; }
-    .step li::marker { color: var(--n-400); }
-    .step .res { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    .step .res .btn { font-weight: 400; }
-    .step label.toggle { margin-top: 14px; }
-    @media (max-width: 600px) {
-      .step { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
-    }
     .road-top { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 40px; align-items: end; }
     @media (max-width: 900px) { .road-top { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
   </style>
