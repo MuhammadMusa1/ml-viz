@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Среднее и разброс · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .readout { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text); margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+    .readout b { color: var(--text-strong); font-size: 1.25em; }
+    .nums { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); font-variant-numeric: tabular-nums; margin: 6px 0 0; }
+    .toggle-row { display: flex; gap: 10px; align-items: center; min-height: var(--tap); cursor: pointer; margin-top: 10px; }
+    .toggle-row input { width: 22px; height: 22px; accent-color: var(--accent); margin: 0; flex: none; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="readout" id="readout"></p>
+          <canvas id="cv"></canvas>
+          <div class="legend" style="padding:8px 4px 0" data-i18n-html="legend"></div>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="spTitle"></h3>
+          <div class="seg wrapping" id="species" style="margin-top:8px"></div>
+          <label class="toggle-row"><input type="checkbox" id="typo"><span data-i18n="typo"></span></label>
+          <p class="note" id="typoNote"></p>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameQ"></p>
+          <div class="choices" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div id="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Среднее и разброс',
+        analogy: '<b>Средний рост класса — одно число вместо тридцати.</b> Но оно не говорит, все ли примерно одного роста или есть и очень высокие, и очень низкие. Это показывает второе число — разброс.',
+        cvLabel: 'Масса пингвинов выбранного вида: каждая точка — пингвин, вертикальные линии — среднее и медиана, полоса — среднее плюс-минус стандартное отклонение',
+        legend: '<span>сплошная линия — среднее</span><span>пунктир — медиана</span><span>полоса — среднее ± стандартное отклонение</span>',
+        modeExplore: 'Исследуй', modeGame: 'Игра: среднее и разброс',
+        spTitle: 'Вид пингвинов', sp_all: 'Все виды',
+        typo: 'Опечатка: добавить пингвина массой {v} г',
+        typoNote: 'Кто-то при вводе приписал лишний ноль: {a} г превратились в {v} г. Посмотри, что сдвинулось сильнее — среднее или медиана.',
+        readout: '<span>пингвинов: <b>{n}</b></span><span>среднее: <b>{m} г</b></span><span>медиана: <b>{md} г</b></span><span>стандартное отклонение: <b>{s} г</b></span>',
+        xLabel: 'масса, г', meanLbl: 'среднее {m} г',
+        hintExplore: 'Выбери вид и посмотри, где среднее и насколько широка полоса. Потом включи опечатку: одно неверное число — и среднее с разбросом уезжают, а медиана почти стоит на месте.',
+        hintGame: 'Считай на бумаге или в уме. Для разброса формула не нужна: посмотри, насколько числа далеки от своего среднего.',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий вопрос →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameRight: 'Верно!', gameWrong: 'Не так.',
+        qMean: 'Массы пингвинов, г:<br><span class="nums">{xs}</span><br>Какая средняя масса?',
+        qSpread: 'Две группы пингвинов, массы в граммах:<br><span class="nums">A: {a}</span><br><span class="nums">Б: {b}</span><br>У какой группы <b>разброс</b> больше?',
+        grA: 'У группы A', grB: 'У группы Б',
+        aMean: '{verdict} ({sum}) : {n} = <b>{m} г</b>.{extra}',
+        aMeanTypo: ' Одна опечатка утянула среднее далеко от остальных — медиана здесь {md} г.',
+        aSpread: '{verdict} Стандартное отклонение: A — <b>{sa} г</b>, Б — <b>{sb} г</b>. {extra}',
+        sameMean: 'Средние у групп одинаковые ({m} г), а разброс — нет.',
+        diffMean: 'Средние разные (A — {ma} г, Б — {mb} г), но разброс считают от своего среднего.',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Среднее говорит, где центр, а стандартное отклонение — насколько числа обычно от него отличаются. Одно без другого рассказывает только половину.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Среднее = сумма : количество.</b> 3600, 3800 и 4000 → (3600 + 3800 + 4000) : 3 = 3800.</li>' +
+          '<li><b>Медиана</b> — число посередине, если выстроить всех по порядку. Одна опечатка её почти не двигает, а среднее — двигает сильно.</li>' +
+          '<li><b>Отклонение</b> — насколько каждое число отличается от среднего: 3600 − 3800 = −200, 4000 − 3800 = +200.</li>' +
+          '<li><b>Стандартное отклонение</b> — «насколько пингвины обычно отличаются от среднего». Отклонения возводят в квадрат (чтобы минусы не съели плюсы), берут их среднее и извлекают корень.</li>' +
+          '<li><b>Если все одинаковые</b> — стандартное отклонение 0. Чем дальше числа от центра, тем оно больше.</li>' +
+          '</ol>',
+        mlTitle: 'Где это встретится в ML',
+        mlBody:
+          '<ul>' +
+          '<li><b>Выбросы и пропуски (урок 4)</b>: опечатка вроде {v} г сдвигает среднее. Поэтому пропуски часто заполняют медианой, а выбросы ищут заранее.</li>' +
+          '<li><b>Масштаб, StandardScaler (урок 10)</b>: каждое число превращают в «сколько стандартных отклонений от среднего»: (x − среднее) : отклонение. Самый тяжёлый Adelie ({hx} г) — это ({hx} − {hm}) : {hs} ≈ <b>{hz}</b>. Тогда граммы и миллиметры становятся сравнимыми, и KNN перестаёт слушать одну массу.</li>' +
+          '<li><b>Описание датасета (урок 2)</b>: первое, что смотрят в любой таблице, — среднее и разброс каждого признака.</li>' +
+          '</ul>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>У какого вида средняя масса больше всего? А разброс?</li>' +
+          '<li>Выбери «Все виды». Почему полоса шире, чем у каждого вида по отдельности?</li>' +
+          '<li>Включи опечатку для Adelie. На сколько граммов сдвинулось среднее? А медиана?</li>' +
+          '<li>Придумай три числа со средним 4000 и стандартным отклонением 0. А с большим разбросом?</li>' +
+          '</ul>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Масса всех 342 пингвинов датасета курса. Стандартное отклонение считается как в StandardScaler (делим на n, а не на n − 1). Опечатка — масса первого пингвина таблицы, умноженная на 10, как на уроке 4. Сверка с pandas — <code>tools/check_math.py</code>.</p>' +
+          '<p><b>Как использовать.</b> Перед уроками 4 и 10. 5 минут: средний рост класса, потом спросить — «а все ли такого роста?». Так появляется вопрос о разбросе.</p>',
+        footer: 'Раздел «Математика для ML». Все расчёты выполняются прямо в браузере, без интернета.'
+      }
+    };
+
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    MLViz.renderHeader('../../');
+
+    // ======================= Данные =======================
+    var P = window.PENGUINS, C = P.columns, ROWS = P.rows.map(function (r) { var o = {}; C.forEach(function (c, i) { o[c] = r[i]; }); return o; });
+    var SPECIES = ['Adelie', 'Chinstrap', 'Gentoo'];
+    var TYPO = ROWS[0].body_mass_g * 10;   // как «великан» на уроке 4: лишний ноль у первого пингвина
+    function masses(sp) { return ROWS.filter(function (r) { return sp === 'all' || r.species === sp; }).map(function (r) { return { v: r.body_mass_g, sp: r.species }; }); }
+    function mean(xs) { return xs.reduce(function (s, v) { return s + v; }, 0) / xs.length; }
+    function std(xs) { var m = mean(xs); return Math.sqrt(xs.reduce(function (s, v) { return s + (v - m) * (v - m); }, 0) / xs.length); }   // как StandardScaler: делим на n
+    function median(xs) { var s = xs.slice().sort(function (a, b) { return a - b; }), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; }
+    function stats(sp, typo) {
+      var xs = masses(sp).map(function (d) { return d.v; });
+      if (typo) xs.push(TYPO);
+      return { n: xs.length, mean: mean(xs), median: median(xs), std: std(xs) };
+    }
+    function r0(x) { return Math.round(x); }
+
+    // Пример для урока 10: самый тяжёлый Adelie в стандартных отклонениях
+    var ad = masses('Adelie').map(function (d) { return d.v; }), hx = Math.max.apply(null, ad), hm = mean(ad), hs = std(ad);
+    STR.ru.typo = STR.ru.typo.replace('{v}', TYPO);
+    MLViz.applyI18n(STR);
+    el('mlBody').innerHTML = T('mlBody', { v: TYPO, hx: hx, hm: r0(hm), hs: r0(hs), hz: ((hx - hm) / hs).toFixed(1) });
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // Вопросы игры: mean — среднее набора, spread — у какой группы разброс больше (ответы считаются)
+    var ROUNDS = [
+      { t: 'mean', xs: [3500, 3700, 3900, 4100, 4300] },
+      { t: 'spread', a: [3800, 3900, 4000, 4100, 4200], b: [3000, 3500, 4000, 4500, 5000] },
+      { t: 'mean', xs: [4000, 4000, 4500, 5000, 5500] },
+      { t: 'spread', a: [5000, 5500, 5000, 5500, 5000], b: [5200, 5200, 5200, 5200, 5200] },
+      { t: 'mean', xs: [3200, 3400, 3400, 3600, 3900] },
+      { t: 'spread', a: [3000, 4000, 4000, 4000, 5000], b: [3500, 3500, 4000, 4500, 4500] },
+      { t: 'mean', xs: [5000, 5200, 5400, 5600, 37500] },
+      { t: 'spread', a: [4500, 5000, 5500, 6000], b: [3600, 3700, 3800, 3900] },
+      { t: 'mean', xs: [3600, 3800, 3700, 3900] },
+      { t: 'spread', a: [4000, 4100, 4200], b: [3000, 4100, 5200] }
+    ];
+    // Варианты для «среднего»: верный, медиана, сумма делённая не на то, середина между крайними
+    function options(q) {
+      if (q.t === 'spread') return { right: std(q.a) > std(q.b) ? 0 : 1, labels: [T('grA'), T('grB')] };
+      var right = r0(mean(q.xs)), sum = q.xs.reduce(function (s, v) { return s + v; }, 0);
+      var cand = [median(q.xs), r0(sum / (q.xs.length - 1)), r0((Math.min.apply(null, q.xs) + Math.max.apply(null, q.xs)) / 2), right + 200, right - 200];
+      var vals = [right];
+      cand.forEach(function (c) { if (vals.length < 4 && vals.indexOf(c) === -1) vals.push(c); });
+      vals.sort(function (a, b) { return a - b; });
+      return { right: vals.indexOf(right), labels: vals.map(function (v) { return v + ' г'; }) };
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', sp: 'Adelie', typo: false, game: null };
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g;
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 0.75 : 0.42);
+      draw();
+    }
+    function font(px, bold) { return (bold ? 'bold ' : '') + px + 'px ' + (MLViz.cssVar('--font') || 'Calibri, system-ui, sans-serif'); }
+    // Точки по оси x, по вертикали — раскладка без наложений (как «рой»): каждая следующая точка в своей полосе — выше
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), pad = MLViz.plotPad(g.w, 0);
+      ctx.clearRect(0, 0, g.w, g.h);
+      var pts, st, lo = 2500, hi = 6500;
+      if (state.mode === 'game' && state.game) {
+        var q = state.game.q;
+        pts = q.t === 'mean' ? q.xs.map(function (v) { return { v: v, row: 0 }; }) : q.a.map(function (v) { return { v: v, row: 0 }; }).concat(q.b.map(function (v) { return { v: v, row: 1 }; }));
+        var all = pts.map(function (p) { return p.v; });
+        lo = Math.min(2500, Math.min.apply(null, all) - 300); hi = Math.max(6500, Math.max.apply(null, all) + 300);
+      } else {
+        pts = masses(state.sp);
+        if (state.typo) pts.push({ v: TYPO, sp: 'typo' });
+        st = stats(state.sp, state.typo);
+        if (state.typo) hi = TYPO + 1500;
+      }
+      var sx = MLViz.scale(lo, hi, pad.l + 6, g.w - pad.r - 6), base = g.h - pad.b, top = pad.t + fs * 1.6;
+      var narrow = g.w < 560, step = hi - lo > 10000 ? (narrow ? 10000 : 5000) : (narrow ? 1000 : 500);   // на телефоне делений меньше, чтобы подписи не слипались
+      MLViz.drawAxes(ctx, { w: g.w, h: g.h, pad: pad, sx: sx, sy: function () { return base; }, xTicks: MLViz.range(Math.ceil(lo / step) * step, hi, step), yTicks: [], xLabel: T('xLabel'), yLabel: '' });
+      if (st) {   // полоса ± стандартное отклонение, среднее и медиана
+        ctx.fillStyle = MLViz.cssVar('--surface-3');
+        ctx.fillRect(sx(st.mean - st.std), top, sx(st.mean + st.std) - sx(st.mean - st.std), base - top);
+      }
+      var r = Math.max(4, fs * 0.32), used = {}, rowsGap = (base - top) / 2;
+      // В игре полосы и средние после ответа рисуем под точками, чтобы они не закрывали числа
+      if (state.game && state.game.answered) gameLines(ctx, sx, top, rowsGap, fs);
+      // «Рой»: точки с одинаковой массой (с точностью до радиуса) встают друг над другом
+      pts.forEach(function (p) {
+        var x = sx(p.v), bin = Math.round(x / (r * 2)) + '_' + (p.row || 0), k = used[bin] = (used[bin] || 0) + 1;
+        var y0 = state.game ? top + rowsGap * (p.row || 0) + rowsGap / 2 : base - r - 2;
+        var y = y0 - (k - 1) * r * 2.2;
+        if (y < top + r) y = top + r;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI);
+        ctx.fillStyle = p.sp === 'typo' ? MLViz.cssVar('--c-odd') : p.sp ? MLViz.cssVar('--' + p.sp.toLowerCase()) : MLViz.cssVar('--paper');
+        ctx.fill();
+      });
+      if (state.game) {   // подписи групп A и Б
+        ctx.fillStyle = MLViz.cssVar('--text-strong'); ctx.font = font(fs, true); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        if (state.game.q.t === 'spread') { ctx.fillText('A', pad.l - fs, top + rowsGap / 2); ctx.fillText('Б', pad.l - fs, top + rowsGap * 1.5); }
+        return;
+      }
+      line(ctx, sx(st.mean), top, base, false); line(ctx, sx(st.median), top, base, true);
+      // Подпись среднего — тёмный текст на «бумаге», сбоку от линии, чтобы не закрывать точки
+      var text = T('meanLbl', { m: r0(st.mean) }), mx = sx(st.mean);
+      ctx.font = font(fs, true);
+      var w = ctx.measureText(text).width + 12, h = fs * 1.5, left = mx + w + 8 > g.w;
+      var bx = left ? mx - w - 6 : mx + 6;
+      ctx.fillStyle = MLViz.cssVar('--paper'); ctx.fillRect(bx, pad.t, w, h);
+      ctx.fillStyle = MLViz.cssVar('--ink'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(text, bx + 6, pad.t + h / 2 + 1);
+    }
+    function line(ctx, x, y0, y1, dashed) {
+      ctx.strokeStyle = MLViz.cssVar(dashed ? '--n-200' : '--accent'); ctx.lineWidth = 3;
+      if (dashed) ctx.setLineDash([7, 5]);
+      ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke(); ctx.setLineDash([]);
+    }
+    function gameLines(ctx, sx, top, rowsGap, fs) {
+      var q = state.game.q;
+      if (q.t === 'mean') { line(ctx, sx(mean(q.xs)), top, top + rowsGap * 2, false); return; }
+      [q.a, q.b].forEach(function (xs, i) {   // у каждой группы — своё среднее и полоса ± отклонение
+        var m = mean(xs), s = std(xs), y = top + rowsGap * i;
+        ctx.fillStyle = MLViz.cssVar('--surface-3'); ctx.globalAlpha = 0.6;
+        ctx.fillRect(sx(m - s), y + 4, Math.max(2, sx(m + s) - sx(m - s)), rowsGap - 8); ctx.globalAlpha = 1;
+        line(ctx, sx(m), y + 4, y + rowsGap - 4, false);
+      });
+    }
+
+    // ======================= Панель =======================
+    el('species').innerHTML = SPECIES.concat(['all']).map(function (s) { return '<button type="button" data-s="' + s + '">' + (s === 'all' ? T('sp_all') : s) + '</button>'; }).join('');
+    function update() {
+      var st = stats(state.sp, state.typo);
+      MLViz.setPressed(el('species'), function (b) { return b.dataset.s === state.sp; });
+      el('typo').checked = state.typo;
+      el('typoNote').textContent = state.typo ? T('typoNote', { a: ROWS[0].body_mass_g, v: TYPO }) : '';
+      el('readout').innerHTML = T('readout', { n: st.n, m: r0(st.mean), md: r0(st.median), s: r0(st.std) });
+      draw();
+    }
+
+    // ======================= Игра =======================
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var r = ROUNDS[q.i], o = options(r);
+        state.game = { q: r, answered: false };
+        el('gameQ').innerHTML = r.t === 'mean' ? T('qMean', { xs: r.xs.join(', ') }) : T('qSpread', { a: r.a.join(', '), b: r.b.join(', ') });
+        draw();
+        q.choices(el('gameChoices'), o.labels, function (i) { return i === o.right; }, function (i, ok) {
+          state.game.answered = true;
+          var v = T(ok ? 'gameRight' : 'gameWrong'), html;
+          if (r.t === 'mean') {
+            var sum = r.xs.join(' + '), m = r0(mean(r.xs)), md = median(r.xs);
+            html = T('aMean', { verdict: v, sum: sum, n: r.xs.length, m: m, extra: Math.abs(m - md) > 2000 ? T('aMeanTypo', { md: md }) : '' });
+          } else {
+            var ma = r0(mean(r.a)), mb = r0(mean(r.b));
+            html = T('aSpread', { verdict: v, sa: r0(std(r.a)), sb: r0(std(r.b)), extra: ma === mb ? T('sameMean', { m: ma }) : T('diffMean', { ma: ma, mb: mb }) });
+          }
+          q.answer(ok ? 1 : 0, html);
+          draw();
+        });
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameQ').innerHTML = ''; draw(); }
+    });
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('readout').hidden = m !== 'explore';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else { state.game = null; update(); }   // выбор вида и опечатка не меняются игрой
+    }
+
+    // ======================= События =======================
+    el('species').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; state.sp = b.dataset.s; update(); });
+    el('typo').addEventListener('change', function (e) { state.typo = e.target.checked; update(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    window.MATH_MEAN = { stats: stats, mean: mean, std: std, median: median, options: options, rounds: ROUNDS, typo: TYPO };   // для сверки (tools/check_math.py)
+
+    resize(); setMode('explore');
+  })();
+  </script>
+</body>
+</html>

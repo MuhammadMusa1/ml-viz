@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Точки и расстояние · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .readout { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text); margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+    .readout b { color: var(--text-strong); font-size: 1.25em; }
+    .pt-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .pt-grid h3 { grid-column: 1 / -1; margin: 10px 0 0; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="readout" id="readout"></p>
+          <canvas id="cv" class="drag"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <div class="pt-grid">
+            <h3 data-i18n="ptA"></h3>
+            <label><span>x</span>: <b id="axV"></b><input type="range" id="ax" min="0" max="10" step="1"></label>
+            <label><span>y</span>: <b id="ayV"></b><input type="range" id="ay" min="0" max="10" step="1"></label>
+            <h3 data-i18n="ptB"></h3>
+            <label><span>x</span>: <b id="bxV"></b><input type="range" id="bx" min="0" max="10" step="1"></label>
+            <label><span>y</span>: <b id="byV"></b><input type="range" id="by" min="0" max="10" step="1"></label>
+          </div>
+          <div class="seg wrapping" id="presets" style="margin-top:12px"></div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" data-i18n-html="gameAsk"></p>
+          <div class="choices" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Точки и расстояние',
+        analogy: '<b>До соседнего дома можно идти по улицам — направо, потом вверх. А можно напрямую, через двор.</b> Путь по улицам длиннее. Модель ближайших соседей (KNN) меряет именно «напрямую» — по теореме Пифагора.',
+        cvLabel: 'Клетчатая плоскость от 0 до 10. Две точки A и B, между ними — прямоугольный треугольник: катеты по клеткам, гипотенуза — расстояние напрямую.',
+        modeExplore: 'Исследуй', modeGame: 'Игра: кто ближайший сосед?',
+        ptA: 'Точка A', ptB: 'Точка B',
+        pr_345: '3–4–5', pr_same: 'По одной линии', pr_diag: 'По диагонали',
+        readout: '<span>A ({ax}; {ay}), B ({bx}; {by})</span><span>по x: <b>{dx}</b></span><span>по y: <b>{dy}</b></span><span>по клеткам: <b>{m}</b></span><span>напрямую: √({dx}² + {dy}²) = <b>{d}</b></span>',
+        lblDx: 'по x: {v}', lblDy: 'по y: {v}', lblD: 'напрямую: {v}',
+        hintExplore: 'Тяни точки A и B мышью или пальцем — или двигай ползунки в панели. Пунктир — путь по клеткам, жирный светлый отрезок — расстояние напрямую.',
+        hintGame: 'Какая точка ближе всего к ★ — напрямую, а не по клеткам? Можно считать по теореме Пифагора или прикинуть на глаз — но глаз иногда обманывает.',
+        gameAsk: 'Какая точка — <b>ближайший сосед</b> звезды ★?',
+        choice: 'Точка {i} ({x}; {y})',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий раунд →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameRight: 'Верно!', gameWrong: 'Не она.',
+        gameLine: '{verdict} Расстояния напрямую: {list}. Ближе всех — <b>точка {best}</b>.{trap}',
+        trapNote: ' По клеткам ближе была бы точка {m} — но KNN меряет напрямую.',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Так и работает KNN: считает расстояние от нового пингвина до всех известных и смотрит, кто ближе.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Точка на плоскости — два числа</b>: x (сколько вправо) и y (сколько вверх). Записывают (x; y).</li>' +
+          '<li><b>Разница по каждой оси</b>: по x — |x₂ − x₁|, по y — |y₂ − y₁|. Это катеты прямоугольного треугольника.</li>' +
+          '<li><b>Расстояние напрямую</b> — гипотенуза. По теореме Пифагора: d = √(по x² + по y²). Для 3 и 4 получается ровно 5.</li>' +
+          '<li><b>Путь по клеткам</b> — просто сумма: по x + по y. Он всегда не короче, чем напрямую.</li>' +
+          '<li><b>Больше двух признаков</b> — та же формула, только квадратов под корнем больше: d = √(Δ₁² + Δ₂² + Δ₃² + …). Нарисовать нельзя, а посчитать — легко.</li>' +
+          '</ol>',
+        mlTitle: 'Где это встретится в ML',
+        mlBody:
+          '<ul>' +
+          '<li><b>KNN (урок 5)</b>: каждый пингвин — точка, где x — длина клюва, y — масса. Новый пингвин получает вид своих ближайших соседей — тех, до кого расстояние напрямую меньше.</li>' +
+          '<li><b>Графики с точками (уроки 2–3)</b>: каждая строка таблицы — точка, оси — признаки.</li>' +
+          '<li><b>Ловушка разных единиц (урок 10)</b>: если по x разница {dmm} мм клюва, а по y — {dg} г массы, расстояние = √({dmm}² + {dg}²) ≈ {dd}. Масса почти целиком решает, клюв не важен. Поэтому признаки сначала приводят к одному масштабу.</li>' +
+          '<li><b>Эмбеддинги (урок 17)</b>: слова — тоже точки, только чисел у них сотни. Близкие точки — похожие по смыслу слова.</li>' +
+          '</ul>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь A (0; 0) и B (3; 4). Чему равно расстояние напрямую? А по клеткам?</li>' +
+          '<li>Поставь точки на одной горизонтальной линии. Чем тогда отличается путь по клеткам от пути напрямую?</li>' +
+          '<li>Найди две точки, у которых путь по клеткам вдвое длиннее, чем напрямую. Получится ли?</li>' +
+          '<li>В игре найди раунд, где по клеткам ближе одна точка, а напрямую — другая. Почему так бывает?</li>' +
+          '</ul>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Плоскость 10 × 10 с целыми координатами. Игра — 10 раундов «кто ближайший сосед»; в шести из них ближайший по клеткам и ближайший напрямую — разные точки. Ответы считаются; сверка — <code>tools/check_math.py</code>.</p>' +
+          '<p><b>Как использовать.</b> Перед уроком 5 (KNN). 5 минут: попросить пройти от одной парты до другой «по клеткам пола» и «напрямую» — и сравнить число шагов.</p>',
+        footer: 'Раздел «Математика для ML». Все расчёты выполняются прямо в браузере, без интернета.'
+      }
+    };
+
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    MLViz.renderHeader('../../');
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    // Раунды игры: звезда q и три кандидата. Ответы считаются ниже, ничьих по расстоянию нет (проверено в check_math.py)
+    var ROUNDS = [
+      [[5, 5], [[8, 5], [7, 7], [5, 1]]], [[2, 3], [[6, 3], [5, 7], [2, 8]]], [[4, 4], [[1, 1], [7, 8], [8, 5]]],
+      [[6, 2], [[6, 7], [9, 6], [2, 4]]], [[3, 7], [[6, 7], [5, 9], [1, 4]]], [[8, 8], [[5, 6], [8, 4], [4, 9]]],
+      [[1, 1], [[4, 3], [1, 5], [5, 1]]], [[5, 3], [[2, 6], [9, 3], [7, 7]]], [[7, 5], [[4, 8], [10, 3], [7, 9]]],
+      [[2, 8], [[5, 10], [2, 4], [6, 7]]]
+    ];
+    var PRESETS = { '345': [0, 0, 3, 4], same: [2, 5, 8, 5], diag: [1, 1, 6, 6] };
+    function dist(a, b) { return Math.sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1])); }
+    function manh(a, b) { return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]); }
+    function argmin(xs) { var b = 0; xs.forEach(function (x, i) { if (x < xs[b]) b = i; }); return b; }
+    function fix(x) { var r = Math.round(x * 100) / 100; return r % 1 === 0 ? String(r) : r.toFixed(2); }
+    // Пример ловушки разных единиц для «Где это в ML»: 5 мм клюва и 500 г массы
+    STR.ru.mlBody = STR.ru.mlBody.replace(/\{dmm\}/g, '5').replace(/\{dg\}/g, '500').replace('{dd}', fix(dist([0, 0], [5, 500])));
+    MLViz.applyI18n(STR);
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', a: [1, 2], b: [7, 6], game: null };
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g, S;
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 1.0 : 0.82);
+      draw();
+    }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), pad = MLViz.plotPad(g.w, 2);
+      ctx.clearRect(0, 0, g.w, g.h);
+      // Квадратные клетки: одинаковый масштаб по x и y, иначе «напрямую» на глаз будет обманывать
+      var side = Math.min(g.w - pad.l - pad.r, g.h - pad.t - pad.b);
+      var sx = MLViz.scale(0, 10, pad.l, pad.l + side), sy = MLViz.scale(0, 10, pad.t + side, pad.t);
+      S = { sx: sx, sy: sy };
+      MLViz.drawAxes(ctx, { w: pad.l + side + pad.r, h: pad.t + side + pad.b, pad: pad, sx: sx, sy: sy, xTicks: MLViz.range(0, 10, 1), yTicks: MLViz.range(0, 10, 1), xLabel: 'x', yLabel: 'y' });
+      if (state.mode === 'game' && state.game) return drawGame(ctx, fs);
+      var a = state.a, b = state.b, ax = sx(a[0]), ay = sy(a[1]), bx = sx(b[0]), by = sy(b[1]);
+      // Путь по клеткам: сначала по x, потом по y
+      ctx.strokeStyle = MLViz.cssVar('--n-300'); ctx.lineWidth = 3; ctx.setLineDash([8, 6]);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+      // Напрямую
+      ctx.strokeStyle = MLViz.cssVar('--accent'); ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      var dx = Math.abs(b[0] - a[0]), dy = Math.abs(b[1] - a[1]);
+      if (dx) label(ctx, T('lblDx', { v: dx }), (ax + bx) / 2, ay + (by < ay ? fs : -fs), fs);
+      if (dy) label(ctx, T('lblDy', { v: dy }), bx + (bx > ax ? 8 : -8), (ay + by) / 2, fs, bx > ax ? 'left' : 'right');
+      if (dx && dy) label(ctx, T('lblD', { v: fix(dist(a, b)) }), (ax + bx) / 2 - (bx > ax ? 10 : -10), (ay + by) / 2 - (by < ay ? 10 : -10), fs, bx > ax ? 'right' : 'left');
+      dot(ctx, ax, ay, 'A', fs); dot(ctx, bx, by, 'B', fs);
+    }
+    // Подпись — тёмный текст на бумаге (правило курса: на canvas тёмное на светлом)
+    function label(ctx, text, x, y, fs, align) {
+      ctx.font = 'bold ' + fs + 'px ' + (MLViz.cssVar('--font') || 'Calibri, sans-serif');
+      var w = ctx.measureText(text).width + 12, h = fs * 1.5, bx = align === 'left' ? x : align === 'right' ? x - w : x - w / 2;
+      ctx.fillStyle = MLViz.cssVar('--paper'); ctx.fillRect(bx, y - h / 2, w, h);
+      ctx.fillStyle = MLViz.cssVar('--ink'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(text, bx + 6, y + 1);
+    }
+    function dot(ctx, x, y, name, fs, star) {
+      var r = Math.max(12, fs * 0.9);
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI);
+      ctx.fillStyle = star ? MLViz.cssVar('--accent') : MLViz.cssVar('--paper'); ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = MLViz.cssVar('--ink'); ctx.stroke();
+      ctx.fillStyle = MLViz.cssVar(star ? '--accent-ink' : '--ink'); ctx.font = 'bold ' + fs + 'px ' + (MLViz.cssVar('--font') || 'Calibri, sans-serif');
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(name, x, y + 1);
+    }
+    function drawGame(ctx, fs) {
+      var r = state.game.r, q = r[0];
+      if (state.game.answered) {   // после ответа — отрезки до всех кандидатов, ближайший — жирный
+        r[1].forEach(function (p, i) {
+          ctx.strokeStyle = i === state.game.best ? MLViz.cssVar('--accent') : MLViz.cssVar('--n-300');
+          ctx.lineWidth = i === state.game.best ? 4 : 2;
+          ctx.beginPath(); ctx.moveTo(S.sx(q[0]), S.sy(q[1])); ctx.lineTo(S.sx(p[0]), S.sy(p[1])); ctx.stroke();
+        });
+      }
+      r[1].forEach(function (p, i) { dot(ctx, S.sx(p[0]), S.sy(p[1]), String(i + 1), fs); });
+      dot(ctx, S.sx(q[0]), S.sy(q[1]), '★', fs, true);
+    }
+
+    // ======================= Панель =======================
+    el('presets').innerHTML = Object.keys(PRESETS).map(function (k) { return '<button type="button" data-p="' + k + '">' + T('pr_' + k) + '</button>'; }).join('');
+    function update() {
+      var a = state.a, b = state.b;
+      [['ax', a[0]], ['ay', a[1]], ['bx', b[0]], ['by', b[1]]].forEach(function (p) { el(p[0]).value = p[1]; el(p[0] + 'V').textContent = p[1]; el(p[0]).setAttribute('aria-label', T(p[0][0] === 'a' ? 'ptA' : 'ptB') + ', ' + p[0][1]); });
+      el('readout').innerHTML = T('readout', { ax: a[0], ay: a[1], bx: b[0], by: b[1], dx: Math.abs(b[0] - a[0]), dy: Math.abs(b[1] - a[1]), m: manh(a, b), d: fix(dist(a, b)) });
+      MLViz.setPressed(el('presets'), function (bt) { var p = PRESETS[bt.dataset.p]; return p[0] === a[0] && p[1] === a[1] && p[2] === b[0] && p[3] === b[1]; });
+      draw();
+    }
+
+    // ======================= Игра =======================
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var r = ROUNDS[q.i], d = r[1].map(function (p) { return dist(r[0], p); }), m = r[1].map(function (p) { return manh(r[0], p); });
+        var best = argmin(d), mbest = argmin(m);
+        state.game = { r: r, best: best, answered: false };
+        draw();
+        q.choices(el('gameChoices'), r[1].map(function (p, i) { return T('choice', { i: i + 1, x: p[0], y: p[1] }); }), function (i) { return i === best; }, function (i, ok) {
+          state.game.answered = true;
+          var list = d.map(function (v, i) { return (i + 1) + ' — ' + fix(v); }).join(', ');
+          // Ловушка: если по клеткам ближе другая точка — говорим об этом
+          var trap = mbest !== best && m[mbest] < m[best] ? T('trapNote', { m: mbest + 1 }) : '';
+          q.answer(ok ? 1 : 0, T('gameLine', { verdict: T(ok ? 'gameRight' : 'gameWrong'), list: list, best: best + 1, trap: trap }));
+          draw();
+        });
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; draw(); }
+    });
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('readout').hidden = m !== 'explore';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else { state.game = null; update(); }   // точки A и B игра не трогает
+    }
+
+    // ======================= События =======================
+    ['ax', 'ay', 'bx', 'by'].forEach(function (id) {
+      el(id).addEventListener('input', function (e) { (id[0] === 'a' ? state.a : state.b)[id[1] === 'x' ? 0 : 1] = +e.target.value; update(); });
+    });
+    el('presets').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var p = PRESETS[b.dataset.p]; state.a = [p[0], p[1]]; state.b = [p[2], p[3]]; update();
+    });
+    // Перетаскивание точек: ближайшая к пальцу в пределах 30 px, координаты — к ближайшей клетке
+    var dragging = null;
+    cv.addEventListener('pointerdown', function (e) {
+      if (state.mode !== 'explore') return;
+      var p = MLViz.pointer(cv, e), da = Math.hypot(p.x - S.sx(state.a[0]), p.y - S.sy(state.a[1])), db = Math.hypot(p.x - S.sx(state.b[0]), p.y - S.sy(state.b[1]));
+      if (Math.min(da, db) > 30) return;
+      dragging = da <= db ? state.a : state.b; cv.setPointerCapture(e.pointerId);
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var p = MLViz.pointer(cv, e), clamp = function (v) { return Math.max(0, Math.min(10, Math.round(v))); };
+      var x = clamp(S.sx.invert(p.x)), y = clamp(S.sy.invert(p.y));
+      if (x !== dragging[0] || y !== dragging[1]) { dragging[0] = x; dragging[1] = y; update(); }
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) { cv.addEventListener(ev, function () { dragging = null; }); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    window.MATH_DIST = { dist: dist, manh: manh, rounds: ROUNDS };   // для сверки (tools/check_math.py)
+
+    resize(); setMode('explore');
+  })();
+  </script>
+</body>
+</html>

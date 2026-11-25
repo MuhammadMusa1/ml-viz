@@ -60,6 +60,9 @@
         proProgress: 'Профи: <b>{d} из {n}</b>',
         proProgressPlain: 'Профи: {d} из {n}',
         proHint: 'Раздел «Для профи» считается отдельно и в 24 урока не входит.',
+        mathProgress: 'Математика: <b>{d} из {n}</b>',
+        mathProgressPlain: 'Математика: {d} из {n}',
+        mathHint: 'Раздел «Математика для ML» — повторение школьной математики к урокам, в 24 урока не входит.',
         resetAsk: 'Сбросить все отметки о пройденных уроках в этом браузере?',
         footer: 'Данные: Palmer Penguins (Horst, Hill, Gorman, 2020). Работает офлайн: скачайте папку и откройте <code>index.html</code>.'
       },
@@ -94,15 +97,18 @@
     var L = MLViz.lang;
     var DONE = MLViz.doneList();
     // Отметки основного курса без раздела «Для профи»: от них зависят «Начать / Продолжить» и урок 0
-    function mainDone() { return DONE.filter(function (id) { return PRO.indexOf(id) === -1; }).length; }
+    function mainDone() { return DONE.filter(function (id) { return PRO.indexOf(id) === -1 && MATH.indexOf(id) === -1; }).length; }
 
     // Страницы готовых уроков по номеру урока: у урока 13 две страницы, у урока 17 — три
     var BY_LESSON = {};
     // Раздел «Для профи» (it.pro) — не уроки курса: в 24 урока и в «Продолжить» не входит, считается отдельно
     var PRO = [];
+    // «Математика для ML» (it.math) — тоже отдельно: это повторение школьной математики к урокам
+    var MATH = [];
     CATALOG.forEach(function (ph) { ph.items.forEach(function (it) {
       if (it.status !== 'ready') return;
       if (MLViz.isProItem(it)) { PRO.push(it.id); return; }
+      if (MLViz.isMathItem(it)) { MATH.push(it.id); return; }
       (BY_LESSON[it.lesson] = BY_LESSON[it.lesson] || []).push(it.id);
     }); });
 
@@ -137,6 +143,7 @@
           '<div class="fill" style="width:' + (100 * d / n) + '%"></div></div>' +
         '<p class="note">' + (next ? MLViz.t(STR, 'nextLine', { l: MLViz.lessonLabel(next), t: tx(next.title) }) : MLViz.t(STR, 'allDone')) + '</p>' +
         '<p class="note">' + MLViz.t(STR, 'progressHint') + '</p>' +
+        (MATH.length ? sectionProgress(MATH, 'mathProgress', 'mathProgressPlain', 'mathHint') : '') +
         (PRO.length ? proProgress() : '') +
         (DONE.length ? '<button type="button" class="reset" id="resetProgress">' + MLViz.t(STR, 'resetProgress') + '</button>' : '');
       // Главное действие — продолжить с того места, где остановился
@@ -154,18 +161,19 @@
         MLViz.resetDone(); DONE = []; renderProgress(); renderCatalog();
       });
     }
-    // Отдельная полоса раздела «Для профи»: страница отмечается, когда доиграна её игра
-    function proProgress() {
-      var n = PRO.length, d = PRO.filter(isDone).length;
-      return '<div class="pro-progress"><div class="head"><span>' + MLViz.t(STR, 'proProgress', { d: d, n: n }) + '</span></div>' +
+    // Отдельные полосы разделов «Математика для ML» и «Для профи»: страница отмечается, когда доиграна её игра
+    function sectionProgress(ids, kTitle, kPlain, kHint) {
+      var n = ids.length, d = ids.filter(isDone).length;
+      return '<div class="pro-progress"><div class="head"><span>' + MLViz.t(STR, kTitle, { d: d, n: n }) + '</span></div>' +
         '<div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + d + '" aria-label="' +
-        MLViz.t(STR, 'proProgressPlain', { d: d, n: n }) + '"><div class="fill" style="width:' + (100 * d / n) + '%"></div></div>' +
-        '<p class="note">' + MLViz.t(STR, 'proHint') + '</p></div>';
+        MLViz.t(STR, kPlain, { d: d, n: n }) + '"><div class="fill" style="width:' + (100 * d / n) + '%"></div></div>' +
+        '<p class="note">' + MLViz.t(STR, kHint) + '</p></div>';
     }
+    function proProgress() { return sectionProgress(PRO, 'proProgress', 'proProgressPlain', 'proHint'); }
     var tx = function (o) { return (o && (o[L] || o.ru)) || ''; };
     // Номер на бирке: «№ 05», у урока из нескольких страниц — «№ 13.1»
     function numLabel(it) {
-      if (MLViz.isProItem(it)) return MLViz.lessonLabel(it);   // «П 03»
+      if (MLViz.isProItem(it) || MLViz.isMathItem(it)) return MLViz.lessonLabel(it);   // «П 03», «М 02»
       var p = MLViz.lessonPart(it), n = (p.n < 10 ? '0' : '') + p.n;
       // «№» — обычным шрифтом: в Consolas этого знака нет, и он рисуется как «IF»
       return '<span class="no">№</span>' + n + (p.m > 1 ? '.' + p.k : '');
@@ -185,7 +193,7 @@
             '<div class="analogy">' + tx(it.analogy) + '</div>' +
           '</' + (ready ? 'a' : 'div') + '>';
         }).join('');
-        return '<section class="phase"' + (ph.pro ? ' id="pro"' : '') + '><div class="phase-head"><h2>' + tx(ph.phase) + '</h2>' +
+        return '<section class="phase"' + (ph.pro ? ' id="pro"' : ph.math ? ' id="math"' : '') + '><div class="phase-head"><h2>' + tx(ph.phase) + '</h2>' +
           (tx(ph.weeks) ? '<span class="weeks">' + tx(ph.weeks) + '</span>' : '') + '</div>' +
           (ph.note ? '<p class="phase-note">' + tx(ph.note) + '</p>' : '') +
           '<div class="grid">' + cards + '</div></section>';
@@ -200,7 +208,8 @@
     renderProgress();
     renderCatalog();
     // Ссылка «К разделу Для профи» (index.html#pro): каталог рисуется скриптом, поэтому прокручиваем сами
-    if (location.hash === '#pro' && document.getElementById('pro')) document.getElementById('pro').scrollIntoView();
+    var anchor = location.hash === '#pro' || location.hash === '#math' ? document.getElementById(location.hash.slice(1)) : null;
+    if (anchor) anchor.scrollIntoView();
   </script>
 </body>
 </html>

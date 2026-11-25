@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проценты и доли · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; font-size: var(--fs-h3); line-height: var(--lh-h3); color: var(--text-strong); font-variant-numeric: tabular-nums; margin: 4px 0 8px; }
+    .readout b { font-size: 1.4em; }
+    .choices.one { grid-template-columns: 1fr 1fr; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="readout" id="readout"></p>
+          <canvas id="cv"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3><span data-i18n="nLabel"></span>: <span id="nVal"></span></h3>
+          <input type="range" id="n" min="1" max="400" step="1" value="69">
+          <h3 style="margin-top:12px"><span data-i18n="kLabel"></span>: <span id="kVal"></span></h3>
+          <input type="range" id="k" min="0" max="69" step="1" value="35">
+          <h3 style="margin-top:14px" data-i18n="presetTitle"></h3>
+          <div class="seg wrapping" id="presets" style="margin-top:8px"></div>
+          <p class="note" id="presetNote"></p>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameQ"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Проценты и доли',
+        analogy: '<b>Процент — это «сколько из ста».</b> Если из 69 пингвинов модель угадала 35, трудно сразу понять, много это или мало. А «51 из каждых 100» — уже понятно: чуть больше половины.',
+        cvLabel: 'Слева — часть из целого клетками, справа — то же самое, пересчитанное на 100 клеток',
+        modeExplore: 'Исследуй', modeGame: 'Игра: посчитай процент',
+        nLabel: 'Всего (целое)', kLabel: 'Часть',
+        presetTitle: 'Примеры из курса',
+        p_lazy: 'Ленивая модель на test', p_gentoo: 'Gentoo среди всех', p_one: 'Один пингвин из test',
+        pn_lazy: '«Ленивая» модель всегда называет самый частый вид из train (Adelie). На test она угадывает {k} из {n} — это точка отсчёта для любой модели.',
+        pn_gentoo: 'В датасете курса {n} пингвинов, из них Gentoo — {k}.',
+        pn_one: 'Один пингвин из {n} на test. Разница в одного пингвина — это совсем немного: не повод называть одну модель лучше другой.',
+        readout: '<b>{k}</b> из <b>{n}</b> = {k} : {n} = <b>{f}</b> = <b>{p}%</b>',
+        leftTitle: '{k} из {n}', rightTitle: 'на 100 клеток: ≈ {r}',
+        hintExplore: 'Двигай «Всего» и «Часть» или выбери пример из курса. Слева — сама часть, справа — та же доля на сетке из 100 клеток. Справа число клеток округлено до целого.',
+        hintGame: 'Посчитай в уме или на бумаге, потом выбери ответ. Калькулятор тоже можно — важно понять, что на что делить.',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий вопрос →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameRight: 'Верно!', gameWrong: 'Не так.',
+        qPct: 'Модель верно назвала вид у <b>{k}</b> пингвинов из <b>{n}</b>. Какая точность (доля верных ответов) в процентах?',
+        qPart: 'В группе <b>{n}</b> пингвинов. Вид Chinstrap — <b>{p}%</b> из них. Сколько это пингвинов (округли до целого)?',
+        qCmp: 'Модель А угадала <b>{a}</b> из <b>{an}</b>, модель Б — <b>{b}</b> из <b>{bn}</b>. У кого доля верных ответов больше?',
+        cmpA: 'У модели А', cmpB: 'У модели Б',
+        aPct: '{verdict} {k} : {n} = {f}, это <b>{p}%</b>.',
+        aPart: '{verdict} {n} × {p} : 100 = {x}, округляем — <b>{r}</b>.',
+        aCmp: '{verdict} А: {a} : {an} = <b>{pa}%</b>, Б: {b} : {bn} = <b>{pb}%</b>. Сравнивать можно только доли — сами числа верных ответов здесь обманывают.',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Главное: процент = часть : целое × 100. И сравнивают проценты, а не «сколько угадала» — у моделей может быть разное число вопросов.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Доля = часть : целое.</b> 35 из 69 → 35 : 69 ≈ 0.507. Доля всегда от 0 (ничего) до 1 (всё).</li>' +
+          '<li><b>Процент = доля × 100.</b> 0.507 × 100 ≈ 50.7%. То есть примерно 51 из каждых 100.</li>' +
+          '<li><b>Обратно: часть = целое × процент : 100.</b> 20% от 342 пингвинов = 342 × 20 : 100 = 68.4, то есть около 68.</li>' +
+          '<li><b>Сравнивать — только доли.</b> 61 из 69 и 70 из 100: больше угаданных у второго, а доля выше у первого (88% против 70%).</li>' +
+          '<li><b>Маленькое целое — крупные шаги.</b> Из 69 один пингвин — это почти полтора процента. Из 342 — меньше трети процента.</li>' +
+          '</ol>',
+        mlTitle: 'Где это встретится в ML',
+        mlBody:
+          '<ul>' +
+          '<li><b>Точность (accuracy)</b> — доля верных ответов модели. Встречается почти на каждом уроке, начиная с первого.</li>' +
+          '<li><b>«Ленивая» модель</b> — всегда называет самый частый вид. Её процент — точка отсчёта: модель, которая хуже ленивой, бесполезна.</li>' +
+          '<li><b>Доли видов в датасете</b> (урок 2) и разбиение на train и test: 80% и 20% пингвинов.</li>' +
+          '<li><b>Precision и recall</b> (урок 11) — тоже доли, только «часть» и «целое» берутся из разных клеток таблицы ошибок.</li>' +
+          '</ul>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь «Всего» 69. Сколько пингвинов нужно угадать, чтобы точность стала выше 90%? А выше 99%?</li>' +
+          '<li>Поставь «Часть» 1 и меняй «Всего» от 10 до 400. Как меняется процент одного пингвина?</li>' +
+          '<li>Найди две пары чисел с одинаковым процентом, например 1 из 2 и …? Почему справа сетка одинаковая?</li>' +
+          '<li>Ленивая модель угадывает 35 из 69. Сколько процентов? Чему должна быть больше точность настоящей модели?</li>' +
+          '</ul>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Примеры «ленивая модель» и «Gentoo среди всех» считаются из датасета курса (342 пингвина, test — 69) прямо на странице. Игра — 10 вопросов трёх видов: процент из части, часть из процента, сравнение долей; ответы считаются. Сверка — <code>tools/check_math.py</code>.</p>' +
+          '<p><b>Как использовать.</b> Перед уроком 1 или когда ученик путается в точности. 5 минут: «35 из 69 — это хорошо?» — пусть сначала ответят без процентов, потом с ними.</p>',
+        footer: 'Раздел «Математика для ML». Все расчёты выполняются прямо в браузере, без интернета.'
+      }
+    };
+
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('n').setAttribute('aria-label', T('nLabel'));
+    el('k').setAttribute('aria-label', T('kLabel'));
+
+    // ======================= Данные курса =======================
+    // Считаем по датасету: ленивая модель — самый частый вид в train, её попадания — на test
+    var P = window.PENGUINS, C = P.columns, ROWS = P.rows.map(function (r) { var o = {}; C.forEach(function (c, i) { o[c] = r[i]; }); return o; });
+    function countBy(rows) { var c = {}; rows.forEach(function (r) { c[r.species] = (c[r.species] || 0) + 1; }); return c; }
+    var train = ROWS.filter(function (r) { return !r.is_test; }), test = ROWS.filter(function (r) { return r.is_test; });
+    var ct = countBy(train), lazySp = Object.keys(ct).sort(function (a, b) { return ct[b] - ct[a] || (a < b ? -1 : 1); })[0];
+    var FACTS = {
+      lazy: { k: test.filter(function (r) { return r.species === lazySp; }).length, n: test.length },
+      gentoo: { k: ROWS.filter(function (r) { return r.species === 'Gentoo'; }).length, n: ROWS.length },
+      one: { k: 1, n: test.length }
+    };
+
+    // ======================= Вопросы игры =======================
+    // pct: процент по части; part: часть по проценту; cmp: у кого доля больше
+    var ROUNDS = [
+      { t: 'pct', k: FACTS.lazy.k, n: FACTS.lazy.n }, { t: 'pct', k: 61, n: 69 }, { t: 'part', n: 342, p: 20 },
+      { t: 'cmp', a: 61, an: 69, b: 70, bn: 100 }, { t: 'pct', k: 9, n: 12 }, { t: 'part', n: 69, p: 30 },
+      { t: 'pct', k: 1, n: 69 }, { t: 'cmp', a: 45, an: 50, b: 170, bn: 200 }, { t: 'part', n: 200, p: 15 }, { t: 'pct', k: 123, n: 342 }
+    ];
+    function pct(k, n) { return 100 * k / n; }
+    function fmt(x, d) { return (+x).toFixed(d); }   // точка, как во всех числах курса и в Python
+    function font(px, bold) { return (bold ? 'bold ' : '') + px + 'px ' + (MLViz.cssVar('--font') || 'Calibri, system-ui, sans-serif'); }
+    // Ответ и неверные варианты: типичные ошибки — перепутать часть и остаток, забыть умножить на 100
+    function options(q) {
+      if (q.t === 'cmp') return { right: pct(q.a, q.an) > pct(q.b, q.bn) ? 0 : 1, labels: [T('cmpA'), T('cmpB')] };
+      var right, wrong;
+      if (q.t === 'pct') {
+        right = Math.round(pct(q.k, q.n));
+        wrong = [Math.round(pct(q.n - q.k, q.n)), Math.round(100 * q.k / q.n / 10), Math.min(100, q.k), right + 10, right - 10];
+      } else {
+        right = Math.round(q.n * q.p / 100);
+        wrong = [q.p, Math.round(q.n / q.p), q.n - right, right * 2, Math.round(right / 2)];
+      }
+      var vals = [right];
+      wrong.forEach(function (w) { if (vals.length < 4 && w >= 0 && vals.indexOf(w) === -1) vals.push(w); });
+      vals = vals.sort(function (a, b) { return a - b; });
+      return { right: vals.indexOf(right), labels: vals.map(function (v) { return q.t === 'pct' ? v + '%' : String(v); }) };
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', n: FACTS.lazy.n, k: FACTS.lazy.k, preset: 'lazy' };
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g;
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 1.25 : 0.5);
+      draw();
+    }
+    function grid(ctx, x, y, w, h, n, k, cols) {
+      var rows = Math.ceil(n / cols), s = Math.min(w / cols, h / rows), gap = s > 10 ? 2 : 1;
+      var on = MLViz.cssVar('--accent'), off = MLViz.cssVar('--surface-3');
+      for (var i = 0; i < n; i++) {
+        ctx.fillStyle = i < k ? on : off;
+        ctx.fillRect(x + (i % cols) * s, y + Math.floor(i / cols) * s, s - gap, s - gap);
+      }
+    }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), narrow = g.w < 560;
+      ctx.clearRect(0, 0, g.w, g.h);
+      var n = state.n, k = state.k, r = Math.round(pct(k, n));
+      var boxW = narrow ? g.w : (g.w - 24) / 2, boxH = narrow ? (g.h - fs * 4) / 2 : g.h - fs * 2.4;
+      var cols = n <= 100 ? 10 : 20;
+      ctx.fillStyle = MLViz.cssVar('--text-strong'); ctx.font = font(fs, true);
+      ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      ctx.fillText(T('leftTitle', { k: k, n: n }), 0, 0);
+      grid(ctx, 0, fs * 1.8, boxW, boxH, n, k, cols);
+      var x2 = narrow ? 0 : boxW + 24, y2 = narrow ? fs * 1.8 + boxH + fs * 1.2 : 0;
+      ctx.fillStyle = MLViz.cssVar('--text-strong');
+      ctx.fillText(T('rightTitle', { r: r + '%' }), x2, y2);
+      grid(ctx, x2, y2 + fs * 1.8, boxW, boxH, 100, r, 10);
+    }
+
+    // ======================= Панель =======================
+    var PRESETS = ['lazy', 'gentoo', 'one'];
+    el('presets').innerHTML = PRESETS.map(function (p) { return '<button type="button" data-p="' + p + '">' + T('p_' + p) + '</button>'; }).join('');
+    function update() {
+      el('k').max = state.n;
+      el('n').value = state.n; el('k').value = state.k;
+      el('nVal').textContent = state.n; el('kVal').textContent = state.k;
+      el('readout').innerHTML = T('readout', { k: state.k, n: state.n, f: fmt(state.k / state.n, 3), p: fmt(pct(state.k, state.n), 1) });
+      MLViz.setPressed(el('presets'), function (b) { return b.dataset.p === state.preset; });
+      el('presetNote').textContent = state.preset ? T('pn_' + state.preset, FACTS[state.preset]) : '';
+      draw();
+    }
+
+    // ======================= Игра =======================
+    var game = null;
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var r = ROUNDS[q.i], o = options(r);
+        game = r;
+        el('gameQ').innerHTML = r.t === 'pct' ? T('qPct', r) : r.t === 'part' ? T('qPart', r) : T('qCmp', r);
+        // На схеме — сама задача: часть из целого (для сравнения — модель А)
+        if (r.t === 'pct') { state.n = r.n; state.k = 0; } else if (r.t === 'cmp') { state.n = r.an; state.k = 0; } else { state.n = r.n; state.k = 0; }
+        draw();
+        q.choices(el('gameChoices'), o.labels, function (i) { return i === o.right; }, function (i, ok) {
+          var v = T(ok ? 'gameRight' : 'gameWrong'), html;
+          if (r.t === 'pct') { html = T('aPct', { verdict: v, k: r.k, n: r.n, f: fmt(r.k / r.n, 3), p: fmt(pct(r.k, r.n), 1) }); state.k = r.k; }
+          else if (r.t === 'part') { var x = r.n * r.p / 100; html = T('aPart', { verdict: v, n: r.n, p: r.p, x: fmt(x, 1), r: Math.round(x) }); state.k = Math.round(x); }
+          else { html = T('aCmp', { verdict: v, a: r.a, an: r.an, b: r.b, bn: r.bn, pa: fmt(pct(r.a, r.an), 1), pb: fmt(pct(r.b, r.bn), 1) }); state.k = r.a; }
+          q.answer(ok ? 1 : 0, html);
+          draw();
+        });
+      },
+      onEnd: function () { game = null; el('gameChoices').innerHTML = ''; el('gameQ').innerHTML = ''; restore(); }
+    });
+
+    var saved = null;   // настройки «Исследуй» до игры — после игры возвращаем
+    function restore() { if (saved) { state.n = saved.n; state.k = saved.k; state.preset = saved.preset; saved = null; } update(); }
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      el('readout').hidden = m !== 'explore';
+      if (m === 'game') { saved = { n: state.n, k: state.k, preset: state.preset }; quiz.start(); }
+      else restore();
+    }
+
+    // ======================= События =======================
+    el('n').addEventListener('input', function (e) { state.n = +e.target.value; state.k = Math.min(state.k, state.n); state.preset = ''; update(); });
+    el('k').addEventListener('input', function (e) { state.k = +e.target.value; state.preset = ''; update(); });
+    el('presets').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state.preset = b.dataset.p; state.n = FACTS[state.preset].n; state.k = FACTS[state.preset].k; update();
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    window.MATH_PCT = { facts: FACTS, options: options, rounds: ROUNDS };   // для сверки (tools/check_math.py)
+
+    resize(); update(); setMode('explore');
+  })();
+  </script>
+</body>
+</html>

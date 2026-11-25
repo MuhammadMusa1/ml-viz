@@ -76,7 +76,10 @@
           projector: 'Проектор', projectorTip: 'Режим проектора: всё крупнее и контрастнее', less: 'Меньше', more: 'Больше', roadmap: 'Что учить дальше: дорога в ML-инженеры ›',
           proLabel: 'П {n}', proEyebrow: 'П {n} · Для профи', proPrev: 'Предыдущая страница: {t}', proNext: 'Следующая страница: {t}',
           proDone: 'Страница пройдена: ты доиграл игру до конца. Отметка видна на главной.', proNotDone: 'Доиграй игру на этой странице до конца — и страница отметится на главной в разделе «Для профи».',
-          proOnlyRu: 'Этот раздел пока доступен только на русском', proHome: 'К разделу «Для профи» на главной ›' },
+          proOnlyRu: 'Этот раздел пока доступен только на русском', proHome: 'К разделу «Для профи» на главной ›',
+          mathLabel: 'М {n}', mathEyebrow: 'М {n} · Математика для ML', mathHome: 'К разделу «Математика для ML» на главной ›',
+          mathDone: 'Страница пройдена: ты доиграл игру до конца. Отметка видна на главной.', mathNotDone: 'Доиграй игру на этой странице до конца — и страница отметится на главной в разделе «Математика для ML».',
+          mathFor: 'Математика к уроку: {t}', forLesson: 'К уроку: {l} · {t}' },
     tg: {"all":"Ҳамаи дарсҳо","brand":"Лабораторияи <b>ML</b>","lesson":"Дарси {n}","lessonShort":"Дарси {n} ({k}/{m})","lessonPart":"Дарси {n} · қисми {k} аз {m}","prev":"Дарси гузашта: {t}","next":"Дарси оянда: {t}","home":"Лабораторияи ML — ба саҳифаи асосӣ","mythsTitle":"Хатоҳои маъмули навкор","mythSeems":"Ба назар мерасад:","mythTruth":"Дар асл:","nextTitle":"Баъд чӣ?","nextGo":"Баъд: {l} · {t} ›","toHome":"Ба саҳифаи асосӣ ›","doneYes":"✓ Дарс гузашта шуд: ту бозиро то охир бозидӣ. Нишона дар саҳифаи асосӣ намоён аст.","doneNo":"Бозии ин саҳифаро то охир бозӣ кун — он гоҳ дарс дар саҳифаи асосӣ ҳамчун гузашташуда қайд мешавад.","book":"Китоби дарсӣ","readChapter":"Боби {n}-и китоби дарсӣ","colab":"Кушодани дафтар дар Colab","warmup":"Машқи гармкунии Python пеш аз дарс","bookLinksTitle":"Ба ин боб","vizLink":"Интерактив: {l} · {t}","copy":"Нусхабардорӣ","copied":"Нусхабардорӣ шуд ✓","projector":"Проектор","projectorTip":"Реҷаи проектор: ҳама калонтар ва равшантар","less":"Камтар","more":"Бештар"}
   };
 
@@ -90,6 +93,7 @@
   // «Урок 5» или «Урок 17 · часть 1 из 3» (short — коротко для кнопок шапки: «Урок 17 (1/3)»)
   function lessonLabel(it, short) {
     if (isProItem(it)) return t(UI, 'proLabel', { n: pad2(it.pro) });   // раздел «Для профи»: «П 03»
+    if (isMathItem(it)) return t(UI, 'mathLabel', { n: pad2(it.math) });   // раздел «Математика для ML»: «М 02»
     var p = lessonPart(it);
     return p.m > 1 ? t(UI, short ? 'lessonShort' : 'lessonPart', p) : t(UI, 'lesson', p);
   }
@@ -99,6 +103,10 @@
   // и «viz/» встречается раньше нужного места (то же на флешке, если папка называется ml-viz)
   // Страница раздела «Для профи»: у неё есть номер pro (0, 1, 2…). Проверяем именно наличие поля, потому что П 00 — это pro: 0
   function isProItem(it) { return !!it && it.pro != null && it.pro !== false; }
+  // Страница раздела «Математика для ML» (math: 1, 2, 3…) — школьная математика к урокам курса
+  function isMathItem(it) { return !!it && it.math != null && it.math !== false; }
+  // Раздел страницы: основной курс, «Для профи» или «Математика». Листание, прогресс и бирки — внутри раздела
+  function sectionOf(it) { return isProItem(it) ? 'pro' : isMathItem(it) ? 'math' : 'main'; }
   function pageId() {
     var m = location.pathname.match(/\/viz\/([^\/]+)\//);
     return m ? m[1] : null;
@@ -113,8 +121,8 @@
   function sectionItems(id) {
     var all = readyItems(), cur = null;
     all.forEach(function (it) { if (it.id === id) cur = it; });
-    var pro = isProItem(cur);
-    return all.filter(function (it) { return isProItem(it) === pro; });
+    var sec = sectionOf(cur);
+    return all.filter(function (it) { return sectionOf(it) === sec; });
   }
   function currentItem() {
     var id = pageId(), cur = null;
@@ -148,8 +156,8 @@
   function resetDone() { try { localStorage.removeItem(DONE_KEY); } catch (e) {} }
   function updateDoneNote() {
     var n = document.getElementById('doneNote'), id = pageId();
-    var pro = isProItem(currentItem()), yes = doneList().indexOf(id) !== -1;
-    if (n && id) n.textContent = t(UI, pro ? (yes ? 'proDone' : 'proNotDone') : (yes ? 'doneYes' : 'doneNo'));
+    var sec = sectionOf(currentItem()), yes = doneList().indexOf(id) !== -1;
+    if (n && id) n.textContent = t(UI, sec === 'pro' ? (yes ? 'proDone' : 'proNotDone') : sec === 'math' ? (yes ? 'mathDone' : 'mathNotDone') : (yes ? 'doneYes' : 'doneNo'));
   }
 
   // ---------- Значки ----------
@@ -216,7 +224,7 @@
     var it = ready[i], next = ready[i + 1];
     // «Урок 5 · Классические алгоритмы» — из каталога, чтобы номер и фаза не расходились со страницами
     var eb = main.querySelector('.eyebrow');
-    if (eb) eb.textContent = isProItem(it) ? t(UI, 'proEyebrow', { n: pad2(it.pro) }) : lessonLabel(it) + ' · ' + phaseName(it);
+    if (eb) eb.textContent = isProItem(it) ? t(UI, 'proEyebrow', { n: pad2(it.pro) }) : isMathItem(it) ? t(UI, 'mathEyebrow', { n: pad2(it.math) }) : lessonLabel(it) + ' · ' + phaseName(it);
     // Перевода мифов может не быть (пары из undefined) — тогда показываем русские
     var myths = it.myths && it.myths[lang] && it.myths[lang][0] && it.myths[lang][0][0] ? it.myths[lang] : it.myths && it.myths.ru;
     if (myths && myths.length) {
@@ -239,10 +247,13 @@
         (it.lesson >= 1 ? '<a class="btn" href="' + chapterUrl(root, it.lesson) + '">' + icon('book') + t(UI, 'readChapter', { n: it.lesson }) + '</a>' : '') +
         (it.lesson >= 1 && colabUrl(it.lesson) ? '<a class="btn" href="' + colabUrl(it.lesson) + '" target="_blank" rel="noopener">' + icon('external') + t(UI, 'colab') + '</a>' : '') +
         (hasWarmup(it.lesson) ? '<a class="btn" href="' + root + 'warmup/index.html?lesson=' + it.lesson + '">' + icon('code') + t(UI, 'warmup') + '</a>' : '') +
+        mathLinks(it, root) +
       '</div>' + (next
         ? '<a class="btn primary" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
         : isProItem(it)
           ? '<a class="btn primary" href="' + root + 'index.html#pro">' + t(UI, 'proHome') + '</a>'
+          : isMathItem(it)
+          ? '<a class="btn primary" href="' + root + 'index.html#math">' + t(UI, 'mathHome') + '</a>'
           : '<a class="btn primary" href="' + root + 'roadmap/index.html">' + icon('map') + t(UI, 'roadmap') + '</a>') + '</div>' +
       '<p class="note" id="doneNote"></p>';
     main.appendChild(br);
@@ -319,13 +330,25 @@
     window.addEventListener('resize', function () { closeTerm(false); });
   }
 
+  // Связь уроков и математики: на уроке — кнопки «Математика к уроку», на странице математики — «К уроку N».
+  // Берётся из каталога (поле forLessons у страниц математики), страницы уроков не правим
+  function mathLinks(it, root) {
+    var out = '';
+    readyItems().forEach(function (x) {
+      if (isMathItem(it) && x.lesson != null && !isProItem(x) && !isMathItem(x) && (it.forLessons || []).indexOf(x.lesson) !== -1 && lessonPart(x).k === 1)
+        out += '<a class="btn" href="' + root + 'viz/' + x.id + '/index.html">' + icon('arrow') + t(UI, 'forLesson', { l: lessonLabel(x), t: tx(x.title) }) + '</a>';
+      if (!isMathItem(it) && !isProItem(it) && isMathItem(x) && (x.forLessons || []).indexOf(it.lesson) !== -1)
+        out += '<a class="btn" href="' + root + 'viz/' + x.id + '/index.html">' + icon('flask') + t(UI, 'mathFor', { t: tx(x.title) }) + '</a>';
+    });
+    return out;
+  }
   function lessonNav(root) {
     var id = pageId();
     if (!id || !window.CATALOG) return '';
     var ready = sectionItems(id);
     var i = ready.map(function (it) { return it.id; }).indexOf(id);
     if (i === -1) return '';
-    var pro = isProItem(ready[i]);
+    var pro = sectionOf(ready[i]) !== 'main';   // в разделах — «страница», а не «урок»
     function link(it, cls, label, tipKey) {
       if (pro) tipKey = tipKey === 'prev' ? 'proPrev' : 'proNext';
       var tip = attr(t(UI, tipKey, { t: tx(it.title) || it.id }));
@@ -644,7 +667,7 @@
 
   window.MLViz = {
     lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, icon: icon, lessonPart: lessonPart, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
-    isPro: function () { return isProItem(currentItem()); }, isProItem: isProItem, pad2: pad2,
+    isPro: function () { return isProItem(currentItem()); }, isProItem: isProItem, isMathItem: isMathItem, pad2: pad2,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
     fontPx: fontPx, isProjector: isProjector, zoom: zoom, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, compare: compare, quiz: quiz
   };
