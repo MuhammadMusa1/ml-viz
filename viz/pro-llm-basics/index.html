@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Как устроена LLM: от ИИ до языковой модели · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .feature { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); margin: 0 0 8px; }
+    .layer-info { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; font-size: var(--fs-label); line-height: var(--lh-label); }
+    .layer-info b { color: var(--text-strong); }
+    .layer-info h3 { margin: 0; }
+    #layerSel button { text-align: left; }
+    .gen-line { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); min-height: 2.4em; margin: 0 0 8px; overflow-wrap: anywhere; }
+    .gen-line .last { background: var(--accent); color: var(--accent-ink); border-radius: var(--r-xs); padding: 0 6px; }
+    .cands { display: flex; flex-direction: column; gap: 6px; }
+    .cand { display: grid; grid-template-columns: minmax(7em, 11em) 1fr 4.2em; gap: 8px; align-items: center; min-height: var(--tap); text-align: left; padding: 4px 10px; font-weight: 400; }
+    .cand .bar { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+    .cand .bar i { display: block; height: 100%; background: var(--accent); }
+    .cand .p { text-align: right; font-variant-numeric: tabular-nums; }
+    .gen-ctrl { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .order-note { color: var(--text-2); font-size: var(--fs-label); margin: 0 0 8px; }
+    .choices.one { grid-template-columns: 1fr; }
+    .choices.one button { text-align: left; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="feature" data-i18n="feature"></p>
+          <canvas id="cv"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+        <div class="stage viz-extra">
+          <h3 class="sub" data-i18n="genTitle"></h3>
+          <p class="note" data-i18n="genLead"></p>
+          <div class="seg wrapping" id="starts" style="margin:8px 0"></div>
+          <p class="gen-line" id="genLine" aria-live="polite"></p>
+          <p class="order-note" id="orderNote"></p>
+          <div class="cands" id="cands"></div>
+          <div class="gen-ctrl">
+            <button type="button" id="greedyBtn" data-i18n="greedy"></button>
+            <button type="button" id="sampleBtn" data-i18n="sample"></button>
+            <button type="button" id="resetBtn" data-i18n="reset"></button>
+          </div>
+          <h3><span data-i18n="tLabel"></span>: <span id="tVal"></span></h3>
+          <input type="range" id="temp" min="0" max="2" step="0.1" value="1">
+          <p class="note" data-i18n="genNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="layerTitle"></h3>
+          <div class="seg wrapping" id="layerSel" style="margin-top:8px"></div>
+          <div class="layer-info" id="layerInfo"></div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameItem"></p>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="trainTitle"></h2>
+      <div data-i18n-html="trainBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="kindsTitle"></h2>
+      <div data-i18n-html="kindsBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="famTitle"></h2>
+      <div data-i18n-html="famBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Как устроена LLM: от ИИ до языковой модели',
+        analogy: '<b>Искусственный интеллект, машинное обучение, глубокое обучение и LLM вложены друг в друга, как матрёшки.</b> Самая маленькая — LLM — это умный автодополнитель: по началу текста угадывает следующий кусок, дописывает его и угадывает снова.',
+        feature: 'Четыре вложенных слоя: каждый внутренний — частный случай внешнего',
+        cvLabel: 'Вложенные области: искусственный интеллект содержит машинное обучение, оно — глубокое обучение, оно — большие языковые модели',
+        modeExplore: 'Исследуй', modeGame: 'Игра: какой это слой?',
+        layerTitle: 'Слой',
+        l_ai: 'Искусственный интеллект (AI)', l_ml: 'Машинное обучение (ML)', l_dl: 'Глубокое обучение (DL)', l_llm: 'Большие языковые модели (LLM)',
+        s_ai: 'AI', s_ml: 'ML', s_dl: 'DL', s_llm: 'LLM',
+        sub_ai: 'правила может написать человек', sub_ml: 'правило ищется по примерам', sub_dl: 'нейросети из многих слоёв', sub_llm: 'продолжают текст',
+        d_ai: 'Любая программа, которая решает «человеческие» задачи: играет, планирует, распознаёт, отвечает. Учиться ей не обязательно — правила может написать человек.',
+        d_ml: 'Программа сама находит правило по примерам с ответами. Человек готовит данные, выбирает признаки и модель, проверяет на test.',
+        d_dl: 'Машинное обучение на нейросетях из многих слоёв. Признаки сеть находит сама — прямо из пикселей, звука или текста. Нужны большие данные и видеокарты (GPU).',
+        d_llm: 'Глубокие нейросети-трансформеры, обученные продолжать текст. Миллиарды параметров, триллионы токенов в обучении. Отвечают, пишут код, переводят — всё через «угадай следующий токен».',
+        e_ai: 'Антифрод на правилах («сумма больше лимита ночью — на проверку»), классические шахматы с перебором ходов, экспертные системы.',
+        e_ml: 'KNN и дерево решений на пингвинах (уроки 5 и 7), случайный лес (урок 9), скоринг заявок, прогноз оттока клиентов.',
+        e_dl: 'Нейросеть узнаёт рукописные цифры (урок 14), свёртки для картинок (урок 15), распознавание речи в колл-центре, генерация картинок, модели эмбеддингов (П1).',
+        e_llm: 'Claude, GPT, Gemini, Qwen, DeepSeek. Ассистент по документации банка на локальной модели.',
+        kWhat: 'Что это', kEx: 'Примеры', kData: 'На чём учится',
+        t_ai: 'Ни на чём, если правила написал человек.', t_ml: 'Таблицы с признаками: сотни и тысячи примеров.', t_dl: 'Миллионы картинок, часы звука, большие тексты.', t_llm: 'Триллионы токенов текста, потом — инструкции и оценки людей.',
+        hintExplore: 'Нажми на слой на схеме или выбери его в панели. Ниже — настоящий автодополнитель: он угадывает следующее слово так же, как LLM, только считает вероятности по счётчикам.',
+        hintGame: 'Назови самый маленький слой, в который попадает пример. Нейросеть — это и ML, и AI, но правильный ответ — самый внутренний слой.',
+        genTitle: 'Автодополнитель на счётчиках',
+        genLead: 'Мини-модель выучила 32 фразы про банк: посчитала, какое слово идёт после каких двух. Выбери первое слово и достраивай фразу по одному слову — как LLM.',
+        greedy: 'Самое вероятное слово', sample: 'Вытянуть по вероятностям', reset: 'Сначала',
+        tLabel: 'Температура',
+        genNote: 'Настоящая LLM делает то же самое: даёт вероятность каждому возможному следующему токену. Только считает её не по счётчикам, а нейросетью с миллиардами параметров — поэтому справляется и с фразами, которых никогда не видела.',
+        order3: 'Смотрю на два последних слова: «{a} {b}». Мест в фразах, где они идут подряд: {n}.',
+        order2: 'Двух последних слов вместе в фразах не было. Смотрю только на последнее: «{b}». Мест в фразах: {n}.',
+        pipe: 'текст → токены → эмбеддинги → слои трансформера (attention) → вероятности → следующий токен → снова',
+        order1: 'Слово «{b}» ни разу не стояло перед другим. Беру частоту всех слов.',
+        done: 'Фраза закончилась — модель поставила точку.',
+        candAria: 'Дописать слово «{w}», вероятность {p}',
+        gameAsk: 'К какому самому маленькому слою это относится?',
+        gameRight: 'Верно!', gameWrong: 'Не совсем.',
+        gameLine: '{verdict} Ответ: <b>{l}</b>. {why}',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий пример →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Каждый внутренний слой — частный случай внешнего: любая LLM — это и глубокое обучение, и ML, и AI. Но не любой AI учится на данных.',
+        g_rules: 'Антифрод на правилах: «перевод больше лимита ночью на новую карту — отправить на проверку». Правила написали сотрудники.',
+        w_rules: 'Программа ничему не училась: правила написал человек. Это AI без машинного обучения.',
+        g_knn: 'KNN определяет вид пингвина по длине клюва и массе.',
+        w_knn: 'Правило найдено по примерам с ответами, нейросети нет — классическое ML.',
+        g_tree: 'Дерево решений решает, одобрить ли заявку, по доходу, стажу и кредитной истории.',
+        w_tree: 'Дерево строится по прошлым заявкам с ответами — классическое ML.',
+        g_mnist: 'Свёрточная нейросеть узнаёт рукописные цифры на чеках.',
+        w_mnist: 'Многослойная нейросеть сама находит признаки в пикселях — глубокое обучение. Текст она не продолжает, поэтому не LLM.',
+        g_chat: 'Чат-бот на Claude отвечает сотруднику на вопрос о регламенте.',
+        w_chat: 'Модель продолжает текст: вопрос → ответ, токен за токеном. Это LLM.',
+        g_chess: 'Классическая шахматная программа перебирает ходы на 10 шагов вперёд и оценивает позицию по формуле.',
+        w_chess: 'Перебор и формулу оценки написали люди, обучения нет — AI без ML.',
+        g_speech: 'Нейросеть переводит звонок в колл-центр в текст.',
+        w_speech: 'Глубокая нейросеть работает со звуком. Это глубокое обучение, но не языковая модель, которая дописывает текст.',
+        g_forest: 'Случайный лес прогнозирует, уйдёт ли клиент из банка.',
+        w_forest: 'Ансамбль деревьев на табличных признаках — классическое ML.',
+        g_cft: 'Локальная модель qwen2.5 отвечает разработчикам по документации ЦФТ.',
+        w_cft: 'Qwen — большая языковая модель: она пишет ответ, продолжая текст. Документацию ей подкладывает RAG.',
+        g_image: 'Нейросеть рисует картинку для рекламы по текстовому описанию.',
+        w_image: 'Генерирует, но не текст: это глубокое обучение (диффузионная модель). Генеративная — не значит LLM.',
+        howTitle: 'Как LLM пишет ответ',
+        howBody:
+          '<ol>' +
+          '<li><b>Токены.</b> Текст режется на куски — токены: слова и части слов. Каждый токен получает номер из словаря (урок 17, «Токенизатор»).</li>' +
+          '<li><b>Эмбеддинги.</b> Номер превращается в вектор — список чисел, где близкие по смыслу токены лежат рядом (урок 17 и П1).</li>' +
+          '<li><b>Слои трансформера.</b> Вектор проходит через десятки одинаковых слоёв. В каждом attention решает, на какие слова текста смотреть (урок 17, «Attention»), а полносвязная часть добавляет выученные знания.</li>' +
+          '<li><b>Вероятности.</b> На выходе — число (логит) для каждого токена словаря. Softmax с температурой превращает их в вероятности (П3).</li>' +
+          '<li><b>Один токен — и снова.</b> Выбираем токен, дописываем в конец и запускаем всё заново. Ответ из 300 токенов — это 300 таких проходов. Именно это делает автодополнитель выше, только вероятности он берёт из счётчиков.</li>' +
+          '</ol>',
+        trainTitle: 'Как LLM учится',
+        trainBody:
+          '<ol>' +
+          '<li><b>Предобучение (pre-training).</b> Модель угадывает следующий токен на триллионах токенов текста: книги, сайты, код. Так она выучивает язык и факты. Это самый дорогой этап: тысячи GPU на недели и месяцы.</li>' +
+          '<li><b>Дообучение на инструкциях (SFT).</b> На примерах «вопрос → хороший ответ» модель учится быть помощником, а не просто продолжать любой текст.</li>' +
+          '<li><b>Обучение на предпочтениях (RLHF).</b> Люди или другая модель сравнивают пары ответов, и модель учится давать тот, что лучше: полезнее, честнее, безопаснее.</li>' +
+          '<li><b>Обучение рассуждать.</b> «Думающие» (reasoning) модели дополнительно учат решать задачи по шагам и проверять себя — на задачах, где ответ можно проверить: математика, код.</li>' +
+          '</ol>' +
+          '<p>После обучения знания модели <b>заморожены на дату</b> (knowledge cutoff). Новые тарифы банка она не знает и сама в интернет не ходит — свежие данные ей дают через RAG (П2) или инструменты (П7).</p>',
+        kindsTitle: 'Виды LLM',
+        kindsBody:
+          '<h3 class="sub">По назначению</h3>' +
+          '<div class="tbl-wrap"><table class="ptab"><thead><tr><th>Вид</th><th>Что делает</th><th>Пример задачи в банке</th></tr></thead><tbody>' +
+          '<tr><td>Чат-модели (instruct)</td><td>Отвечают на вопросы, следуют инструкциям</td><td>Ассистент по регламентам</td></tr>' +
+          '<tr><td>Рассуждающие (reasoning)</td><td>Сначала «думают» по шагам, потом отвечают: медленнее и дороже, но точнее на сложном</td><td>Разбор сложного расчёта, анализ кода</td></tr>' +
+          '<tr><td>Модели для кода</td><td>Дописывают и правят код, работают в IDE (П11)</td><td>Ассистент разработчика</td></tr>' +
+          '<tr><td>Мультимодальные</td><td>Понимают картинки, документы-сканы, звук</td><td>Разбор скана договора</td></tr>' +
+          '<tr><td>Модели эмбеддингов</td><td>Не пишут текст, а превращают его в вектор для поиска (П1)</td><td>Поиск в RAG</td></tr>' +
+          '</tbody></table></div>' +
+          '<h3 class="sub">Открытые и закрытые</h3>' +
+          '<div class="tbl-wrap"><table class="ptab"><thead><tr><th></th><th>Закрытые (по API)</th><th>Открытые веса (open-weight)</th></tr></thead><tbody>' +
+          '<tr><td>Как получить</td><td>Только через сервис провайдера</td><td>Скачать веса и запустить у себя (Ollama, vLLM)</td></tr>' +
+          '<tr><td>Данные</td><td>Уходят провайдеру</td><td>Остаются в банке</td></tr>' +
+          '<tr><td>Качество</td><td>Обычно самые сильные</td><td>Догоняют; маленькие версии слабее</td></tr>' +
+          '<tr><td>Примеры</td><td>GPT, Claude, Gemini</td><td>Qwen, DeepSeek, Mistral, Gemma, Llama</td></tr>' +
+          '</tbody></table></div>' +
+          '<p class="note">«Открытые веса» — не всегда «открытый код и данные»: обучающие данные обычно не публикуют. Лицензии разные — перед использованием в банке их читает юрист.</p>' +
+          '<h3 class="sub">По архитектуре и размеру</h3>' +
+          '<ul>' +
+          '<li><b>Decoder (как GPT)</b> — генерирует текст слева направо. Так устроены почти все современные чат-модели.</li>' +
+          '<li><b>Encoder (как BERT)</b> — читает текст целиком, но не пишет. На нём делают классификаторы и эмбеддинги.</li>' +
+          '<li><b>Encoder-decoder (как T5)</b> — читает и пишет; раньше популярен для перевода и пересказа.</li>' +
+          '<li><b>Mixture of Experts (MoE)</b> — внутри много «экспертов», на каждый токен работают лишь некоторые. Параметров много, а считать на токен дешевле.</li>' +
+          '<li><b>Размер</b> пишут в миллиардах параметров: 7B, 14B, 70B. Память ≈ параметры × байт на параметр: 14B в 16 битах ≈ 28 ГБ, после квантизации до 4 бит ≈ 7 ГБ (плюс память на контекст). Поэтому qwen2.5:14b в 4 битах помещается на обычный сервер, но на CPU отвечает медленно.</li>' +
+          '</ul>',
+        famTitle: 'Семейства моделей (на ноябрь 2026)',
+        famBody:
+          '<div class="tbl-wrap"><table class="ptab"><thead><tr><th>Кто делает</th><th>Семейство</th><th>Доступ</th></tr></thead><tbody>' +
+          '<tr><td>OpenAI</td><td>GPT</td><td>Закрытая, по API</td></tr>' +
+          '<tr><td>Anthropic</td><td>Claude</td><td>Закрытая, по API и через облачные платформы</td></tr>' +
+          '<tr><td>Google</td><td>Gemini / Gemma</td><td>Gemini — закрытая; Gemma — открытые веса</td></tr>' +
+          '<tr><td>Alibaba</td><td>Qwen</td><td>Много открытых версий; старшие — только по API</td></tr>' +
+          '<tr><td>DeepSeek</td><td>DeepSeek</td><td>Открытые веса</td></tr>' +
+          '<tr><td>Mistral AI</td><td>Mistral</td><td>Открытые и закрытые версии</td></tr>' +
+          '<tr><td>Meta</td><td>Llama</td><td>Открытые веса (последний открытый выпуск — Llama 4)</td></tr>' +
+          '<tr><td>Moonshot AI</td><td>Kimi</td><td>Открытые веса</td></tr>' +
+          '</tbody></table></div>' +
+          '<p class="note">Версии выходят каждые несколько месяцев, поэтому номера здесь не пишем. Перед выбором смотрите страницу производителя и сравнивайте модели на своём golden set (П5), а не по общим рейтингам.</p>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Начни с «клиент» и нажимай «Самое вероятное слово». Получится ли когда-нибудь другая фраза? А если поставить температуру 1.5 и тянуть по вероятностям?</li>' +
+          '<li>Дойди до «модель нашла ответ в». Сколько вариантов у следующего слова и откуда эти доли?</li>' +
+          '<li>Найди шаг, где автодополнитель смотрит только на одно последнее слово. Почему он так делает и чем это плохо?</li>' +
+          '<li>Почему настоящей LLM не хватит счётчиков, как здесь? Что будет со счётчиками, если фраз не 32, а миллиарды и контекст — не 2 слова, а 100 000 токенов?</li>' +
+          '<li>Модель эмбеддингов bge-m3 — это LLM или нет? Найди её в таблице «Виды LLM» и объясни ответ.</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: формула',
+        mathBody:
+          '<p>Автодополнитель — модель на триграммах с откатом. Вероятность слова w после двух слов a, b: <code>P(w | a, b) = N(a, b, w) / N(a, b)</code>, где N — сколько раз сочетание встретилось в фразах. Если «a b» не встречалось — откат на одно слово: <code>P(w | b) = N(b, w) / N(b)</code>, если и его нет — на частоту слов.</p>' +
+          '<p>Температура: <code>P_T(w) ∝ P(w)^(1/T)</code> — то же, что softmax(log P / T). При T = 0 берём самое вероятное слово.</p>' +
+          '<p>LLM считает <code>P(w | весь предыдущий текст)</code> нейросетью: <code>softmax(W · h / T)</code>, где h — вектор последнего токена после всех слоёв трансформера. Счётчики не умеют обобщать на невиданные сочетания, нейросеть — умеет.</p>' +
+          '<p>Код ниже запускается в Colab целиком и даёт те же числа, что страница:</p>' +
+          '<pre class="pycode"><code>from collections import Counter, defaultdict\n\n' +
+          'phrases = [\'модель нашла ответ в документах .\', \'модель нашла ответ в регламенте .\',\n' +
+          '           \'ассистент нашёл ответ в документах .\', \'модель не нашла ответ .\']   # часть фраз страницы\n\n' +
+          'tri, bi = defaultdict(Counter), defaultdict(Counter)\n' +
+          'for s in phrases:\n' +
+          '    t = [\'&lt;s&gt;\', \'&lt;s&gt;\'] + s.split()\n' +
+          '    for i in range(2, len(t)):\n' +
+          '        tri[(t[i-2], t[i-1])][t[i]] += 1\n' +
+          '        bi[t[i-1]][t[i]] += 1\n\n' +
+          'def probs(a, b):\n' +
+          '    c = tri[(a, b)] or bi[b]          # откат, если двух слов вместе не было\n' +
+          '    n = sum(c.values())\n' +
+          '    return {w: k / n for w, k in c.most_common()}\n\n' +
+          'print(probs(\'ответ\', \'в\'))      # {\'документах\': 0.67, \'регламенте\': 0.33}\n' +
+          'print(probs(\'нашла\', \'ответ\'))</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> 32 короткие фразы про банк и разработку. Автодополнитель считает настоящие вероятности по счётчикам триграмм с откатом; температура применяется как в П3. Сверка — <code>tools/check_pro.py</code>. Игра — 10 примеров, ответ — самый внутренний слой.</p>' +
+          '<p><b>Как использовать на занятии.</b> 0–10 мин: спросить, чем отличаются AI, ML, нейросети и ChatGPT, записать ответы, потом разложить их по матрёшке. Дальше — достроить фразу автодополнителем всей группой, голосуя за следующее слово.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Антифрод на правилах — это ИИ? Почему LLM «не знает» вчерашних новостей? Почему модель на 14 миллиардов параметров работает на сервере без видеокарты, но медленно? Когда банку достаточно классического ML, а LLM избыточна?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('temp').setAttribute('aria-label', T('tLabel'));
+
+    // ======================= Данные =======================
+    // Фразы автодополнителя (слова через пробел, точка — отдельный токен) и примеры игры с ответом-слоем
+    var DATA = /* data:start */{
+     "layers": ["ai", "ml", "dl", "llm"],
+     "phrases": [
+      "клиент открыл карту в приложении .", "клиент открыл вклад в приложении .", "клиент открыл вклад в офисе .",
+      "клиент закрыл карту в приложении .", "клиент заблокировал карту в приложении .", "клиент перевёл деньги на карту .",
+      "клиент перевёл деньги другу .", "клиент оплатил покупку картой .", "клиент спросил ассистента о тарифе .",
+      "клиент спросил оператора о кредите .", "оператор открыл заявку на кредит .", "оператор одобрил заявку на кредит .",
+      "оператор отклонил заявку на кредит .", "оператор ответил клиенту .", "модель одобрила заявку на кредит .",
+      "модель отклонила заявку на кредит .", "модель нашла ответ в документах .", "модель нашла ответ в регламенте .",
+      "модель не нашла ответ .", "модель угадала следующее слово .", "ассистент нашёл ответ в документах .",
+      "ассистент нашёл ошибку в коде .", "ассистент написал тест для кода .", "ассистент объяснил код разработчику .",
+      "ассистент ответил клиенту о тарифе .", "разработчик написал код .", "разработчик написал тест для кода .",
+      "разработчик проверил код ассистента .", "разработчик нашёл ошибку в коде .", "банк выдал кредит клиенту .",
+      "банк выдал карту клиенту .", "банк открыл новый офис ."],
+     "starts": ["клиент", "модель", "ассистент", "разработчик", "оператор", "банк"],
+     "rounds": [["rules","ai"],["knn","ml"],["mnist","dl"],["chat","llm"],["chess","ai"],["tree","ml"],["speech","dl"],["cft","llm"],["forest","ml"],["image","dl"]]
+    }/* data:end */;
+    var LAYERS = DATA.layers;
+
+    // ======================= Модель: триграммы с откатом =======================
+    var TRI = {}, BI = {}, UNI = {};
+    function inc(map, k, w) { (map[k] = map[k] || {})[w] = (map[k][w] || 0) + 1; }
+    DATA.phrases.forEach(function (s) {
+      var t = ['<s>', '<s>'].concat(s.split(' '));
+      for (var i = 2; i < t.length; i++) {
+        inc(TRI, t[i - 2] + ' ' + t[i - 1], t[i]); inc(BI, t[i - 1], t[i]);
+        UNI[t[i]] = (UNI[t[i]] || 0) + 1;
+      }
+    });
+    // Вероятности следующего слова по двум последним: самый длинный встреченный контекст, потом откат
+    function dist(a, b, temp) {
+      var c = TRI[a + ' ' + b], order = 3;
+      if (!c) { c = BI[b]; order = 2; }
+      if (!c) { c = UNI; order = 1; }
+      var words = Object.keys(c), n = words.reduce(function (s, w) { return s + c[w]; }, 0);
+      var p = words.map(function (w) { return { w: w, k: c[w], p: c[w] / n }; });
+      // Сортировка: по вероятности, при равенстве — по алфавиту (так и в сверке на Python)
+      p.sort(function (x, y) { return y.p - x.p || (x.w < y.w ? -1 : x.w > y.w ? 1 : 0); });
+      if (temp === 0) p.forEach(function (x, i) { x.q = i === 0 ? 1 : 0; });
+      else {
+        var z = p.map(function (x) { return Math.pow(x.p, 1 / temp); }), s = z.reduce(function (u, v) { return u + v; }, 0);
+        p.forEach(function (x, i) { x.q = z[i] / s; });
+      }
+      return { order: order, n: n, items: p };
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', layer: 3, seq: ['клиент'], temp: 1, game: null };
+
+    // ======================= Матрёшка слоёв =======================
+    var cv = el('cv'), g, BOXES = [];
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 1.15 : 0.5);
+      draw();
+    }
+    function draw() {
+      var ctx = g.ctx, fs = MLPro.fs(g), lh = Math.round(fs * 1.35), narrow = g.w < 560;
+      ctx.clearRect(0, 0, g.w, g.h);
+      var hl = state.mode === 'game' ? (state.game && state.game.answered ? LAYERS.indexOf(state.game.right) : -1) : state.layer;
+      var fills = ['--surface-1', '--surface-2', '--surface-3', '--paper'];
+      BOXES = [];
+      // Каждый слой — прямоугольник внутри предыдущего; сверху у каждого остаётся полоса под подпись
+      var x = 2, y = 2, w = g.w - 4, h = g.h - 4, head = lh * 2 + 12, side = narrow ? 12 : g.w * 0.07;
+      LAYERS.forEach(function (id, i) {
+        BOXES.push({ x: x, y: y, w: w, h: h, i: i });
+        MLPro.rr(ctx, x, y, w, h, 14);
+        ctx.fillStyle = MLViz.cssVar(fills[i]); ctx.fill();
+        ctx.lineWidth = i === hl ? 4 : 1.5;
+        ctx.strokeStyle = i === hl ? MLViz.cssVar('--accent') : MLViz.cssVar('--line-strong'); ctx.stroke();
+        var ink = i === 3 ? MLViz.cssVar('--ink') : MLViz.cssVar('--text-strong');
+        ctx.fillStyle = ink; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.font = MLPro.font(fs + 2, true);
+        ctx.fillText(T(narrow ? 's_' + id : 'l_' + id), x + 12, y + 8);
+        ctx.font = MLPro.font(fs);
+        ctx.fillStyle = i === 3 ? ink : MLViz.cssVar('--text-2');
+        ctx.fillText(T('sub_' + id), x + 12, y + 8 + lh + 2);
+        // Внутри LLM — её конвейер одной строкой с переносами: так видно, что внутри самой маленькой матрёшки
+        if (i === 3) {
+          ctx.font = MLPro.font(fs); ctx.fillStyle = ink;
+          MLPro.wrap(ctx, T('pipe'), w - 24).forEach(function (ln, k) { ctx.fillText(ln, x + 12, y + 8 + lh * 2 + 12 + k * lh); });
+        }
+        x += side; y += head; w -= side * 2; h -= head + (narrow ? 10 : 14);
+      });
+    }
+    function layerAt(p) {
+      for (var i = BOXES.length - 1; i >= 0; i--) { var b = BOXES[i]; if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) return i; }
+      return -1;
+    }
+
+    // ======================= Панель слоёв =======================
+    function renderLayers() {
+      el('layerSel').innerHTML = LAYERS.map(function (id, i) { return '<button type="button" data-i="' + i + '">' + T('l_' + id) + '</button>'; }).join('');
+    }
+    function updatePanel() {
+      var id = LAYERS[state.layer];
+      MLViz.setPressed(el('layerSel'), function (b) { return +b.dataset.i === state.layer; });
+      el('layerInfo').innerHTML = '<h3>' + T('l_' + id) + '</h3>' +
+        '<div><b>' + T('kWhat') + ':</b> ' + T('d_' + id) + '</div>' +
+        '<div><b>' + T('kData') + ':</b> ' + T('t_' + id) + '</div>' +
+        '<div><b>' + T('kEx') + ':</b> ' + T('e_' + id) + '</div>';
+    }
+
+    // ======================= Автодополнитель =======================
+    function ctx2() { var s = ['<s>', '<s>'].concat(state.seq); return [s[s.length - 2], s[s.length - 1]]; }
+    function ended() { return state.seq[state.seq.length - 1] === '.'; }
+    function renderGen() {
+      MLViz.setPressed(el('starts'), function (b) { return b.dataset.w === state.seq[0]; });
+      el('genLine').innerHTML = state.seq.map(function (w, i) { return i === state.seq.length - 1 && state.seq.length > 1 ? '<span class="last">' + esc(w) + '</span>' : esc(w); }).join(' ');
+      el('tVal').textContent = MLPro.fix(state.temp, 1);
+      if (ended()) {
+        el('orderNote').textContent = T('done'); el('cands').innerHTML = '';
+        el('greedyBtn').disabled = el('sampleBtn').disabled = true;
+        return;
+      }
+      el('greedyBtn').disabled = el('sampleBtn').disabled = false;
+      var c = ctx2(), d = dist(c[0], c[1], state.temp);
+      el('orderNote').textContent = T('order' + d.order, { a: c[0] === '<s>' ? '…' : c[0], b: c[1], n: d.n });
+      el('cands').innerHTML = d.items.slice(0, 8).map(function (x) {
+        var pct = MLPro.pct(x.q, x.q < 0.1 && x.q > 0 ? 1 : 0);
+        return '<button type="button" class="cand" data-w="' + esc(x.w) + '" aria-label="' + esc(T('candAria', { w: x.w, p: pct })) + '">' +
+          '<span>' + esc(x.w) + '</span><span class="bar"><i style="width:' + (100 * x.q) + '%"></i></span><span class="p">' + pct + '</span></button>';
+      }).join('');
+    }
+    function step(pick) {
+      if (ended()) return;
+      var c = ctx2(), d = dist(c[0], c[1], state.temp), w;
+      if (pick === 'greedy') w = d.items[0].w;
+      else {   // жребий по вероятностям с температурой
+        var r = Math.random(), acc = 0; w = d.items[d.items.length - 1].w;
+        for (var i = 0; i < d.items.length; i++) { acc += d.items[i].q; if (r < acc) { w = d.items[i].w; break; } }
+      }
+      state.seq.push(w); renderGen();
+    }
+
+    // ======================= Игра «Какой это слой?» =======================
+    var order = [];
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: DATA.rounds.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      start: function () { order = MLViz.shuffle(DATA.rounds, Math.random); },
+      round: function (q) {
+        var r = order[q.i], right = r[1];
+        state.game = { right: right, answered: false };
+        el('gameItem').innerHTML = '<b>' + esc(T('g_' + r[0])) + '</b>';
+        q.choices(el('gameChoices'), LAYERS.map(function (id) { return T('l_' + id); }), function (k) { return LAYERS[k] === right; }, function (k, ok) {
+          state.game.answered = true;
+          q.answer(ok ? 1 : 0, T('gameLine', { verdict: T(ok ? 'gameRight' : 'gameWrong'), l: T('l_' + right), why: esc(T('w_' + r[0])) }));
+          draw();
+        });
+        draw();
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameItem').innerHTML = ''; draw(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else state.game = null;   // выбранный слой в «Исследуй» игра не трогает
+      draw();
+    }
+
+    // ======================= События =======================
+    renderLayers();
+    el('starts').innerHTML = DATA.starts.map(function (w) { return '<button type="button" data-w="' + esc(w) + '">' + esc(w) + '</button>'; }).join('');
+    el('layerSel').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state.layer = +b.dataset.i; updatePanel(); draw();
+    });
+    cv.addEventListener('click', function (e) {
+      if (state.mode !== 'explore') return;
+      var i = layerAt(MLViz.pointer(cv, e)); if (i < 0) return;
+      state.layer = i; updatePanel(); draw();
+    });
+    el('starts').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      state.seq = [b.dataset.w]; renderGen();
+    });
+    el('cands').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b || ended()) return;
+      state.seq.push(b.dataset.w); renderGen();
+    });
+    el('greedyBtn').addEventListener('click', function () { step('greedy'); });
+    el('sampleBtn').addEventListener('click', function () { step('sample'); });
+    el('resetBtn').addEventListener('click', function () { state.seq = [state.seq[0]]; renderGen(); });
+    el('temp').addEventListener('input', function (e) { state.temp = +e.target.value; renderGen(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    window.PRO_LLM = { dist: dist };   // для сверки (tools/check_pro.py)
+
+    updatePanel(); renderGen(); resize(); setMode('explore');
+  })();
+  </script>
+</body>
+</html>

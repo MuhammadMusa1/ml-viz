@@ -8,6 +8,7 @@
 Данные страниц берутся прямо из HTML — между метками /* data:start */ и /* data:end */.
 
 Что сверяется (последний прогон: расхождений 0):
+  П0  вероятности автодополнителя (триграммы с откатом) × 5 температур ↔ collections.Counter на Python
   П1  косинус и евклидово расстояние запроса до 39 фраз     ↔ sklearn.metrics.pairwise
   П2  recall@k, MRR@k, число чанков: 15 размеров × 11 перекрытий × 2 поиска × k=1,3,5 (990 настроек)
                                                             ↔ эталонная реализация BM25 / нарезки на Python
@@ -22,6 +23,7 @@
                                                             ↔ та же модель на numpy
   П10 оценка по критериям, экономия и 95% интервал Уэлча, кольцо радара: 8 инструментов × 17 размеров пилота × 5 наборов весов
                                                             ↔ scipy.stats.ttest_ind(equal_var=False).confidence_interval
+  П11 отбор инструментов по требованиям (все 32 набора) и ступень задач игры ↔ тот же отбор на Python
 
 Пример сверки (П5, порог 0.5):
   >>> model = GaussianNB().fit(X_train[['bill_length_mm', 'body_mass_g']], y_train)
@@ -350,11 +352,59 @@ def check_p10(pg):
     report('П10', n_, bad)
 
 
+# ---------------------------------------------------------------- П0
+def check_p0(pg):
+    from collections import Counter, defaultdict
+    D = data('pro-llm-basics')
+    tri, bi, uni = defaultdict(Counter), defaultdict(Counter), Counter()
+    for s in D['phrases']:
+        t = ['<s>', '<s>'] + s.split()
+        for i in range(2, len(t)):
+            tri[(t[i - 2], t[i - 1])][t[i]] += 1; bi[t[i - 1]][t[i]] += 1; uni[t[i]] += 1
+
+    def ref(a, b, T):
+        c, order = tri.get((a, b)), 3
+        if not c:
+            c, order = bi.get(b), 2
+        if not c:
+            c, order = uni, 1
+        n = sum(c.values())
+        items = sorted(((w, k / n) for w, k in c.items()), key=lambda x: (-x[1], x[0]))
+        if T == 0:
+            q = [1.0] + [0.0] * (len(items) - 1)
+        else:
+            z = np.array([p for _, p in items]) ** (1 / T); q = list(z / z.sum())
+        return order, [w for w, _ in items], q
+
+    ctxs = set(tri) | {('<s>', w) for w in uni} | {('нашла', 'ошибку'), ('банк', 'нашёл'), ('кредит', 'карту')}
+    bad = n = 0
+    for a, b in sorted(ctxs):
+        for T in [0, 0.5, 1, 1.5, 2]:
+            js = pg.evaluate(f'PRO_LLM.dist({json.dumps(a, ensure_ascii=False)}, {json.dumps(b, ensure_ascii=False)}, {T})')
+            order, ws, q = ref(a, b, T); n += 1
+            ok = js['order'] == order and [x['w'] for x in js['items']] == ws and max(abs(x['q'] - y) for x, y in zip(js['items'], q)) < 1e-12
+            bad += not ok
+    report('П0', n, bad)
+
+
+# ---------------------------------------------------------------- П11
+def check_p11(pg):
+    import itertools
+    D = data('pro-ide-assistants'); bad = n = 0
+    for k in range(len(D['reqs']) + 1):
+        for need in itertools.combinations(D['reqs'], k):
+            ref = [t['id'] for t in D['tools'] if all(t['c'][r] == 1 for r in need)]
+            n += 1; bad += pg.evaluate(f'PRO_IDE.fits({json.dumps(list(need))})') != ref
+    for t in D['tasks']:
+        n += 1; bad += pg.evaluate(f'PRO_IDE.levelOf({json.dumps(t)})') != max(D['levels'][f] for f in t['f'])
+    report('П11', n, bad)
+
+
 if __name__ == '__main__':
     from playwright.sync_api import sync_playwright
-    checks = [('pro-embeddings', check_p1), ('pro-rag', check_p2), ('pro-sampling', check_p3), ('pro-hallucinations', check_p4),
+    checks = [('pro-llm-basics', check_p0), ('pro-embeddings', check_p1), ('pro-rag', check_p2), ('pro-sampling', check_p3), ('pro-hallucinations', check_p4),
               ('pro-metrics', check_p5), ('pro-guardrails', check_p6), ('pro-architecture', check_p8), ('pro-ai-sdlc', check_p9),
-              ('pro-tech-radar', check_p10)]
+              ('pro-tech-radar', check_p10), ('pro-ide-assistants', check_p11)]
     with sync_playwright() as p:
         b = p.chromium.launch()
         for pid, fn in checks:

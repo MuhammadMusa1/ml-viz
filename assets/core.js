@@ -50,7 +50,7 @@
     root.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(dict, el.dataset.i18n); });
     root.querySelectorAll('[data-i18n-html]').forEach(function (el) { el.innerHTML = t(dict, el.dataset.i18nHtml); });
     // Страницы «Для профи» пока только на русском — так их и читает программа экранного доступа
-    document.documentElement.lang = (currentItem() || {}).pro ? 'ru' : lang;
+    document.documentElement.lang = isProItem(currentItem()) ? 'ru' : lang;
     // Название вкладки браузера: в HTML оно русское, на другом языке берём заголовок страницы из перевода
     if (root === document && lang !== 'ru' && dict[lang] && dict[lang].title) {
       document.title = (dict[lang].title + ' · ' + t(UI, 'brand')).replace(/<[^>]+>/g, '');
@@ -89,7 +89,7 @@
   }
   // «Урок 5» или «Урок 17 · часть 1 из 3» (short — коротко для кнопок шапки: «Урок 17 (1/3)»)
   function lessonLabel(it, short) {
-    if (it.pro) return t(UI, 'proLabel', { n: pad2(it.pro) });   // раздел «Для профи»: «П 03»
+    if (isProItem(it)) return t(UI, 'proLabel', { n: pad2(it.pro) });   // раздел «Для профи»: «П 03»
     var p = lessonPart(it);
     return p.m > 1 ? t(UI, short ? 'lessonShort' : 'lessonPart', p) : t(UI, 'lesson', p);
   }
@@ -97,6 +97,8 @@
   // Соседние готовые уроки по каталогу (если catalog.js подключён) — учителю удобно листать на проекторе
   // id страницы урока из адреса. Ищем именно папку /viz/<id>/: на GitHub Pages сайт лежит в /ml-viz/,
   // и «viz/» встречается раньше нужного места (то же на флешке, если папка называется ml-viz)
+  // Страница раздела «Для профи»: у неё есть номер pro (0, 1, 2…). Проверяем именно наличие поля, потому что П 00 — это pro: 0
+  function isProItem(it) { return !!it && it.pro != null && it.pro !== false; }
   function pageId() {
     var m = location.pathname.match(/\/viz\/([^\/]+)\//);
     return m ? m[1] : null;
@@ -111,8 +113,8 @@
   function sectionItems(id) {
     var all = readyItems(), cur = null;
     all.forEach(function (it) { if (it.id === id) cur = it; });
-    var pro = !!(cur && cur.pro);
-    return all.filter(function (it) { return !!it.pro === pro; });
+    var pro = isProItem(cur);
+    return all.filter(function (it) { return isProItem(it) === pro; });
   }
   function currentItem() {
     var id = pageId(), cur = null;
@@ -146,7 +148,7 @@
   function resetDone() { try { localStorage.removeItem(DONE_KEY); } catch (e) {} }
   function updateDoneNote() {
     var n = document.getElementById('doneNote'), id = pageId();
-    var pro = !!(currentItem() || {}).pro, yes = doneList().indexOf(id) !== -1;
+    var pro = isProItem(currentItem()), yes = doneList().indexOf(id) !== -1;
     if (n && id) n.textContent = t(UI, pro ? (yes ? 'proDone' : 'proNotDone') : (yes ? 'doneYes' : 'doneNo'));
   }
 
@@ -214,7 +216,7 @@
     var it = ready[i], next = ready[i + 1];
     // «Урок 5 · Классические алгоритмы» — из каталога, чтобы номер и фаза не расходились со страницами
     var eb = main.querySelector('.eyebrow');
-    if (eb) eb.textContent = it.pro ? t(UI, 'proEyebrow', { n: pad2(it.pro) }) : lessonLabel(it) + ' · ' + phaseName(it);
+    if (eb) eb.textContent = isProItem(it) ? t(UI, 'proEyebrow', { n: pad2(it.pro) }) : lessonLabel(it) + ' · ' + phaseName(it);
     // Перевода мифов может не быть (пары из undefined) — тогда показываем русские
     var myths = it.myths && it.myths[lang] && it.myths[lang][0] && it.myths[lang][0][0] ? it.myths[lang] : it.myths && it.myths.ru;
     if (myths && myths.length) {
@@ -239,7 +241,7 @@
         (hasWarmup(it.lesson) ? '<a class="btn" href="' + root + 'warmup/index.html?lesson=' + it.lesson + '">' + icon('code') + t(UI, 'warmup') + '</a>' : '') +
       '</div>' + (next
         ? '<a class="btn primary" href="' + root + 'viz/' + next.id + '/index.html">' + t(UI, 'nextGo', { l: lessonLabel(next), t: tx(next.title) }) + '</a>'
-        : it.pro
+        : isProItem(it)
           ? '<a class="btn primary" href="' + root + 'index.html#pro">' + t(UI, 'proHome') + '</a>'
           : '<a class="btn primary" href="' + root + 'roadmap/index.html">' + icon('map') + t(UI, 'roadmap') + '</a>') + '</div>' +
       '<p class="note" id="doneNote"></p>';
@@ -289,7 +291,7 @@
       // На другом языке — своя основа слова (re_tg из перевода каталога); нет её — термин на этом языке не ищем
       // Термины раздела «Для профи» — только на его страницах. Там текст пока всегда русский,
       // поэтому и основу слова берём русскую при любом языке
-      var proPage = !!(currentItem() || {}).pro;
+      var proPage = isProItem(currentItem());
       if (g.pro && !proPage) return;
       var stem = lang === 'ru' || proPage ? g.re : g['re_' + lang];
       if (!stem) return;
@@ -323,7 +325,7 @@
     var ready = sectionItems(id);
     var i = ready.map(function (it) { return it.id; }).indexOf(id);
     if (i === -1) return '';
-    var pro = !!ready[i].pro;
+    var pro = isProItem(ready[i]);
     function link(it, cls, label, tipKey) {
       if (pro) tipKey = tipKey === 'prev' ? 'proPrev' : 'proNext';
       var tip = attr(t(UI, tipKey, { t: tx(it.title) || it.id }));
@@ -385,7 +387,7 @@
     });
     if (root) renderLessonExtras(root);
     // Раздел «Для профи» пока только на русском: на другом языке говорим об этом одной строкой под шапкой
-    if (lang !== 'ru' && (currentItem() || {}).pro && !document.getElementById('langNote')) {
+    if (lang !== 'ru' && isProItem(currentItem()) && !document.getElementById('langNote')) {
       var ln = document.createElement('p');
       ln.id = 'langNote'; ln.className = 'lang-note'; ln.setAttribute('role', 'note'); ln.lang = 'ru';
       ln.innerHTML = '<span class="wrap">' + t(UI, 'proOnlyRu') + '</span>';
@@ -642,7 +644,7 @@
 
   window.MLViz = {
     lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, icon: icon, lessonPart: lessonPart, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
-    isPro: function () { return !!(currentItem() || {}).pro; }, pad2: pad2,
+    isPro: function () { return isProItem(currentItem()); }, isProItem: isProItem, pad2: pad2,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
     fontPx: fontPx, isProjector: isProjector, zoom: zoom, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, compare: compare, quiz: quiz
   };

@@ -100,7 +100,7 @@
     var PRO = [];
     CATALOG.forEach(function (ph) { ph.items.forEach(function (it) {
       if (it.status !== 'ready') return;
-      if (it.pro) { PRO.push(it.id); return; }
+      if (MLViz.isProItem(it)) { PRO.push(it.id); return; }
       (BY_LESSON[it.lesson] = BY_LESSON[it.lesson] || []).push(it.id);
     }); });
 
@@ -163,7 +163,7 @@
     var tx = function (o) { return (o && (o[L] || o.ru)) || ''; };
     // Номер на бирке: «№ 05», у урока из нескольких страниц — «№ 13.1»
     function numLabel(it) {
-      if (it.pro) return MLViz.lessonLabel(it);   // «П 03»
+      if (MLViz.isProItem(it)) return MLViz.lessonLabel(it);   // «П 03»
       var p = MLViz.lessonPart(it), n = (p.n < 10 ? '0' : '') + p.n;
       // «№» — обычным шрифтом: в Consolas этого знака нет, и он рисуется как «IF»
       return '<span class="no">№</span>' + n + (p.m > 1 ? '.' + p.k : '');

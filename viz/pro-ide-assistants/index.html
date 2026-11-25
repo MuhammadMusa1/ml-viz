@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ИИ в IDE: GitLab Duo, Claude Code и другие · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .feature { font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-strong); margin: 0 0 8px; }
+    .reqs { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+    .reqs label { display: flex; gap: 10px; align-items: center; min-height: var(--tap); cursor: pointer; font-size: var(--fs-label); line-height: var(--lh-label); }
+    .reqs input { width: 22px; height: 22px; accent-color: var(--accent); margin: 0; flex: none; }
+    .projector .reqs input { width: 28px; height: 28px; }
+    .fit td.ok { font-weight: 700; color: var(--text-strong); }
+    .fit td.no { color: var(--text-muted); text-decoration: line-through; }
+    .fit tr.pass td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+    .lvl-info { margin-top: 10px; font-size: var(--fs-label); line-height: var(--lh-label); display: flex; flex-direction: column; gap: 6px; }
+    .lvl-info b { color: var(--text-strong); }
+    .choices.one { grid-template-columns: 1fr; }
+    .choices.one button { text-align: left; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="feature" data-i18n="feature"></p>
+          <canvas id="cv"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+        <p class="sim-note" data-i18n="simNote"></p>
+        <div class="stage viz-extra">
+          <h3 class="sub" data-i18n="fitTitle"></h3>
+          <div class="tbl-wrap"><table class="ptab fit" id="fit"></table></div>
+          <p class="note" id="fitNote"></p>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="lvlTitle"></h3>
+          <div class="seg wrapping" id="lvlSel" style="margin-top:8px"></div>
+          <div class="lvl-info" id="lvlInfo"></div>
+          <h3 style="margin-top:14px" data-i18n="reqTitle"></h3>
+          <ul class="reqs" id="reqs"></ul>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameItem"></p>
+          <p style="margin:6px 0 0" data-i18n="gameAsk"></p>
+          <div class="choices one" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="duoTitle"></h2>
+      <div data-i18n-html="duoBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="ccTitle"></h2>
+      <div data-i18n-html="ccBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="cmpTitle"></h2>
+      <div data-i18n-html="cmpBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="safeTitle"></h2>
+      <div data-i18n-html="safeBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="mathTitle"></summary>
+      <div data-i18n-html="mathBody"></div>
+    </details>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pro.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'ИИ в IDE: GitLab Duo, Claude Code и другие',
+        analogy: '<b>От подсказки слова в телефоне до напарника, которому дали ключи от мастерской.</b> ИИ-ассистенты в редакторе кода (IDE) различаются тем, сколько им разрешено делать самим: подсказать строку, ответить на вопрос, поправить файлы или самому запускать команды и открывать merge request.',
+        feature: 'Пять ступеней самостоятельности ИИ в разработке',
+        cvLabel: 'Лестница из пяти ступеней: автодополнение, чат, правка файлов, агент с командами, фоновый агент. Чем выше ступень, тем больше делает ИИ и тем строже нужны проверки.',
+        simNote: 'Возможности инструментов — по документации производителей на ноябрь 2026, упрощённо. Они меняются каждые несколько месяцев: перед пилотом сверяйтесь с документацией. Отбор по требованиям и ступень в игре считаются по этим данным по-настоящему.',
+        modeExplore: 'Исследуй', modeGame: 'Игра: какая ступень нужна?',
+        lvlTitle: 'Ступень',
+        reqTitle: 'Требования банка',
+        lv1: 'Автодополнение', lv2: 'Чат о коде', lv3: 'Правка файлов', lv4: 'Агент с командами', lv5: 'Фоновый агент',
+        lvWho: 'есть у {n} из {m}',
+        sl1: 'Подсказка', sl2: 'Чат', sl3: 'Правка', sl4: 'Агент', sl5: 'Фон',
+        rs_local: 'Код в банке', rs_gitlab: 'MR в GitLab', rs_agent: 'Агент', rs_jb: 'JetBrains', rs_inline: 'Подсказка строки',
+        ld1: 'Подсказывает продолжение строки или функции, пока ты печатаешь. Ты принимаешь подсказку клавишей Tab.',
+        ld2: 'Отвечает на вопросы об открытом коде: объяснить, найти ошибку, предложить вариант. Код вставляешь сам.',
+        ld3: 'По просьбе меняет сразу несколько файлов и показывает разницу (diff). Ты принимаешь или отклоняешь правки.',
+        ld4: 'Сам читает проект, правит файлы и запускает команды: тесты, сборку, git. Спрашивает разрешение на действия.',
+        ld5: 'Получает задачу (issue, тикет) и без тебя доводит её до merge request. Ты проверяешь готовый MR.',
+        lr1: 'Риск: мелкие ошибки в принятых подсказках. Проверки: обычное ревью и тесты.',
+        lr2: 'Риск: в чат вставляют секреты и данные клиентов. Проверки: правила, какие данные можно в чат (П6).',
+        lr3: 'Риск: правки в местах, которые не смотрели. Проверки: читать весь diff, тесты.',
+        lr4: 'Риск: опасная команда (удалить, отправить наружу), инъекция из файла. Проверки: режим разрешений, песочница, без доступа к бою и секретам.',
+        lr5: 'Риск: много правок без человека. Проверки: MR только через ревью человека, токен с минимумом прав, тесты и сканеры в CI.',
+        kWhat: 'Что делает', kRisk: 'Риски и проверки', kWho: 'Где есть',
+        r_inline: 'Автодополнение строки при наборе', r_jb: 'Работает в JetBrains (IntelliJ, PyCharm)', r_agent: 'Агент сам запускает тесты и команды',
+        r_gitlab: 'Работа с merge request в нашем GitLab', r_local: 'Код не уходит из банка: модель на своих серверах',
+        t_duo: 'GitLab Duo', t_cc: 'Claude Code', t_copilot: 'GitHub Copilot', t_cursor: 'Cursor', t_open: 'Открытые расширения + локальная модель',
+        fitTitle: 'Кто подходит под выбранные требования',
+        fitAll: 'Подходят: {list}.', fitNone: 'Никто не подходит под все требования сразу. Уберите одно требование или примите компромисс — например, пилот в песочнице на коде без тайны.',
+        fitNoReq: 'Отметьте требования в панели — таблица покажет, кто под них подходит.',
+        thTool: 'Инструмент',
+        yes: 'да', no: 'нет',
+        hintExplore: 'Нажми на ступень на схеме или выбери её в панели. Отметь требования банка — таблица ниже покажет, какие инструменты под них подходят.',
+        hintGame: 'Выбери самую низкую ступень, которой хватит для задачи. Чем выше ступень, тем больше риск и тем строже проверки — лишняя самостоятельность не нужна.',
+        gameAsk: 'Какой самой низкой ступени ИИ хватит для этой задачи?',
+        gameRight: 'Верно!', gameWrong: 'Не та ступень.',
+        gameLine: '{verdict} Хватит ступени <b>{l}</b>. {why}',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующая задача →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Правило: давать ИИ столько самостоятельности, сколько нужно задаче, и ставить проверки по ступени.',
+        f_type: 'нужно помочь допечатать строку', f_ask: 'нужно понять или объяснить код', f_multi: 'нужно изменить несколько файлов', f_run: 'нужно запускать тесты или команды', f_auto: 'задачу нужно довести до MR без человека',
+        g_loop: 'Ты начал писать цикл по списку счетов — дописать строку.',
+        g_proc: 'Понять, что делает чужая процедура PL/PLUS на 300 строк.',
+        g_rename: 'Переименовать метод и все его вызовы в 15 файлах, без запуска.',
+        g_fixtest: 'Тест упал: найти причину, исправить и убедиться, что все тесты проходят.',
+        g_upgrade: 'Обновить версию библиотеки и починить сборку.',
+        g_batch: '20 однотипных задач «поправить текст ошибки»: по каждой открыть MR.',
+        g_err: 'Объяснить непонятное сообщение компилятора.',
+        g_field: 'Добавить поле в форму: модель, API и экран — 4 файла, без запуска.',
+        g_tests: 'Написать unit-тесты к модулю и проверить, что они проходят.',
+        g_sql: 'Подсказать конец SQL-запроса, который ты сейчас печатаешь.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Расширение в IDE</b> собирает контекст: открытый файл, соседние файлы, твой вопрос, иногда весь проект.</li>' +
+          '<li><b>Контекст уходит в модель</b> — облачную или на серверах банка. Именно здесь решается, покидает ли код банк.</li>' +
+          '<li><b>Модель отвечает</b>: подсказкой, текстом, правками (diff) или запросом вызвать инструмент — прочитать файл, запустить тест (tool calling, П7).</li>' +
+          '<li><b>Агент повторяет цикл</b>: действие → результат → следующее действие, пока задача не решена. Каждое действие можно поставить на подтверждение человеком.</li>' +
+          '<li><b>Правила проекта</b> агент читает из файла в репозитории (например, CLAUDE.md или правила GitLab Duo): стиль, запреты, как запускать тесты. Хороший контекст снижает ошибки сильнее удачного промпта (П9).</li>' +
+          '</ol>',
+        duoTitle: 'GitLab Duo',
+        duoBody:
+          '<ul>' +
+          '<li><b>Что это.</b> ИИ внутри GitLab и в IDE через расширение GitLab (VS Code, JetBrains и другие).</li>' +
+          '<li><b>Умеет.</b> Подсказки кода (Code Suggestions), чат Duo Chat, описание и ревью merge request, объяснение уязвимостей из сканеров безопасности.</li>' +
+          '<li><b>Duo Agent Platform.</b> Агенты и готовые сценарии (flows), которые выполняют задачи в IDE и в GitLab — например, от issue до merge request. Общедоступна с версии GitLab 18.8.</li>' +
+          '<li><b>Главное для банка — Self-Hosted.</b> На своём GitLab (self-managed) можно подключить модели, развёрнутые на своих серверах (рекомендуемый способ — vLLM) через AI gateway. Тогда запросы и логи остаются внутри. Можно смешивать: для одних функций — своя модель, для других — модель GitLab. Без доступа в интернет (offline-лицензия) нужно отдельное дополнение Self-Hosted.</li>' +
+          '<li><b>Плюс.</b> Всё рядом с кодом, MR и CI, которые уже есть в банке. <b>Минус.</b> Качество зависит от выбранной модели; свои модели на CPU будут медленными.</li>' +
+          '</ul>',
+        ccTitle: 'Claude Code',
+        ccBody:
+          '<ul>' +
+          '<li><b>Что это.</b> Агент для разработки от Anthropic. Работает в терминале, в VS Code (расширение с собственным интерфейсом) и в JetBrains (плагин поверх терминальной версии).</li>' +
+          '<li><b>Умеет.</b> Читает весь проект, правит файлы, запускает команды и тесты, работает с git. Показывает план и правки до применения.</li>' +
+          '<li><b>Режимы разрешений.</b> Можно требовать подтверждения на каждую правку и команду или разрешить часть действий заранее. Для банка — по умолчанию с подтверждением.</li>' +
+          '<li><b>Правила проекта.</b> Файл CLAUDE.md в репозитории: агент читает его в начале каждой сессии. Плюс MCP-серверы для своих инструментов (П7) и хуки — проверки, которые срабатывают на действия агента.</li>' +
+          '<li><b>Где модель.</b> Модели Claude работают в облаке Anthropic или через облачные платформы (Amazon Bedrock, Google Vertex AI). Своих серверов для них нет — значит, код уходит из банка, нужен договор и класс данных «можно наружу» (П6).</li>' +
+          '<li><b>Пример из практики.</b> Курс «Лаборатория ML» сделан с Claude Code: правила — в CLAUDE.md, каждое число на страницах сверяет скрипт со sklearn.</li>' +
+          '</ul>',
+        cmpTitle: 'Сравнение (на ноябрь 2026)',
+        cmpBody:
+          '<div class="tbl-wrap"><table class="ptab"><thead><tr><th>Инструмент</th><th>Где работает модель</th><th>IDE</th><th>Сильная сторона</th></tr></thead><tbody>' +
+          '<tr><td>GitLab Duo</td><td>Облако GitLab или свои серверы (Self-Hosted)</td><td>VS Code, JetBrains и другие</td><td>Встроен в GitLab: MR, CI, уязвимости</td></tr>' +
+          '<tr><td>Claude Code</td><td>Облако Anthropic, Bedrock, Vertex AI</td><td>Терминал, VS Code, JetBrains</td><td>Сильный агент для сквозных задач</td></tr>' +
+          '<tr><td>GitHub Copilot</td><td>Облако GitHub</td><td>VS Code, JetBrains и другие</td><td>Подсказки и агент; лучше всего — с GitHub</td></tr>' +
+          '<tr><td>Cursor</td><td>Облако</td><td>Своя IDE на основе VS Code</td><td>Редактор, построенный вокруг ИИ</td></tr>' +
+          '<tr><td>Открытые расширения (Continue, Cline) + Ollama</td><td>Свой сервер или ноутбук</td><td>VS Code, JetBrains</td><td>Код не уходит; качество — как у локальной модели</td></tr>' +
+          '</tbody></table></div>' +
+          '<p class="note">Выбор для банка — по П10: сначала обязательные требования (куда уходит код, лицензии, журнал), потом пилот с метриками, потом кольцо радара.</p>',
+        safeTitle: 'Безопасная настройка в банке',
+        safeBody:
+          '<ul>' +
+          '<li><b>Разрешения.</b> По умолчанию — подтверждение каждой правки и команды. Разрешать заранее только безопасное: чтение файлов, запуск тестов.</li>' +
+          '<li><b>Секреты.</b> Файлы с ключами (<code>.env</code>, конфиги с паролями) исключить из контекста; сканер секретов в pre-commit и CI.</li>' +
+          '<li><b>Песочница.</b> Агент работает в отдельном окружении без доступа к боевым базам и сетям; токен GitLab — с минимумом прав.</li>' +
+          '<li><b>Ревью.</b> Код от ИИ проходит то же ревью и те же сканеры, что код человека. Фоновый агент только открывает MR — сливает человек.</li>' +
+          '<li><b>Журнал.</b> Кто, какой инструмент, какие данные отправил — для разбора инцидентов (П6, П8).</li>' +
+          '</ul>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Отметь только «Код не уходит из банка». Кто остался? А если добавить «Работа с MR в нашем GitLab»?</li>' +
+          '<li>Отметь «Автодополнение строки» и «Агент сам запускает команды». Почему Claude Code выпадает, хотя агент у него сильный?</li>' +
+          '<li>Пройди по ступеням 1–5. На какой ступени впервые нужен режим разрешений? А ревью человеком готового MR?</li>' +
+          '<li>Для задачи «переименовать метод в 15 файлах» какая ступень достаточна? Что изменится, если ещё надо прогнать тесты?</li>' +
+          '<li>Какой набор инструментов ты бы предложил своему банку: один на всех или разные для разных классов кода?</li>' +
+          '</ul>',
+        mathTitle: 'Для любопытных: как считаются таблица и игра',
+        mathBody:
+          '<p><b>Таблица.</b> У каждого инструмента — флажки возможностей. Инструмент подходит, если у него есть <i>все</i> отмеченные требования: <code>подходит = all(возможность[r] for r in отмеченные)</code>.</p>' +
+          '<p><b>Игра.</b> У задачи — признаки: допечатать строку (1), понять код (2), несколько файлов (3), запускать команды (4), довести до MR без человека (5). Нужная ступень = <code>max(номер признака)</code>: самая низкая ступень, которая покрывает все признаки.</p>' +
+          '<pre class="pycode"><code>tools = {\n' +
+          '    \'GitLab Duo\':  {\'inline\': 1, \'jb\': 1, \'agent\': 1, \'gitlab\': 1, \'local\': 1},\n' +
+          '    \'Claude Code\': {\'inline\': 0, \'jb\': 1, \'agent\': 1, \'gitlab\': 1, \'local\': 0},\n' +
+          '    \'Copilot\':     {\'inline\': 1, \'jb\': 1, \'agent\': 1, \'gitlab\': 0, \'local\': 0},\n' +
+          '    \'Cursor\':      {\'inline\': 1, \'jb\': 0, \'agent\': 1, \'gitlab\': 0, \'local\': 0},\n' +
+          '    \'Открытые + Ollama\': {\'inline\': 1, \'jb\': 1, \'agent\': 1, \'gitlab\': 0, \'local\': 1},\n' +
+          '}\n' +
+          'need = [\'local\', \'agent\']\n' +
+          'print([t for t, c in tools.items() if all(c[r] for r in need)])\n\n' +
+          'LEVEL = {\'type\': 1, \'ask\': 2, \'multi\': 3, \'run\': 4, \'auto\': 5}\n' +
+          'print(max(LEVEL[f] for f in [\'multi\', \'run\']))   # починить тест: правки + запуск → 4</code></pre>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> 5 инструментов × 5 требований (по документации производителей, упрощённо) и 10 задач с признаками. Таблица и ответы игры считаются по этим данным; сверка — <code>tools/check_pro.py</code>.</p>' +
+          '<p><b>Как использовать на встрече гильдии.</b> 0–10 мин: кто чем пользуется и на какой ступени? Отметить требования банка и посмотреть, кто остаётся. Дальше — живое демо одного инструмента на учебном репозитории, без кода банка.</p>' +
+          '<p><b>Вопросы для обсуждения.</b> Какие требования у нашего банка обязательные? Какие задачи мы готовы отдать ступени 4 и 5 и с какими проверками? Что делать с теми, кто уже пользуется ассистентами на личных аккаунтах?</p>',
+        footer: 'Раздел «Для профи». Все расчёты выполняются прямо в браузере, без интернета и без настоящей модели.'
+      }
+    };
+
+    var T = MLPro.init(STR), el = MLPro.el, esc = MLPro.esc;
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные =======================
+    // Возможности инструментов (1 — есть) и задачи игры с признаками. Ступень признака: type 1 … auto 5
+    var DATA = /* data:start */{
+     "reqs": ["local", "gitlab", "agent", "jb", "inline"],
+     "tools": [
+      {"id":"duo","c":{"inline":1,"jb":1,"agent":1,"gitlab":1,"local":1},"lv":[1,2,3,4,5]},
+      {"id":"cc","c":{"inline":0,"jb":1,"agent":1,"gitlab":1,"local":0},"lv":[2,3,4,5]},
+      {"id":"copilot","c":{"inline":1,"jb":1,"agent":1,"gitlab":0,"local":0},"lv":[1,2,3,4,5]},
+      {"id":"cursor","c":{"inline":1,"jb":0,"agent":1,"gitlab":0,"local":0},"lv":[1,2,3,4,5]},
+      {"id":"open","c":{"inline":1,"jb":1,"agent":1,"gitlab":0,"local":1},"lv":[1,2,3,4]}],
+     "levels": {"type":1, "ask":2, "multi":3, "run":4, "auto":5},
+     "tasks": [
+      {"id":"loop","f":["type"]}, {"id":"proc","f":["ask"]}, {"id":"rename","f":["multi"]},
+      {"id":"fixtest","f":["ask","multi","run"]}, {"id":"upgrade","f":["multi","run"]}, {"id":"batch","f":["multi","run","auto"]},
+      {"id":"err","f":["ask"]}, {"id":"field","f":["multi"]}, {"id":"tests","f":["multi","run"]}, {"id":"sql","f":["type"]}]
+    }/* data:end */;
+    var TOOLS = DATA.tools, REQS = DATA.reqs;
+
+    // ======================= Расчёт =======================
+    function fits(need) {   // инструменты, у которых есть все отмеченные возможности
+      return TOOLS.filter(function (t) { return need.every(function (r) { return t.c[r] === 1; }); }).map(function (t) { return t.id; });
+    }
+    function levelOf(task) { return Math.max.apply(null, task.f.map(function (f) { return DATA.levels[f]; })); }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', lvl: 4, need: ['local'], game: null };
+
+    // ======================= Лестница =======================
+    var cv = el('cv'), g, STEPS = [];
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 1.0 : 0.55);
+      draw();
+    }
+    function draw() {
+      var ctx = g.ctx, fs = MLPro.fs(g), lh = Math.round(fs * 1.3), narrow = g.w < 560;
+      ctx.clearRect(0, 0, g.w, g.h);
+      var hl = state.mode === 'game' ? (state.game && state.game.answered ? state.game.right : 0) : state.lvl;
+      STEPS = [];
+      var pad = 8, n = 5, sw = (g.w - pad * 2) / n, base = g.h - pad, top = fs * 1.6 + 8, stepH = (base - top) / n;
+      // Стрелка «больше самостоятельности — строже проверки» над лестницей
+      ctx.fillStyle = MLViz.cssVar('--text-2'); ctx.font = MLPro.font(fs); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(T('lv1') + ' → ' + T('lv5'), pad, 2);
+      for (var i = 0; i < n; i++) {
+        var x = pad + i * sw, h = stepH * (i + 1), y = base - h;
+        STEPS.push({ x: x, y: y, w: sw - 4, h: h, i: i + 1 });
+        MLPro.rr(ctx, x, y, sw - 4, h, 8);
+        ctx.fillStyle = i + 1 === hl ? MLViz.cssVar('--accent') : MLViz.cssVar('--paper'); ctx.fill();
+        if (i + 1 === hl) { ctx.lineWidth = 3; ctx.strokeStyle = MLViz.cssVar('--ink'); ctx.stroke(); }
+        ctx.fillStyle = MLViz.cssVar(i + 1 === hl ? '--accent-ink' : '--ink');
+        ctx.font = MLPro.font(fs + 6, true); ctx.textAlign = 'center';
+        ctx.fillText(String(i + 1), x + (sw - 4) / 2, y + 6);
+        ctx.font = MLPro.font(narrow ? fs - 1 : fs, true);
+        var lines = MLPro.wrap(ctx, T((narrow ? 'sl' : 'lv') + (i + 1)), sw - 12);   // на телефоне — короткие подписи, полные — в панели
+        lines.forEach(function (ln, k) { ctx.fillText(ln, x + (sw - 4) / 2, y + 6 + fs + 10 + k * lh); });
+        // Какие инструменты умеют эту ступень — цифры-номера инструментов внизу ступени
+        if (!narrow && state.mode === 'explore') {
+          ctx.font = MLPro.font(fs - 1);
+          var who = TOOLS.filter(function (t) { return t.lv.indexOf(i + 1) !== -1; }).length;
+          ctx.fillText(T('lvWho', { n: who, m: TOOLS.length }), x + (sw - 4) / 2, base - lh - 2);
+        }
+      }
+    }
+    function stepAt(p) { for (var i = 0; i < STEPS.length; i++) { var s = STEPS[i]; if (p.x >= s.x && p.x <= s.x + s.w && p.y >= s.y && p.y <= s.y + s.h) return s.i; } return 0; }
+
+    // ======================= Панель =======================
+    function renderPanel() {
+      el('lvlSel').innerHTML = [1, 2, 3, 4, 5].map(function (i) { return '<button type="button" data-i="' + i + '">' + i + '. ' + T('lv' + i) + '</button>'; }).join('');
+      el('reqs').innerHTML = REQS.map(function (r) {
+        return '<li><label><input type="checkbox" data-r="' + r + '" id="req_' + r + '"><span>' + T('r_' + r) + '</span></label></li>';
+      }).join('');
+    }
+    function update() {
+      MLViz.setPressed(el('lvlSel'), function (b) { return +b.dataset.i === state.lvl; });
+      var who = TOOLS.filter(function (t) { return t.lv.indexOf(state.lvl) !== -1; }).map(function (t) { return T('t_' + t.id); }).join(', ');
+      el('lvlInfo').innerHTML = '<div><b>' + T('kWhat') + ':</b> ' + T('ld' + state.lvl) + '</div><div><b>' + T('kRisk') + ':</b> ' + T('lr' + state.lvl) + '</div><div><b>' + T('kWho') + ':</b> ' + esc(who) + '</div>';
+      el('reqs').querySelectorAll('input').forEach(function (inp) { inp.checked = state.need.indexOf(inp.dataset.r) !== -1; });
+      var ok = fits(state.need);
+      el('fit').innerHTML = '<thead><tr><th>' + T('thTool') + '</th>' + REQS.map(function (r) { return '<th class="n" title="' + esc(T('r_' + r)) + '">' + T('rs_' + r) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        TOOLS.map(function (t) {
+          return '<tr class="' + (state.need.length && ok.indexOf(t.id) !== -1 ? 'pass' : '') + '"><td>' + T('t_' + t.id) + '</td>' + REQS.map(function (r) {
+            var on = state.need.indexOf(r) !== -1;
+            return '<td class="n ' + (on ? (t.c[r] ? 'ok' : 'no') : '') + '">' + T(t.c[r] ? 'yes' : 'no') + '</td>';
+          }).join('') + '</tr>';
+        }).join('') + '</tbody>';
+      el('fitNote').textContent = !state.need.length ? T('fitNoReq') : ok.length ? T('fitAll', { list: ok.map(function (id) { return T('t_' + id); }).join(', ') }) : T('fitNone');
+    }
+    function refresh() { update(); draw(); }
+
+    // ======================= Игра «Какая ступень нужна?» =======================
+    var order = [];
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: DATA.tasks.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      start: function () { order = MLViz.shuffle(DATA.tasks, Math.random); },
+      round: function (q) {
+        var task = order[q.i], right = levelOf(task);
+        state.game = { right: right, answered: false };
+        el('gameItem').innerHTML = '<b>' + esc(T('g_' + task.id)) + '</b>';
+        q.choices(el('gameChoices'), [1, 2, 3, 4, 5].map(function (i) { return i + '. ' + T('lv' + i); }), function (k) { return k + 1 === right; }, function (k, ok) {
+          state.game.answered = true;
+          var why = task.f.map(function (f) { return T('f_' + f); }).join('; ');
+          q.answer(ok ? 1 : 0, T('gameLine', { verdict: T(ok ? 'gameRight' : 'gameWrong'), l: right + '. ' + T('lv' + right), why: esc(why.charAt(0).toUpperCase() + why.slice(1)) + '. ' + T('lr' + right) }));
+          draw();
+        });
+        draw();
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameItem').innerHTML = ''; draw(); }
+    });
+
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else state.game = null;   // выбор в «Исследуй» игра не трогает
+      refresh();
+    }
+
+    // ======================= События =======================
+    renderPanel();
+    el('lvlSel').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; state.lvl = +b.dataset.i; refresh(); });
+    el('reqs').addEventListener('change', function (e) {
+      var r = e.target.dataset.r; if (!r) return;
+      state.need = state.need.filter(function (x) { return x !== r; });
+      if (e.target.checked) state.need.push(r);
+      refresh();
+    });
+    cv.addEventListener('click', function (e) {
+      if (state.mode !== 'explore') return;
+      var i = stepAt(MLViz.pointer(cv, e)); if (!i) return;
+      state.lvl = i; refresh();
+    });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    MLPro.onResize(resize);
+
+    window.PRO_IDE = { fits: fits, levelOf: levelOf };   // для сверки (tools/check_pro.py)
+
+    resize(); setMode('explore');
+  })();
+  </script>
+</body>
+</html>
