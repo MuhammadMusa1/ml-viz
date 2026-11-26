@@ -667,7 +667,7 @@
 
   window.MLViz = {
     lang: lang, t: t, applyI18n: applyI18n, renderHeader: renderHeader, lessonLabel: lessonLabel, icon: icon, lessonPart: lessonPart, doneList: doneList, resetDone: resetDone, renderBook: renderBook,
-    isPro: function () { return isProItem(currentItem()); }, isProItem: isProItem, isMathItem: isMathItem, pad2: pad2,
+    isPro: function () { return isProItem(currentItem()); }, isProItem: isProItem, isMathItem: isMathItem, addSteppers: addSteppers, pad2: pad2,
     fitCanvas: fitCanvas, scale: scale, pointer: pointer, rng: rng, shuffle: shuffle, cssVar: cssVar,
     fontPx: fontPx, isProjector: isProjector, zoom: zoom, range: range, drawAxes: drawAxes, plotPad: plotPad, setPressed: setPressed, compare: compare, quiz: quiz
   };

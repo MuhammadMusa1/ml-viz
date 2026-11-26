@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вероятность · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .readout { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text); margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+    .readout b { color: var(--text-strong); font-size: 1.2em; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="readout" id="readout"></p>
+          <canvas id="cv"></canvas>
+          <div class="legend" id="legend" style="padding:8px 4px 0" data-i18n-html="legend"></div>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3 data-i18n="bagTitle"></h3>
+          <div id="counts"></div>
+          <div class="btn-row">
+            <button type="button" class="primary" id="draw1" data-i18n="draw1"></button>
+            <button type="button" class="primary" id="draw100" data-i18n="draw100"></button>
+            <button type="button" id="resetBtn" data-i18n="reset"></button>
+          </div>
+          <p class="note" id="drawNote"></p>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameQ"></p>
+          <div class="choices" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Вероятность',
+        analogy: '<b>В мешке 5 карточек Adelie, 3 Gentoo и 2 Chinstrap. Тянем одну не глядя.</b> Вероятность вытянуть Gentoo — 3 из 10, то есть 30%. Это не обещание, а «как часто так будет, если тянуть много-много раз».',
+        cvLabel: 'Слева — карточки в мешке, справа — для каждого вида вероятность (заливка) и сколько раз он выпал на самом деле (рамка)',
+        modeExplore: 'Исследуй', modeGame: 'Игра: посчитай шансы',
+        bagTitle: 'Карточек в мешке',
+        draw1: 'Вытянуть 1', draw100: 'Вытянуть 100', reset: 'Сбросить',
+        readout: '<span>всего карточек: <b>{n}</b></span>{parts}<span>сумма: <b>100%</b></span>',
+        part: '<span>{sp}: {c} из {n} = <b>{p}%</b></span>',
+        drawNote: 'Вытянуто {n} раз (каждый раз карточку кладём обратно). Чем больше раз тянем, тем ближе рамки к заливке.',
+        drawNone: 'Нажми «Вытянуть 100» несколько раз и смотри, как доля каждого вида приближается к вероятности.',
+        legend: '<span>заливка столбика — вероятность</span><span>белая рамка — какая доля выпала на самом деле</span>',
+        hintExplore: 'Меняй число карточек каждого вида — вероятности пересчитываются. Потом тяни: сначала по одной, потом по 100.',
+        hintGame: 'Вероятность = подходящих : всего. Все вероятности вместе дают 100%.',
+        qOne: 'В мешке <b>{a}</b> Adelie, <b>{c}</b> Chinstrap и <b>{g}</b> Gentoo. Какова вероятность вытянуть <b>{sp}</b>?',
+        qNot: 'В мешке <b>{a}</b> Adelie, <b>{c}</b> Chinstrap и <b>{g}</b> Gentoo. Какова вероятность вытянуть <b>не</b> Adelie?',
+        qMiss: 'Модель смотрит на пингвина и говорит: Adelie — <b>{pa}%</b>, Chinstrap — <b>{pc}%</b>. Какую вероятность она даёт Gentoo?',
+        qCoin: 'Честную монетку бросили 10 раз, орёл выпал <b>7</b> раз. Какова вероятность орла при следующем броске?',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий раунд →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameRight: 'Верно!', gameWrong: 'Не так.',
+        aOne: '{verdict} {k} : {n} = <b>{p}%</b>.',
+        aNot: '{verdict} Не Adelie — это {c} + {g} = {k} из {n}, то есть <b>{p}%</b>. Или 100% − {pa}% = {p}%.',
+        aMiss: '{verdict} Вероятности всех вариантов в сумме дают 100%: 100 − {pa} − {pc} = <b>{p}%</b>.',
+        aCoin: '{verdict} У честной монетки — <b>50%</b>. 7 из 10 — это частота на маленьком числе бросков: случайность. Монетка не помнит прошлых бросков.',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Модели ML отвечают вероятностями: «Gentoo — 90%». Сумма по всем вариантам всегда 100%, а частота на маленькой выборке может сильно отличаться от вероятности.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Вероятность = подходящих : всего.</b> 3 Gentoo из 10 карточек → 3 : 10 = 0.3 = 30%.</li>' +
+          '<li><b>От 0 до 1</b> (от 0% до 100%): 0 — никогда, 1 — всегда.</li>' +
+          '<li><b>Сумма по всем вариантам — 100%.</b> Поэтому «не Adelie» = 100% − вероятность Adelie.</li>' +
+          '<li><b>Частота — не вероятность.</b> Из 10 бросков монетки может выпасть 7 орлов. Но чем больше бросков, тем ближе доля к 50% — это видно, если тянуть по 100 раз.</li>' +
+          '<li><b>Вероятность — это доля</b> из «М 01 Проценты и доли», только про будущее: как часто так будет.</li>' +
+          '</ol>',
+        mlTitle: 'Где это встретится в ML',
+        mlBody:
+          '<ul>' +
+          '<li><b>Уверенность модели (урок 14)</b>: нейросеть для цифр выдаёт 10 вероятностей — по одной на каждую цифру, в сумме 100%. Ответ — цифра с самой большой вероятностью.</li>' +
+          '<li><b>Температура (урок 18)</b>: языковая модель даёт вероятность каждому следующему слову и тянет слово, как карточку из мешка. Температура меняет, насколько «перекошены» вероятности.</li>' +
+          '<li><b>Голосование леса (урок 9)</b>: доля деревьев, проголосовавших за вид, — тоже вероятность этого вида.</li>' +
+          '<li><b>Маленький test шумный</b>: как 7 орлов из 10, точность на 69 пингвинах может случайно выйти чуть выше или ниже настоящей.</li>' +
+          '</ul>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Сделай так, чтобы вероятность Gentoo была ровно 50%. Сколько вариантов нашёл?</li>' +
+          '<li>Убери всех Chinstrap. Что стало с вероятностями остальных видов?</li>' +
+          '<li>Нажми «Вытянуть 1» десять раз. Совпали ли доли с вероятностями? А после 500 вытягиваний?</li>' +
+          '<li>Может ли вероятность быть 120%? А −10%? Почему?</li>' +
+          '</ul>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Мешок с карточками трёх видов, от 0 до 20 каждого. Вероятности считаются как доли; вытягивание — настоящая случайность (с возвращением), поэтому у каждого ученика свои частоты. Игра — 10 раундов: вероятность вида, «не этот вид», недостающая вероятность и монетка. Сверка ответов игры — <code>tools/check_math.py</code>.</p>' +
+          '<p><b>Как использовать.</b> Перед уроками 14 и 18. 5 минут: класс бросает монетку по 10 раз каждый, потом складывает все броски — доля орлов у всего класса будет ближе к 50%, чем у каждого.</p>',
+        footer: 'Раздел «Математика для ML». Все расчёты выполняются прямо в браузере, без интернета.'
+      }
+    };
+
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Данные и расчёты =======================
+    var SP = ['Adelie', 'Chinstrap', 'Gentoo'];
+    function probs(c) { var n = c[0] + c[1] + c[2]; return c.map(function (k) { return n ? k / n : 0; }); }
+    function pct(x) { var r = Math.round(x * 1000) / 10; return r % 1 === 0 ? String(r) : r.toFixed(1); }
+
+    var ROUNDS = [
+      { t: 'one', c: [5, 2, 3], sp: 2 }, { t: 'not', c: [5, 2, 3] }, { t: 'miss', pa: 70, pc: 10 }, { t: 'one', c: [6, 4, 10], sp: 1 },
+      { t: 'coin' }, { t: 'not', c: [9, 1, 2] }, { t: 'one', c: [3, 3, 2], sp: 0 }, { t: 'miss', pa: 15, pc: 5 },
+      { t: 'one', c: [1, 1, 2], sp: 2 }, { t: 'not', c: [2, 4, 4] }
+    ];
+    function answerOf(q) {
+      if (q.t === 'coin') return 50;
+      if (q.t === 'miss') return 100 - q.pa - q.pc;
+      var p = probs(q.c);
+      return Math.round(1000 * (q.t === 'one' ? p[q.sp] : 1 - p[0])) / 10;
+    }
+    function options(q) {
+      var right = answerOf(q), cand;
+      if (q.t === 'coin') cand = [70, 30, 100];
+      else if (q.t === 'miss') cand = [q.pa + q.pc, 100 - q.pa, 33.3];
+      else {   // типичные ошибки: дополнение, «число карточек как проценты», деление на чужой вид
+        var n = q.c[0] + q.c[1] + q.c[2], k = q.t === 'one' ? q.c[q.sp] : q.c[1] + q.c[2];
+        cand = [Math.round(1000 * (1 - k / n)) / 10, k, Math.round(1000 / 3) / 10, Math.round(1000 * k / (n + k)) / 10];
+      }
+      var vals = [right];
+      cand.forEach(function (v) { if (vals.length < 4 && vals.indexOf(v) === -1 && v >= 0 && v <= 100) vals.push(v); });
+      vals.sort(function (a, b) { return a - b; });
+      return { right: vals.indexOf(right), labels: vals.map(function (v) { return pct(v / 100) + '%'; }) };
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', c: [5, 2, 3], drawn: [0, 0, 0], game: null };
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g;
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 1.1 : 0.5);
+      draw();
+    }
+    function font(px, bold) { return (bold ? 'bold ' : '') + px + 'px ' + (MLViz.cssVar('--font') || 'Calibri, system-ui, sans-serif'); }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), narrow = g.w < 560;
+      ctx.clearRect(0, 0, g.w, g.h);
+      var c = state.mode === 'game' && state.game ? (state.game.q.c || null) : state.c;
+      var bagW = narrow ? g.w : g.w * 0.42, bagH = narrow ? g.h * 0.42 : g.h;
+      // Мешок: карточки-кружки цвета вида
+      if (c) {
+        var n = c[0] + c[1] + c[2], cols = Math.max(5, Math.ceil(Math.sqrt(n * bagW / bagH))), s = Math.min(bagW / cols, bagH / Math.ceil(n / cols || 1)), k = 0;
+        c.forEach(function (cnt, i) { for (var j = 0; j < cnt; j++, k++) {
+          ctx.beginPath(); ctx.arc((k % cols) * s + s / 2, Math.floor(k / cols) * s + s / 2, s * 0.38, 0, 2 * Math.PI);
+          ctx.fillStyle = MLViz.cssVar('--' + SP[i].toLowerCase()); ctx.fill();
+        } });
+      }
+      if (state.mode === 'game') return;
+      // Столбики: вероятность (заливка) и выпавшая доля (рамка)
+      var p = probs(state.c), tot = state.drawn[0] + state.drawn[1] + state.drawn[2];
+      var x0 = narrow ? 0 : bagW + 24, y0 = narrow ? bagH + 16 : 0, w = g.w - x0, h = g.h - y0;
+      var bh = h / 3, lw = Math.min(110, w * 0.3);
+      ctx.font = font(fs, true); ctx.textBaseline = 'middle';
+      SP.forEach(function (sp, i) {
+        var y = y0 + i * bh + 4, bw = w - lw - fs * 4;
+        ctx.fillStyle = MLViz.cssVar('--text-strong'); ctx.textAlign = 'left'; ctx.fillText(sp, x0, y + bh / 2 - 4);
+        ctx.fillStyle = MLViz.cssVar('--surface-3'); ctx.fillRect(x0 + lw, y + 4, bw, bh - 16);
+        ctx.fillStyle = MLViz.cssVar('--' + sp.toLowerCase()); ctx.fillRect(x0 + lw, y + 4, bw * p[i], bh - 16);
+        if (tot) { ctx.strokeStyle = MLViz.cssVar('--paper'); ctx.lineWidth = 3; ctx.strokeRect(x0 + lw, y + 4 + 3, bw * state.drawn[i] / tot, bh - 22); }
+        ctx.fillStyle = MLViz.cssVar('--text-strong'); ctx.textAlign = 'right'; ctx.fillText(pct(p[i]) + '%', g.w, y + bh / 2 - 4);
+      });
+    }
+
+    // ======================= Панель =======================
+    el('counts').innerHTML = SP.map(function (sp, i) {
+      return '<h3 style="margin-top:10px">' + sp + ': <span id="cV' + i + '"></span></h3><input type="range" id="c' + i + '" data-i="' + i + '" min="0" max="20" step="1" aria-label="' + sp + '">';
+    }).join('');
+    MLViz.addSteppers();   // ползунки созданы скриптом после шапки — кнопки «−» и «+» ставим им сами
+    function update() {
+      var n = state.c[0] + state.c[1] + state.c[2], p = probs(state.c), tot = state.drawn[0] + state.drawn[1] + state.drawn[2];
+      SP.forEach(function (sp, i) { el('c' + i).value = state.c[i]; el('cV' + i).textContent = state.c[i]; });
+      el('readout').innerHTML = n ? T('readout', { n: n, parts: SP.map(function (sp, i) { return T('part', { sp: sp, c: state.c[i], n: n, p: pct(p[i]) }); }).join('') }) : '';
+      el('drawNote').textContent = tot ? T('drawNote', { n: tot }) : T('drawNone');
+      el('draw1').disabled = el('draw100').disabled = !n;
+      draw();
+    }
+    function drawCards(k) {   // настоящая случайность, с возвращением карточки в мешок
+      var n = state.c[0] + state.c[1] + state.c[2]; if (!n) return;
+      for (var t = 0; t < k; t++) { var r = Math.random() * n, i = r < state.c[0] ? 0 : r < state.c[0] + state.c[1] ? 1 : 2; state.drawn[i]++; }
+      update();
+    }
+
+    // ======================= Игра =======================
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var r = ROUNDS[q.i], o = options(r);
+        state.game = { q: r };
+        el('gameQ').innerHTML = r.t === 'one' ? T('qOne', { a: r.c[0], c: r.c[1], g: r.c[2], sp: SP[r.sp] }) : r.t === 'not' ? T('qNot', { a: r.c[0], c: r.c[1], g: r.c[2] })
+          : r.t === 'miss' ? T('qMiss', r) : T('qCoin');
+        draw();
+        q.choices(el('gameChoices'), o.labels, function (i) { return i === o.right; }, function (i, ok) {
+          var v = T(ok ? 'gameRight' : 'gameWrong'), html, ans = pct(answerOf(r) / 100);
+          if (r.t === 'one') { var n = r.c[0] + r.c[1] + r.c[2]; html = T('aOne', { verdict: v, k: r.c[r.sp], n: n, p: ans }); }
+          else if (r.t === 'not') { var nn = r.c[0] + r.c[1] + r.c[2]; html = T('aNot', { verdict: v, c: r.c[1], g: r.c[2], k: r.c[1] + r.c[2], n: nn, p: ans, pa: pct(r.c[0] / nn) }); }
+          else if (r.t === 'miss') html = T('aMiss', { verdict: v, pa: r.pa, pc: r.pc, p: ans });
+          else html = T('aCoin', { verdict: v });
+          q.answer(ok ? 1 : 0, html);
+        });
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameQ').innerHTML = ''; draw(); }
+    });
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('readout').hidden = el('legend').hidden = m !== 'explore';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else { state.game = null; update(); }   // мешок «Исследуй» игра не трогает
+    }
+
+    // ======================= События =======================
+    el('counts').addEventListener('input', function (e) { var i = e.target.dataset.i; if (i == null) return; state.c[+i] = +e.target.value; state.drawn = [0, 0, 0]; update(); });
+    el('draw1').addEventListener('click', function () { drawCards(1); });
+    el('draw100').addEventListener('click', function () { drawCards(100); });
+    el('resetBtn').addEventListener('click', function () { state.drawn = [0, 0, 0]; update(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    window.MATH_PROB = { probs: probs, answerOf: answerOf, options: options, rounds: ROUNDS };   // для сверки (tools/check_math.py)
+
+    resize(); setMode('explore');
+  })();
+  </script>
+</body>
+</html>

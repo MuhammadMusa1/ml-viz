@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Векторы · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .readout { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text); margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+    .readout b { color: var(--text-strong); font-size: 1.2em; }
+    .pt-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .pt-grid h3 { margin: 10px 0 0; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="readout" id="readout"></p>
+          <canvas id="cv" class="drag"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <div class="pt-grid">
+            <h3 data-i18n="vA"></h3>
+            <label><span>x</span>: <b id="axV"></b><input type="range" id="ax" min="-5" max="5" step="1"></label>
+            <label><span>y</span>: <b id="ayV"></b><input type="range" id="ay" min="-5" max="5" step="1"></label>
+            <h3 data-i18n="vB"></h3>
+            <label><span>x</span>: <b id="bxV"></b><input type="range" id="bx" min="-5" max="5" step="1"></label>
+            <label><span>y</span>: <b id="byV"></b><input type="range" id="by" min="-5" max="5" step="1"></label>
+          </div>
+          <div class="seg wrapping" id="presets" style="margin-top:12px"></div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameQ"></p>
+          <div class="choices" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Векторы',
+        analogy: '<b>Вектор — это список чисел, а на плоскости — стрелка.</b> Анкета «рост, вес» — вектор из двух чисел. У стрелки есть длина и направление. Похожие анкеты — стрелки, которые смотрят в одну сторону.',
+        cvLabel: 'Плоскость с двумя стрелками A и B из начала координат; пунктир — их сумма A + B; дуга — угол между ними',
+        modeExplore: 'Исследуй', modeGame: 'Игра: стрелки',
+        vA: 'Вектор A', vB: 'Вектор B',
+        pr_same: 'Одно направление', pr_right: 'Под прямым углом', pr_opp: 'Противоположные',
+        readout: '<span>A = (<b>{ax}; {ay}</b>), B = (<b>{bx}; {by}</b>)</span><span>A + B = (<b>{sx}; {sy}</b>)</span><span>длина A = <b>{la}</b>, длина B = <b>{lb}</b></span><span>угол = <b>{ang}°</b></span><span>косинус = <b>{cos}</b></span>',
+        sumLbl: 'A + B',
+        hintExplore: 'Тяни концы стрелок A и B или двигай ползунки. Смотри на косинус: 1 — стрелки смотрят в одну сторону, 0 — под прямым углом, −1 — в противоположные.',
+        hintGame: 'Для «похожести» важна не длина стрелки, а куда она смотрит. Ближайший конец стрелки — не всегда самый похожий.',
+        qSum: 'A = (<b>{ax}; {ay}</b>), B = (<b>{bx}; {by}</b>). Чему равно <b>A + B</b>?',
+        qCos: 'Какая стрелка <b>больше всего похожа</b> на A — смотрит почти туда же?',
+        cand: 'Стрелка {i} ({x}; {y})',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий раунд →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameRight: 'Верно!', gameWrong: 'Не так.',
+        aSum: '{verdict} Складываем по отдельности: ({ax} + {bx}; {ay} + {by}) = <b>({sx}; {sy})</b>.',
+        aCos: '{verdict} Косинусы с A: {list}. Больше всех похожа <b>стрелка {best}</b>.{trap}',
+        trapNote: ' Ближе всех концом была бы стрелка {d}, но похожесть меряют направлением, а не расстоянием.',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Эмбеддинги слов на уроке 17 — такие же стрелки, только чисел в них сотни. Похожие слова — стрелки с косинусом около 1.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Вектор — список чисел</b>: (3; 4). На плоскости это стрелка из начала координат в точку (3; 4).</li>' +
+          '<li><b>Сложение — по отдельности</b>: (2; 1) + (1; 3) = (3; 4). На рисунке — приставить одну стрелку к концу другой.</li>' +
+          '<li><b>Длина</b> — по теореме Пифагора: у (3; 4) длина √(3² + 4²) = 5.</li>' +
+          '<li><b>Скалярное произведение</b>: перемножить попарно и сложить. (3; 4) · (4; 3) = 12 + 12 = 24.</li>' +
+          '<li><b>Косинус угла</b> = скалярное произведение : (длина A · длина B). Он от −1 до 1 и не зависит от длины стрелок — только от направления.</li>' +
+          '</ol>',
+        mlTitle: 'Где это встретится в ML',
+        mlBody:
+          '<ul>' +
+          '<li><b>Пингвин — вектор (урок 2)</b>: (длина клюва; глубина клюва; длина крыла; масса) — четыре числа, четыре оси.</li>' +
+          '<li><b>Эмбеддинги (урок 17)</b>: каждое слово — вектор-«анкета» из сотен чисел. Похожие слова смотрят в одну сторону — косинус близок к 1.</li>' +
+          '<li><b>Нейрон (урок 13)</b>: w₁·x₁ + w₂·x₂ + b — это скалярное произведение вектора весов на вектор признаков плюс сдвиг.</li>' +
+          '<li><b>Attention (урок 17)</b>: модель решает, на какие слова смотреть, тоже через скалярное произведение векторов.</li>' +
+          '</ul>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь A = (3; 4). Какая у неё длина? Найди ещё одну стрелку той же длины.</li>' +
+          '<li>Найди такое B, чтобы косинус был ровно 0. Как стоят стрелки?</li>' +
+          '<li>Поставь B = (2·ax; 2·ay) — вдвое длиннее A. Что стало с косинусом? Почему?</li>' +
+          '<li>Почему для поиска похожих слов удобнее косинус, а не расстояние между концами стрелок?</li>' +
+          '</ul>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Векторы с целыми координатами от −5 до 5. Сумма, длины, угол и косинус считаются при каждом движении. Игра — 10 раундов: сложить векторы и найти самый похожий по косинусу; в трёх раундах ближайший концом и самый похожий — разные стрелки. Сверка — <code>tools/check_math.py</code>.</p>' +
+          '<p><b>Как использовать.</b> Перед уроком 17. 5 минут: два ученика показывают руками направления — «смотрим в одну сторону», «под прямым углом», «в разные стороны».</p>',
+        footer: 'Раздел «Математика для ML». Все расчёты выполняются прямо в браузере, без интернета.'
+      }
+    };
+
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // ======================= Расчёты =======================
+    function dot(a, b) { return a[0] * b[0] + a[1] * b[1]; }
+    function len(a) { return Math.sqrt(dot(a, a)); }
+    function cos(a, b) { var n = len(a) * len(b); return n ? dot(a, b) / n : 0; }
+    function dist(a, b) { return len([a[0] - b[0], a[1] - b[1]]); }
+    function argmax(xs) { var b = 0; xs.forEach(function (x, i) { if (x > xs[b]) b = i; }); return b; }
+    function argmin(xs) { var b = 0; xs.forEach(function (x, i) { if (x < xs[b]) b = i; }); return b; }
+    function fix(x, d) { var r = (+x).toFixed(d == null ? 2 : d); return r === '-0.00' ? '0.00' : r; }
+
+    var ROUNDS = [
+      { t: 'sum', a: [2, 1], b: [1, 3] }, { t: 'cos', a: [3, 1], c: [[6, 2], [1, 3], [3, -1]] },
+      { t: 'cos', a: [1, 2], c: [[4, 1], [1, 1], [-1, 2]] }, { t: 'sum', a: [-1, 2], b: [3, 1] },
+      { t: 'cos', a: [2, 0], c: [[5, 1], [1, 1], [0, 3]] }, { t: 'sum', a: [2, -2], b: [1, 4] },
+      { t: 'cos', a: [-2, 1], c: [[-4, 2], [2, -1], [0, 3]] }, { t: 'cos', a: [1, 1], c: [[3, 2], [1, 4], [5, 0]] },
+      { t: 'sum', a: [4, 0], b: [-1, 2] }, { t: 'cos', a: [0, 2], c: [[1, 4], [-1, 1], [2, 2]] }
+    ];
+    function vec(v) { return '(' + v[0] + '; ' + v[1] + ')'; }
+    function options(q) {
+      if (q.t === 'cos') return { right: argmax(q.c.map(function (v) { return cos(q.a, v); })), labels: q.c.map(function (v, i) { return T('cand', { i: i + 1, x: v[0], y: v[1] }); }) };
+      var s = [q.a[0] + q.b[0], q.a[1] + q.b[1]];
+      // типичные ошибки: вычесть, перепутать координаты, сложить «крест-накрест»
+      var cand = [s, [q.a[0] - q.b[0], q.a[1] - q.b[1]], [s[1], s[0]], [q.a[0] + q.b[1], q.a[1] + q.b[0]], [s[0] + 1, s[1]]], seen = {}, list = [];
+      cand.forEach(function (v) { var k = vec(v); if (list.length < 4 && !seen[k]) { seen[k] = 1; list.push(v); } });
+      list.sort(function (u, v) { return u[0] - v[0] || u[1] - v[1]; });
+      return { right: list.map(vec).indexOf(vec(s)), labels: list.map(vec) };
+    }
+
+    // ======================= Состояние =======================
+    var PRESETS = { same: [[2, 1], [4, 2]], right: [[3, 0], [0, 2]], opp: [[2, 2], [-3, -3]] };
+    var state = { mode: 'explore', a: [3, 1], b: [1, 3], game: null };
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g, S;
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 1.0 : 0.82);
+      draw();
+    }
+    function font(px, bold) { return (bold ? 'bold ' : '') + px + 'px ' + (MLViz.cssVar('--font') || 'Calibri, system-ui, sans-serif'); }
+    function arrow(ctx, from, to, color, width, dashed) {
+      var x0 = S.sx(from[0]), y0 = S.sy(from[1]), x1 = S.sx(to[0]), y1 = S.sy(to[1]), ang = Math.atan2(y1 - y0, x1 - x0), hs = 12;
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width;
+      if (dashed) ctx.setLineDash([7, 5]);
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.setLineDash([]);
+      if (Math.hypot(x1 - x0, y1 - y0) < 2) return;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - hs * Math.cos(ang - 0.4), y1 - hs * Math.sin(ang - 0.4)); ctx.lineTo(x1 - hs * Math.cos(ang + 0.4), y1 - hs * Math.sin(ang + 0.4)); ctx.closePath(); ctx.fill();
+    }
+    function tag(ctx, text, v, fs) {   // подпись на «бумаге» у конца стрелки
+      var x = S.sx(v[0]), y = S.sy(v[1]); ctx.font = font(fs, true);
+      var w = ctx.measureText(text).width + 10, h = fs * 1.45, bx = x + (v[0] >= 0 ? 8 : -w - 8), by = y + (v[1] >= 0 ? -h - 4 : 4);
+      ctx.fillStyle = MLViz.cssVar('--paper'); ctx.fillRect(bx, by, w, h);
+      ctx.fillStyle = MLViz.cssVar('--ink'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(text, bx + 5, by + h / 2 + 1);
+    }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), pad = MLViz.plotPad(g.w, 2);
+      ctx.clearRect(0, 0, g.w, g.h);
+      var side = Math.min(g.w - pad.l - pad.r, g.h - pad.t - pad.b), lim = state.mode === 'game' ? 7 : 10;
+      S = { sx: MLViz.scale(-lim, lim, pad.l, pad.l + side), sy: MLViz.scale(-lim, lim, pad.t + side, pad.t) };
+      MLViz.drawAxes(ctx, { w: pad.l + side + pad.r, h: pad.t + side + pad.b, pad: pad, sx: S.sx, sy: S.sy, xTicks: MLViz.range(-lim, lim, lim > 7 ? 2 : 1), yTicks: MLViz.range(-lim, lim, lim > 7 ? 2 : 1), xLabel: 'x', yLabel: 'y' });
+      ctx.strokeStyle = MLViz.cssVar('--n-300'); ctx.lineWidth = 1.5;   // оси через ноль — ярче
+      ctx.beginPath(); ctx.moveTo(S.sx(-lim), S.sy(0)); ctx.lineTo(S.sx(lim), S.sy(0)); ctx.moveTo(S.sx(0), S.sy(-lim)); ctx.lineTo(S.sx(0), S.sy(lim)); ctx.stroke();
+      var O = [0, 0], ink = MLViz.cssVar('--paper'), acc = MLViz.cssVar('--accent'), mid = MLViz.cssVar('--n-300');
+      if (state.mode === 'game' && state.game) {
+        var q = state.game.q;
+        if (q.t === 'sum') {
+          arrow(ctx, O, q.a, ink, 4); arrow(ctx, O, q.b, mid, 4); tag(ctx, 'A', q.a, fs); tag(ctx, 'B', q.b, fs);
+          if (state.game.answered) { var s = [q.a[0] + q.b[0], q.a[1] + q.b[1]]; arrow(ctx, q.a, s, mid, 2, true); arrow(ctx, O, s, acc, 4); tag(ctx, T('sumLbl'), s, fs); }
+        } else {
+          q.c.forEach(function (v, i) { arrow(ctx, O, v, state.game.answered && i === state.game.best ? acc : mid, 3); tag(ctx, String(i + 1), v, fs); });
+          arrow(ctx, O, q.a, ink, 5); tag(ctx, 'A', q.a, fs);
+        }
+        return;
+      }
+      var a = state.a, b = state.b, sum = [a[0] + b[0], a[1] + b[1]];
+      arrow(ctx, a, sum, mid, 2, true); arrow(ctx, b, sum, mid, 2, true);   // параллелограмм суммы
+      arrow(ctx, O, sum, acc, 3, true); tag(ctx, T('sumLbl'), sum, fs);
+      // Дуга угла между A и B
+      if (len(a) && len(b)) {
+        var r = side * 0.08, t1 = Math.atan2(-a[1], a[0]), t2 = Math.atan2(-b[1], b[0]), d = t2 - t1;
+        while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+        ctx.strokeStyle = acc; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(S.sx(0), S.sy(0), r, t1, t1 + d, d < 0); ctx.stroke();
+      }
+      arrow(ctx, O, a, ink, 4); arrow(ctx, O, b, ink, 4);
+      tag(ctx, 'A', a, fs); tag(ctx, 'B', b, fs);
+    }
+
+    // ======================= Панель =======================
+    el('presets').innerHTML = Object.keys(PRESETS).map(function (k) { return '<button type="button" data-p="' + k + '">' + T('pr_' + k) + '</button>'; }).join('');
+    function update() {
+      var a = state.a, b = state.b;
+      [['ax', a[0]], ['ay', a[1]], ['bx', b[0]], ['by', b[1]]].forEach(function (p) { el(p[0]).value = p[1]; el(p[0] + 'V').textContent = p[1]; el(p[0]).setAttribute('aria-label', T(p[0][0] === 'a' ? 'vA' : 'vB') + ', ' + p[0][1]); });
+      var c = cos(a, b), ang = len(a) && len(b) ? Math.acos(Math.max(-1, Math.min(1, c))) * 180 / Math.PI : 0;
+      el('readout').innerHTML = T('readout', { ax: a[0], ay: a[1], bx: b[0], by: b[1], sx: a[0] + b[0], sy: a[1] + b[1], la: fix(len(a)), lb: fix(len(b)), ang: Math.round(ang), cos: fix(c) });
+      MLViz.setPressed(el('presets'), function (bt) { var p = PRESETS[bt.dataset.p]; return p[0][0] === a[0] && p[0][1] === a[1] && p[1][0] === b[0] && p[1][1] === b[1]; });
+      draw();
+    }
+
+    // ======================= Игра =======================
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var r = ROUNDS[q.i], o = options(r);
+        state.game = { q: r, answered: false, best: r.t === 'cos' ? o.right : -1 };
+        el('gameQ').innerHTML = r.t === 'sum' ? T('qSum', { ax: r.a[0], ay: r.a[1], bx: r.b[0], by: r.b[1] }) : T('qCos');
+        draw();
+        q.choices(el('gameChoices'), o.labels, function (i) { return i === o.right; }, function (i, ok) {
+          state.game.answered = true;
+          var v = T(ok ? 'gameRight' : 'gameWrong'), html;
+          if (r.t === 'sum') html = T('aSum', { verdict: v, ax: r.a[0], ay: r.a[1], bx: r.b[0], by: r.b[1], sx: r.a[0] + r.b[0], sy: r.a[1] + r.b[1] });
+          else {
+            var cs = r.c.map(function (c) { return cos(r.a, c); }), dn = argmin(r.c.map(function (c) { return dist(r.a, c); }));
+            html = T('aCos', { verdict: v, list: cs.map(function (c, k) { return (k + 1) + ' — ' + fix(c); }).join(', '), best: o.right + 1, trap: dn !== o.right ? T('trapNote', { d: dn + 1 }) : '' });
+          }
+          q.answer(ok ? 1 : 0, html);
+          draw();
+        });
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameQ').innerHTML = ''; draw(); }
+    });
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('readout').hidden = m !== 'explore';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else { state.game = null; update(); }   // стрелки «Исследуй» игра не трогает
+    }
+
+    // ======================= События =======================
+    ['ax', 'ay', 'bx', 'by'].forEach(function (id) {
+      el(id).addEventListener('input', function (e) { (id[0] === 'a' ? state.a : state.b)[id[1] === 'x' ? 0 : 1] = +e.target.value; update(); });
+    });
+    el('presets').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var p = PRESETS[b.dataset.p]; state.a = p[0].slice(); state.b = p[1].slice(); update();
+    });
+    // Перетаскивание концов стрелок (в пределах −5…5, к ближайшей клетке)
+    var dragging = null;
+    cv.addEventListener('pointerdown', function (e) {
+      if (state.mode !== 'explore') return;
+      var p = MLViz.pointer(cv, e), da = Math.hypot(p.x - S.sx(state.a[0]), p.y - S.sy(state.a[1])), db = Math.hypot(p.x - S.sx(state.b[0]), p.y - S.sy(state.b[1]));
+      if (Math.min(da, db) > 30) return;
+      dragging = da <= db ? state.a : state.b; cv.setPointerCapture(e.pointerId);
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var p = MLViz.pointer(cv, e), clamp = function (v) { return Math.max(-5, Math.min(5, Math.round(v))); };
+      var x = clamp(S.sx.invert(p.x)), y = clamp(S.sy.invert(p.y));
+      if (x !== dragging[0] || y !== dragging[1]) { dragging[0] = x; dragging[1] = y; update(); }
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) { cv.addEventListener(ev, function () { dragging = null; }); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    window.MATH_VEC = { cos: cos, len: len, dot: dot, options: options, rounds: ROUNDS };   // для сверки (tools/check_math.py)
+
+    resize(); setMode('explore');
+  })();
+  </script>
+</body>
+</html>

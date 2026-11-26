@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Прямая y = a·x + b · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .readout { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text); margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+    .readout b { color: var(--text-strong); font-size: 1.25em; }
+    .choices.eq button { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="readout" id="readout"></p>
+          <canvas id="cv"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <div class="seg" id="views" style="margin-bottom:12px">
+            <button type="button" data-v="grid" data-i18n="vGrid"></button>
+            <button type="button" data-v="peng" data-i18n="vPeng"></button>
+          </div>
+          <h3><span data-i18n="aLabel"></span>: <span id="aVal"></span></h3>
+          <input type="range" id="a">
+          <h3 style="margin-top:12px"><span data-i18n="bLabel"></span>: <span id="bVal"></span></h3>
+          <input type="range" id="b">
+          <div id="pengCtl" hidden>
+            <h3 style="margin-top:12px"><span data-i18n="xLabelP"></span>: <span id="xVal"></span></h3>
+            <input type="range" id="x0" min="170" max="235" step="1" value="200">
+            <button type="button" class="primary" id="bestBtn" style="margin-top:12px" data-i18n="best"></button>
+            <p class="note" id="bestNote"></p>
+          </div>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameQ"></p>
+          <div class="choices eq" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div id="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../data/penguins.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Прямая y = a·x + b',
+        analogy: '<b>Такси: 5 сомони за посадку и 2 сомони за каждый километр.</b> Цена = 2 · километры + 5. Это и есть прямая: a — сколько добавляется за каждый шаг по x (наклон), b — с чего начинаем при x = 0 (сдвиг).',
+        cvLabel: 'Координатная плоскость и прямая y = a·x + b; в режиме «Пингвины» — точки длина крыла и масса и прямая-предсказание',
+        modeExplore: 'Исследуй', modeGame: 'Игра: прочитай прямую',
+        vGrid: 'Клетки', vPeng: 'Пингвины',
+        aLabel: 'Наклон a', bLabel: 'Сдвиг b', xLabelP: 'Длина крыла для прогноза, мм',
+        best: 'Лучшая прямая',
+        bestNote: 'Лучшая прямая по 273 пингвинам train — как на уроке 8: a = {a}, b = {b}.',
+        rGrid: '<span>y = <b>{eq}</b></span><span>при x = 0: <b>{y0}</b></span><span>каждый шаг по x добавляет: <b>{a}</b></span>',
+        rPeng: '<span>масса = <b>{a} × крыло {sign} {b}</b></span><span>крыло {x} мм → <b>{y} г</b></span><span>средняя ошибка на train: <b>{mae} г</b></span>',
+        xGrid: 'x', yGrid: 'y', xPeng: 'длина крыла, мм', yPeng: 'масса, г',
+        hintExplore: 'Двигай наклон a и сдвиг b. В режиме «Пингвины» попробуй сам положить прямую через точки, потом нажми «Лучшая прямая».',
+        hintGame: 'Читай прямую: где она пересекает ось y (это b) и на сколько поднимается за один шаг вправо (это a).',
+        qVal: 'Прямая <b>y = {eq}</b>. Чему равен y при x = <b>{x}</b>?',
+        qPick: 'Какое уравнение у прямой на графике?',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий раунд →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameRight: 'Верно!', gameWrong: 'Не так.',
+        aVal2: '{verdict} {calc} = <b>{y}</b>.',
+        aPick: '{verdict} Прямая пересекает ось y в точке {b} — это b. За шаг вправо она {dir} на {abs} — это a. Уравнение: <b>y = {eq}</b>.',
+        up: 'поднимается', down: 'опускается', flat: 'не меняется',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Линейная регрессия на уроке 8 подбирает ровно эти два числа: наклон a и сдвиг b.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>b — где прямая пересекает ось y</b>, то есть значение y при x = 0.</li>' +
+          '<li><b>a — наклон</b>: на сколько меняется y, когда x увеличивается на 1. a &gt; 0 — прямая идёт вверх, a &lt; 0 — вниз, a = 0 — ровно горизонтально.</li>' +
+          '<li><b>Подставить x</b>: y = a · x + b. Для y = 2x + 1 при x = 3: 2 · 3 + 1 = 7.</li>' +
+          '<li><b>Прямая-предсказание.</b> Если точки (пингвины) лежат примерно вдоль прямой, по x можно угадать y: по длине крыла — массу.</li>' +
+          '<li><b>Лучшая прямая</b> — та, от которой точки в среднем ближе всего. Её находят по формуле (метод наименьших квадратов), а не перебором.</li>' +
+          '</ol>',
+        mlTitle: 'Где это встретится в ML',
+        mlBody:
+          '<ul>' +
+          '<li><b>Линейная регрессия (урок 8)</b>: масса ≈ {a} × крыло {b}. Наклон {a} — каждый лишний миллиметр крыла добавляет примерно {a} г массы.</li>' +
+          '<li><b>Нейрон (урок 13)</b>: внутри — та же формула, только признаков несколько: w₁·x₁ + w₂·x₂ + b. Веса w — это наклоны, b — сдвиг.</li>' +
+          '<li><b>Граница двух классов</b>: прямая на плоскости признаков может разделять, например, два вида пингвинов.</li>' +
+          '</ul>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Поставь a = 0. Как выглядит прямая? Что меняет b?</li>' +
+          '<li>Поставь b = 0 и меняй a от −3 до 3. Через какую точку прямая проходит всегда?</li>' +
+          '<li>В режиме «Пингвины» положи прямую на глаз. Какая получилась средняя ошибка? Насколько лучше «Лучшая прямая»?</li>' +
+          '<li>По лучшей прямой: сколько весит пингвин с крылом 210 мм? А с крылом 100 мм — можно ли этому верить?</li>' +
+          '</ul>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Режим «Клетки» — абстрактная плоскость. Режим «Пингвины» — длина крыла и масса всех 342 пингвинов; «Лучшая прямая» и средняя ошибка считаются по 273 пингвинам train, как на уроке 8, и совпадают с <code>LinearRegression</code>. Игра — 10 раундов: подставить x или узнать уравнение по графику. Сверка — <code>tools/check_math.py</code>.</p>' +
+          '<p><b>Как использовать.</b> Перед уроком 8. 5 минут: цена такси или мобильного тарифа «абонплата + за минуту» — это прямая. Пусть ученики сами назовут a и b.</p>',
+        footer: 'Раздел «Математика для ML». Все расчёты выполняются прямо в браузере, без интернета.'
+      }
+    };
+
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    MLViz.renderHeader('../../');
+
+    // ======================= Данные =======================
+    var P = window.PENGUINS, C = P.columns, ROWS = P.rows.map(function (r) { var o = {}; C.forEach(function (c, i) { o[c] = r[i]; }); return o; });
+    var TRAIN = ROWS.filter(function (r) { return !r.is_test; });
+    // Метод наименьших квадратов на train (как LinearRegression на уроке 8)
+    function bestLine(rows) {
+      var n = rows.length, mx = 0, my = 0;
+      rows.forEach(function (r) { mx += r.flipper_length_mm / n; my += r.body_mass_g / n; });
+      var sxy = 0, sxx = 0;
+      rows.forEach(function (r) { var dx = r.flipper_length_mm - mx; sxy += dx * (r.body_mass_g - my); sxx += dx * dx; });
+      var a = sxy / sxx; return { a: a, b: my - a * mx };
+    }
+    function mae(rows, a, b) { return rows.reduce(function (s, r) { return s + Math.abs(r.body_mass_g - (a * r.flipper_length_mm + b)); }, 0) / rows.length; }
+    var BEST = bestLine(TRAIN);
+    function num(x, d) { var r = (+x).toFixed(d == null ? 2 : d); return r.replace(/\.?0+$/, '') || '0'; }
+    function eq(a, b, d) {   // «2x + 1», «−x + 8», «0.5x − 2», «5»
+      var sa = a === 0 ? '' : (a === 1 ? '' : a === -1 ? '−' : (a < 0 ? '−' : '') + num(Math.abs(a), d)) + 'x';
+      var sb = b === 0 ? (a === 0 ? '0' : '') : (a === 0 ? (b < 0 ? '−' : '') + num(Math.abs(b), d) : (b < 0 ? ' − ' : ' + ') + num(Math.abs(b), d));
+      return sa + sb;
+    }
+    STR.ru.mlBody = STR.ru.mlBody.replace(/\{a\}/g, num(BEST.a, 2)).replace('{b}', (BEST.b < 0 ? '− ' : '+ ') + num(Math.abs(BEST.b), 2));
+    MLViz.applyI18n(STR);
+    el('mlBody').innerHTML = T('mlBody');
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+
+    // Раунды игры: val — подставить x, pick — узнать уравнение по графику
+    var ROUNDS = [
+      { t: 'val', a: 2, b: 1, x: 3 }, { t: 'pick', a: 2, b: 1 }, { t: 'val', a: -1, b: 8, x: 5 }, { t: 'pick', a: -1, b: 8 },
+      { t: 'val', a: 0.5, b: 4, x: 6 }, { t: 'pick', a: 0, b: 5 }, { t: 'val', a: 3, b: -2, x: 4 }, { t: 'pick', a: 0.5, b: 2 },
+      { t: 'val', a: 50, b: -5800, x: 200 }, { t: 'pick', a: -2, b: 10 }
+    ];
+    function lineAt(q, x) { return q.a * x + q.b; }
+    // Варианты: для val — типичные ошибки (сложить вместо умножить, забыть b), для pick — перепутать знак наклона или поменять a и b местами
+    function options(q) {
+      var vals, right;
+      if (q.t === 'val') {
+        right = lineAt(q, q.x);
+        vals = [right];
+        [q.a + q.x + q.b, q.a * q.x, q.a * (q.x + q.b), right + q.a].forEach(function (v) { if (vals.length < 4 && vals.indexOf(v) === -1) vals.push(v); });
+        vals.sort(function (u, v) { return u - v; });
+        return { right: vals.indexOf(right), labels: vals.map(function (v) { return num(v, 2); }) };
+      }
+      var cand = [[q.a, q.b], [-q.a, q.b], [q.b, q.a], [q.a, -q.b], [q.a * 2, q.b], [q.a + 1, q.b]], seen = {}, list = [];
+      cand.forEach(function (c) { var k = eq(c[0], c[1]); if (list.length < 4 && !seen[k]) { seen[k] = 1; list.push(k); } });
+      right = eq(q.a, q.b);
+      list.sort();
+      return { right: list.indexOf(right), labels: list.map(function (s) { return 'y = ' + s; }) };
+    }
+
+    // ======================= Состояние =======================
+    var VIEW = {
+      grid: { a: { min: -3, max: 3, step: 0.5 }, b: { min: -5, max: 10, step: 1 }, x: [0, 10], y: [-10, 20] },
+      peng: { a: { min: 0, max: 100, step: 1 }, b: { min: -12000, max: 4000, step: 100 }, x: [170, 235], y: [2500, 6500] }
+    };
+    var state = { mode: 'explore', view: 'grid', grid: { a: 1, b: 2 }, peng: { a: 30, b: -2000 }, x0: 200, game: null };
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g;
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 0.95 : 0.62);
+      draw();
+    }
+    function font(px, bold) { return (bold ? 'bold ' : '') + px + 'px ' + (MLViz.cssVar('--font') || 'Calibri, system-ui, sans-serif'); }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), view = state.mode === 'game' ? 'grid' : state.view, V = VIEW[view];
+      ctx.clearRect(0, 0, g.w, g.h);
+      var pad = MLViz.plotPad(g.w, view === 'peng' ? 4 : 3);
+      var sx = MLViz.scale(V.x[0], V.x[1], pad.l, g.w - pad.r), sy = MLViz.scale(V.y[0], V.y[1], g.h - pad.b, pad.t);
+      MLViz.drawAxes(ctx, { w: g.w, h: g.h, pad: pad, sx: sx, sy: sy,
+        xTicks: view === 'peng' ? MLViz.range(170, 235, 10) : MLViz.range(0, 10, 1), yTicks: view === 'peng' ? MLViz.range(2500, 6500, 1000) : MLViz.range(-10, 20, 5),
+        xLabel: T(view === 'peng' ? 'xPeng' : 'xGrid'), yLabel: T(view === 'peng' ? 'yPeng' : 'yGrid') });
+      ctx.save(); ctx.beginPath(); ctx.rect(pad.l, pad.t, g.w - pad.l - pad.r, g.h - pad.t - pad.b); ctx.clip();
+      if (view === 'grid') {   // ось x (y = 0) — ярче, чтобы было видно, где «ноль»
+        ctx.strokeStyle = MLViz.cssVar('--n-300'); ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(pad.l, sy(0)); ctx.lineTo(g.w - pad.r, sy(0)); ctx.stroke();
+      }
+      if (view === 'peng') {
+        ROWS.forEach(function (r) {
+          ctx.beginPath(); ctx.arc(sx(r.flipper_length_mm), sy(r.body_mass_g), Math.max(3, fs * 0.22), 0, 2 * Math.PI);
+          ctx.fillStyle = MLViz.cssVar('--' + r.species.toLowerCase()); ctx.globalAlpha = 0.75; ctx.fill(); ctx.globalAlpha = 1;
+        });
+      }
+      var L = state.mode === 'game' ? state.game.q : state[view];
+      var hideLine = state.mode === 'game' && state.game.q.t === 'val' && !state.game.answered;
+      if (!hideLine) {
+        ctx.strokeStyle = MLViz.cssVar('--accent'); ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(sx(V.x[0]), sy(lineAt(L, V.x[0]))); ctx.lineTo(sx(V.x[1]), sy(lineAt(L, V.x[1]))); ctx.stroke();
+      }
+      // Точка на прямой: в «Пингвинах» — прогноз для выбранного крыла, в игре — ответ
+      var px = view === 'peng' ? state.x0 : state.mode === 'game' && state.game.q.t === 'val' && state.game.answered ? state.game.q.x : null;
+      if (px != null && px >= V.x[0] && px <= V.x[1] && lineAt(L, px) >= V.y[0] && lineAt(L, px) <= V.y[1]) {   // точку вне графика не рисуем
+        var py = lineAt(L, px);
+        ctx.setLineDash([6, 5]); ctx.strokeStyle = MLViz.cssVar('--n-200'); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(sx(px), sy(V.y[0])); ctx.lineTo(sx(px), sy(py)); ctx.lineTo(sx(V.x[0]), sy(py)); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(sx(px), sy(py), 8, 0, 2 * Math.PI); ctx.fillStyle = MLViz.cssVar('--paper'); ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = MLViz.cssVar('--ink'); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // ======================= Панель =======================
+    function setSliders() {
+      var V = VIEW[state.view], L = state[state.view];
+      ['a', 'b'].forEach(function (k) { var s = el(k); s.min = V[k].min; s.max = V[k].max; s.step = V[k].step; s.value = L[k]; });
+    }
+    function update() {
+      var L = state[state.view];
+      MLViz.setPressed(el('views'), function (b) { return b.dataset.v === state.view; });
+      el('aVal').textContent = num(L.a, 2); el('bVal').textContent = num(L.b, 2);
+      el('pengCtl').hidden = state.view !== 'peng';
+      el('xVal').textContent = state.x0;
+      el('bestNote').textContent = T('bestNote', { a: num(BEST.a, 2), b: num(BEST.b, 2) });
+      el('readout').innerHTML = state.view === 'grid'
+        ? T('rGrid', { eq: eq(L.a, L.b), y0: num(L.b), a: num(L.a) })
+        : T('rPeng', { a: num(L.a, 2), sign: L.b < 0 ? '−' : '+', b: num(Math.abs(L.b), 2), x: state.x0, y: Math.round(lineAt(L, state.x0)), mae: Math.round(mae(TRAIN, L.a, L.b)) });
+      draw();
+    }
+
+    // ======================= Игра =======================
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var r = ROUNDS[q.i], o = options(r);
+        state.game = { q: r, answered: false };
+        el('gameQ').innerHTML = r.t === 'val' ? T('qVal', { eq: eq(r.a, r.b), x: r.x }) : T('qPick');
+        draw();
+        q.choices(el('gameChoices'), o.labels, function (i) { return i === o.right; }, function (i, ok) {
+          state.game.answered = true;
+          var v = T(ok ? 'gameRight' : 'gameWrong'), html;
+          if (r.t === 'val') html = T('aVal2', { verdict: v, calc: num(r.a) + ' · ' + r.x + (r.b < 0 ? ' − ' : ' + ') + num(Math.abs(r.b)), y: num(lineAt(r, r.x)) });
+          else html = T('aPick', { verdict: v, b: num(r.b), dir: T(r.a > 0 ? 'up' : r.a < 0 ? 'down' : 'flat'), abs: num(Math.abs(r.a)), eq: eq(r.a, r.b) });
+          q.answer(ok ? 1 : 0, html);
+          draw();
+        });
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameQ').innerHTML = ''; draw(); }
+    });
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('readout').hidden = m !== 'explore';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else { state.game = null; update(); }   // прямые «Исследуй» игра не меняет
+    }
+
+    // ======================= События =======================
+    el('views').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; state.view = b.dataset.v; setSliders(); update(); });
+    el('a').addEventListener('input', function (e) { state[state.view].a = +e.target.value; update(); });
+    el('b').addEventListener('input', function (e) { state[state.view].b = +e.target.value; update(); });
+    el('x0').addEventListener('input', function (e) { state.x0 = +e.target.value; update(); });
+    el('bestBtn').addEventListener('click', function () { state.peng = { a: BEST.a, b: BEST.b }; setSliders(); update(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    window.MATH_LINE = { best: BEST, mae: function (a, b) { return mae(TRAIN, a, b); }, options: options, rounds: ROUNDS, eq: eq };   // для сверки (tools/check_math.py)
+
+    setSliders(); resize(); setMode('explore');
+  })();
+  </script>
+</body>
+</html>

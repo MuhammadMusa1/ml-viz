@@ -444,6 +444,7 @@
         return '<div style="margin-top:8px"><label for="w_' + k + '"><span>' + T('c_' + k) + '</span>: <b id="wv_' + k + '"></b></label>' +
           '<input type="range" id="w_' + k + '" data-i="' + i + '" min="0" max="5" step="1" value="' + state.w[i] + '"></div>';
       }).join('');
+      MLViz.addSteppers();   // ползунки весов созданы скриптом после шапки — кнопки «−» и «+» ставим им сами
     }
     function updatePanel() {
       var c = cur(), t = TOOLS[c.sel], r = evaluate(c.sel, c.n, c.w), hide = state.mode === 'game' && state.game && !state.game.answered;

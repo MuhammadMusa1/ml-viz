@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Наклон и спуск · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    .readout { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--fs-label); line-height: var(--lh-label); color: var(--text); margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+    .readout b { color: var(--text-strong); font-size: 1.25em; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <div class="stage">
+          <p class="readout" id="readout"></p>
+          <canvas id="cv"></canvas>
+          <div class="hint" id="hint"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="seg modes" id="modes">
+          <button type="button" id="modeExplore" data-i18n="modeExplore"></button>
+          <button type="button" id="modeGame" data-i18n="modeGame"></button>
+        </div>
+
+        <div id="explorePanel">
+          <h3><span data-i18n="xLabel"></span>: <span id="xVal"></span></h3>
+          <input type="range" id="x" min="-1" max="7" step="0.5" value="0">
+          <h3 style="margin-top:12px"><span data-i18n="lrLabel"></span>: <span id="lrVal"></span></h3>
+          <input type="range" id="lr" min="0.1" max="1.1" step="0.1" value="0.3">
+          <div class="btn-row">
+            <button type="button" class="primary" id="stepBtn" data-i18n="step"></button>
+            <button type="button" id="resetBtn" data-i18n="reset"></button>
+          </div>
+          <p class="note" id="lrNote"></p>
+        </div>
+
+        <div id="gamePanel" class="game-box" hidden>
+          <h3 id="gameStep"></h3>
+          <p style="margin:6px 0 0" id="gameQ"></p>
+          <div class="choices" id="gameChoices"></div>
+          <p id="gameResult" role="status" style="margin:10px 0 0"></p>
+          <button type="button" id="nextBtn" class="primary" hidden></button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ======================= Тексты =======================
+    var STR = {
+      ru: {
+        title: 'Наклон и спуск',
+        analogy: '<b>Ты на склоне в тумане и хочешь спуститься в самую низкую точку долины.</b> Низа не видно, но ногами чувствуешь, куда земля идёт вниз и насколько круто. Делаешь шаг туда — и снова. Наклон склона в точке — это и есть то, что в математике называют производной.',
+        cvLabel: 'Кривая ошибки в форме долины, точка на ней, касательная показывает наклон, отрезками — пройденные шаги спуска',
+        modeExplore: 'Исследуй', modeGame: 'Игра: куда шагать?',
+        xLabel: 'Где стоим (x)', lrLabel: 'Размер шага (learning rate)',
+        step: 'Шаг вниз', reset: 'Сначала',
+        readout: '<span>x = <b>{x}</b></span><span>ошибка = <b>{f}</b></span><span>наклон = <b>{s}</b></span><span>следующий x = {x} − {lr} · ({s}) = <b>{nx}</b></span>',
+        lrSmall: 'Маленький шаг: спуск надёжный, но медленный.',
+        lrGood: 'Хороший шаг: до дна — за несколько шагов.',
+        lrBig: 'Шаг почти 1: точка прыгает с одного склона на другой.',
+        lrHuge: 'Слишком большой шаг: каждый прыжок уносит всё дальше от дна — спуск «разлетается».',
+        xAx: 'x', yAx: 'ошибка',
+        hintExplore: 'Выбери, где стоишь, и нажимай «Шаг вниз». Касательная показывает наклон. Потом поменяй размер шага: 0.1, 0.5, 1.0, 1.1.',
+        hintGame: 'Смотри на знак наклона: плюс — склон идёт вверх вправо, значит, шагать влево. Минус — наоборот.',
+        qDir: 'Мы стоим в x = <b>{x}</b>, наклон там <b>{s}</b>. Куда сделать шаг, чтобы ошибка уменьшилась?',
+        qNext: 'x = <b>{x}</b>, наклон <b>{s}</b>, размер шага <b>{lr}</b>. Где окажемся после шага?',
+        dLeft: 'Влево (уменьшить x)', dRight: 'Вправо (увеличить x)', dStay: 'Стоять: мы на дне',
+        gameStep: 'Раунд {i} из {n}', next: 'Следующий раунд →', finish: 'Итог', again: 'Сыграть ещё ↺',
+        gameRight: 'Верно!', gameWrong: 'Не так.',
+        aDir: '{verdict} {why}',
+        whyPos: 'Наклон положительный — справа выше, значит, вниз — влево.',
+        whyNeg: 'Наклон отрицательный — справа ниже, значит, вниз — вправо.',
+        whyZero: 'Наклон 0 — склона нет: это дно долины.',
+        aNext: '{verdict} x − шаг · наклон = {x} − {lr} · ({s}) = <b>{nx}</b>.',
+        gameOver: 'Итог: <b>{s} из {n}</b>. Правило спуска одно: шагать против наклона — новый x = x − шаг · наклон. Так учится любая нейросеть.',
+        howTitle: 'Как это работает',
+        howBody:
+          '<ol>' +
+          '<li><b>Кривая ошибки.</b> Для каждого значения x (у сети — для каждого веса) есть ошибка. Хотим найти x, где ошибка меньше всего — дно долины.</li>' +
+          '<li><b>Наклон</b> — на сколько вырастет ошибка, если чуть сдвинуть x вправо. Плюс — справа выше, минус — справа ниже, ноль — мы на дне.</li>' +
+          '<li><b>Шаг против наклона</b>: новый x = x − шаг · наклон. Наклон плюс — уходим влево, минус — вправо.</li>' +
+          '<li><b>Чем круче склон, тем длиннее шаг</b>, у дна шаги сами становятся маленькими: наклон там почти 0.</li>' +
+          '<li><b>Размер шага (learning rate)</b> выбирает человек. Маленький — медленно, слишком большой — перепрыгиваем дно и улетаем.</li>' +
+          '</ol>' +
+          '<p class="note">Здесь ошибка = (x − 3)² + 1, а наклон считается по формуле 2 · (x − 3). Знать её не обязательно: наклон видно по касательной.</p>',
+        mlTitle: 'Где это встретится в ML',
+        mlBody:
+          '<ul>' +
+          '<li><b>Как учится сеть (урок 13)</b>: веса w сдвигаются против градиента — w = w − шаг · градиент. Градиент — это наклон сразу по всем весам.</li>' +
+          '<li><b>Размер шага (learning rate)</b> — один из главных параметров обучения любой нейросети, от MNIST (урок 14) до больших языковых моделей.</li>' +
+          '<li><b>Линейная регрессия (урок 8)</b>: лучшую прямую тоже можно найти спуском — шагами по a и b против наклона ошибки.</li>' +
+          '</ul>',
+        tryTitle: 'Попробуй сам',
+        tryBody:
+          '<ul>' +
+          '<li>Начни с x = 0 и шагом 0.3. За сколько шагов доберёшься почти до дна (x ≈ 3)?</li>' +
+          '<li>Поставь шаг 0.1 и 0.5. Во сколько раз быстрее спуск со вторым?</li>' +
+          '<li>Поставь шаг 1.0. Что происходит с точкой? А при 1.1?</li>' +
+          '<li>Начни справа от дна, в x = 7. Почему шаги теперь идут влево?</li>' +
+          '</ul>',
+        teacherTitle: 'Для учителя',
+        teacherBody:
+          '<p><b>Данные.</b> Ошибка (x − 3)² + 1, наклон 2 · (x − 3). Шаги спуска считаются по формуле x − шаг · наклон; при шаге 1.0 точка прыгает между двумя склонами, при 1.1 — уходит всё дальше. Игра — 10 раундов: куда шагать по знаку наклона и где окажемся после шага. Сверка — <code>tools/check_math.py</code>.</p>' +
+          '<p><b>Как использовать.</b> Перед уроком 13. 5 минут: ученик с завязанными глазами ищет самую низкую точку на наклонной доске или рампе — только по ощущению наклона.</p>',
+        footer: 'Раздел «Математика для ML». Все расчёты выполняются прямо в браузере, без интернета.'
+      }
+    };
+
+    var T = function (k, v) { return MLViz.t(STR, k, v); };
+    var el = function (id) { return document.getElementById(id); };
+    MLViz.renderHeader('../../');
+    MLViz.applyI18n(STR);
+    el('cv').setAttribute('aria-label', T('cvLabel'));
+    el('x').setAttribute('aria-label', T('xLabel'));
+    el('lr').setAttribute('aria-label', T('lrLabel'));
+
+    // ======================= Модель =======================
+    function f(x) { return (x - 3) * (x - 3) + 1; }      // ошибка — «долина» с дном в x = 3
+    function slope(x) { return 2 * (x - 3); }             // наклон (производная)
+    function stepFrom(x, lr) { return x - lr * slope(x); }
+    function r3(x) { return Math.round(x * 1000) / 1000; }
+    function num(x) { var r = r3(x); return String(Object.is(r, -0) ? 0 : r); }
+
+    // Раунды игры: dir — куда шагать, next — где окажемся
+    var ROUNDS = [
+      { t: 'dir', x: 1 }, { t: 'next', x: 1, lr: 0.5 }, { t: 'dir', x: 5 }, { t: 'next', x: 5, lr: 0.25 }, { t: 'dir', x: 3 },
+      { t: 'next', x: 0, lr: 0.1 }, { t: 'dir', x: 6.5 }, { t: 'next', x: 4, lr: 1 }, { t: 'dir', x: -0.5 }, { t: 'next', x: 2, lr: 1.5 }
+    ];
+    function dirOf(x) { var s = slope(x); return s > 0 ? 0 : s < 0 ? 1 : 2; }   // 0 — влево, 1 — вправо, 2 — стоять
+    function options(q) {
+      if (q.t === 'dir') return { right: dirOf(q.x), labels: [T('dLeft'), T('dRight'), T('dStay')] };
+      var right = r3(stepFrom(q.x, q.lr)), s = slope(q.x);
+      var vals = [right];
+      // типичные ошибки: шагнуть по наклону, забыть умножить на шаг, шагнуть на весь шаг без наклона
+      [r3(q.x + q.lr * s), r3(q.x - s), r3(q.x - q.lr), r3(q.x + q.lr)].forEach(function (v) { if (vals.length < 4 && vals.indexOf(v) === -1) vals.push(v); });
+      vals.sort(function (a, b) { return a - b; });
+      return { right: vals.indexOf(right), labels: vals.map(num) };
+    }
+
+    // ======================= Состояние =======================
+    var state = { mode: 'explore', x0: 0, lr: 0.3, path: [0], game: null };
+
+    // ======================= Рисование =======================
+    var cv = el('cv'), g, X0 = -1.5, X1 = 7.5, Y1 = 22;
+    function resize() {
+      var w = (cv.parentElement.clientWidth - 20) / MLViz.zoom();
+      g = MLViz.fitCanvas(cv, w < 560 ? 0.9 : 0.56);
+      draw();
+    }
+    function draw() {
+      var ctx = g.ctx, fs = MLViz.fontPx(g.w), pad = MLViz.plotPad(g.w, 2);
+      ctx.clearRect(0, 0, g.w, g.h);
+      var sx = MLViz.scale(X0, X1, pad.l, g.w - pad.r), sy = MLViz.scale(0, Y1, g.h - pad.b, pad.t);
+      MLViz.drawAxes(ctx, { w: g.w, h: g.h, pad: pad, sx: sx, sy: sy, xTicks: MLViz.range(-1, 7, 1), yTicks: MLViz.range(0, 20, 5), xLabel: T('xAx'), yLabel: T('yAx') });
+      ctx.save(); ctx.beginPath(); ctx.rect(pad.l, pad.t, g.w - pad.l - pad.r, g.h - pad.t - pad.b); ctx.clip();
+      // Долина
+      ctx.strokeStyle = MLViz.cssVar('--n-200'); ctx.lineWidth = 3; ctx.beginPath();
+      for (var i = 0; i <= 200; i++) { var x = X0 + (X1 - X0) * i / 200; if (i) ctx.lineTo(sx(x), sy(f(x))); else ctx.moveTo(sx(x), sy(f(x))); }
+      ctx.stroke();
+      var pts = state.mode === 'game' && state.game ? (state.game.answered && state.game.q.t === 'next' ? [state.game.q.x, stepFrom(state.game.q.x, state.game.q.lr)] : [state.game.q.x]) : state.path;
+      // Шаги спуска: отрезки от точки к точке по кривой
+      ctx.strokeStyle = MLViz.cssVar('--accent'); ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); pts.forEach(function (p, k) { if (k) ctx.lineTo(sx(p), sy(f(p))); else ctx.moveTo(sx(p), sy(f(p))); }); ctx.stroke(); ctx.setLineDash([]);
+      // Касательная в текущей точке — наклон
+      var cur = state.mode === 'game' && state.game ? state.game.q.x : pts[pts.length - 1], s = slope(cur), dx = 1.2;
+      ctx.strokeStyle = MLViz.cssVar('--paper'); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(sx(cur - dx), sy(f(cur) - s * dx)); ctx.lineTo(sx(cur + dx), sy(f(cur) + s * dx)); ctx.stroke();
+      pts.forEach(function (p, k) {
+        var last = k === pts.length - 1;
+        ctx.beginPath(); ctx.arc(sx(p), sy(f(p)), last ? 9 : 5, 0, 2 * Math.PI);
+        ctx.fillStyle = last ? MLViz.cssVar('--accent') : MLViz.cssVar('--n-300'); ctx.fill();
+        if (last) { ctx.lineWidth = 2; ctx.strokeStyle = MLViz.cssVar('--ink'); ctx.stroke(); }
+      });
+      ctx.restore();
+    }
+
+    // ======================= Панель =======================
+    function update() {
+      var x = state.path[state.path.length - 1], s = slope(x);
+      el('xVal').textContent = num(state.x0); el('lrVal').textContent = num(state.lr);
+      el('readout').innerHTML = T('readout', { x: num(x), f: num(f(x)), s: num(s), lr: num(state.lr), nx: num(stepFrom(x, state.lr)) });
+      el('lrNote').textContent = T(state.lr < 0.25 ? 'lrSmall' : state.lr < 0.95 ? 'lrGood' : state.lr < 1.05 ? 'lrBig' : 'lrHuge');
+      // Улетевшую точку дальше не двигаем: она уже вне графика
+      el('stepBtn').disabled = Math.abs(x - 3) > 30;
+      draw();
+    }
+
+    // ======================= Игра =======================
+    var quiz = MLViz.quiz({
+      box: el('gamePanel'), rounds: ROUNDS.length,
+      text: {
+        step: function (q) { return T('gameStep', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finish'), again: T('again'),
+        final: function (q) { return T('gameOver', { s: q.score, n: q.n }); }
+      },
+      round: function (q) {
+        var r = ROUNDS[q.i], o = options(r), s = slope(r.x);
+        state.game = { q: r, answered: false };
+        el('gameQ').innerHTML = r.t === 'dir' ? T('qDir', { x: num(r.x), s: num(s) }) : T('qNext', { x: num(r.x), s: num(s), lr: num(r.lr) });
+        draw();
+        q.choices(el('gameChoices'), o.labels, function (i) { return i === o.right; }, function (i, ok) {
+          state.game.answered = true;
+          var v = T(ok ? 'gameRight' : 'gameWrong');
+          q.answer(ok ? 1 : 0, r.t === 'dir'
+            ? T('aDir', { verdict: v, why: T(s > 0 ? 'whyPos' : s < 0 ? 'whyNeg' : 'whyZero') })
+            : T('aNext', { verdict: v, x: num(r.x), lr: num(r.lr), s: num(s), nx: num(stepFrom(r.x, r.lr)) }));
+          draw();
+        });
+      },
+      onEnd: function () { state.game = null; el('gameChoices').innerHTML = ''; el('gameQ').innerHTML = ''; draw(); }
+    });
+    function setMode(m) {
+      state.mode = m;
+      MLViz.setPressed(el('modes'), function (b) { return b.id === (m === 'explore' ? 'modeExplore' : 'modeGame'); });
+      el('explorePanel').hidden = m !== 'explore';
+      el('gamePanel').hidden = m !== 'game';
+      el('readout').hidden = m !== 'explore';
+      el('hint').textContent = T(m === 'explore' ? 'hintExplore' : 'hintGame');
+      if (m === 'game') quiz.start(); else { state.game = null; update(); }   // спуск в «Исследуй» игра не трогает
+    }
+
+    // ======================= События =======================
+    el('x').addEventListener('input', function (e) { state.x0 = +e.target.value; state.path = [state.x0]; update(); });
+    el('lr').addEventListener('input', function (e) { state.lr = +e.target.value; update(); });
+    el('stepBtn').addEventListener('click', function () { var x = state.path[state.path.length - 1]; state.path.push(stepFrom(x, state.lr)); update(); });
+    el('resetBtn').addEventListener('click', function () { state.path = [state.x0]; update(); });
+    el('modeExplore').addEventListener('click', function () { setMode('explore'); });
+    el('modeGame').addEventListener('click', function () { setMode('game'); });
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+    window.MATH_SLOPE = { f: f, slope: slope, step: stepFrom, options: options, rounds: ROUNDS };   // для сверки (tools/check_math.py)
+
+    resize(); setMode('explore');
+  })();
+  </script>
+</body>
+</html>
