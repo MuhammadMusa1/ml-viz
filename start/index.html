@@ -19,6 +19,21 @@
       <div class="myth-list" id="fears"></div>
     </section>
 
+    <section class="section" id="check">
+      <h2 data-i18n="checkTitle"></h2>
+      <p data-i18n-html="checkLead"></p>
+    </section>
+    <!-- Тест — вне .section, как игры на страницах Python: внутри .section у списков свои кружки-номера -->
+    <div class="py-game pytask place" id="game">
+      <div class="task-head"><h3 id="gameStep"></h3><h2 id="ask"></h2></div>
+      <div class="task-grid" id="taskGrid">
+        <pre class="code" id="code"></pre>
+        <div><div class="choices" id="answer"></div></div>
+      </div>
+      <div id="gameResult"></div>
+      <button type="button" id="nextBtn" hidden></button>
+    </div>
+
     <section class="section">
       <h2 data-i18n="routeTitle"></h2>
       <p data-i18n-html="routeLead"></p>
@@ -51,6 +66,7 @@
 
   <script src="../assets/core.js"></script>
   <script src="../assets/catalog.js"></script>
+  <script src="../assets/pytasks.js"></script>
   <script>
   (function () {
     'use strict';
@@ -71,6 +87,46 @@
         f3b: 'Так многие бросают, не дойдя до интересного. Лучше наоборот: увидеть, как работает модель, и тогда станет понятно, зачем нужны Python и математика.',
         f4a: 'Не понимаю, как устроен компьютер и что такое файл.',
         f4b: 'Для этого есть Урок 0 «Как устроен компьютер». С него и начни — он не входит в 24 урока, это разминка перед курсом.',
+        checkTitle: 'Проверь себя: с чего начать',
+        checkLead: '10 коротких вопросов, примерно 3 минуты. <b>Это не оценка</b> — тест только подбирает тебе маршрут. Если не знаешь ответа, жми «Не знаю»: так маршрут получится точнее, чем если угадывать.',
+        step: 'Вопрос {i} из {n}',
+        next: 'Дальше', finish: 'Мой маршрут', finishTitle: 'Твой маршрут', again: 'Пройти ещё раз',
+        dunno: 'Не знаю',
+        vRight: 'Верно', vWrong: 'Не совсем', vDunno: 'Ничего страшного — это и есть то, что стоит пройти',
+        area_c: 'Компьютер', area_p: 'Python', area_m: 'Математика',
+        q_c1: 'Что делает процессор?',
+        o_c1_0: 'Хранит файлы, когда компьютер выключен', o_c1_1: 'Выполняет команды программы и считает', o_c1_2: 'Показывает картинку на экране',
+        x_c1: 'Процессор — «повар»: очень быстро выполняет команды, одну за другой. Файлы хранит диск.',
+        q_c2: 'Ты набрал текст и выключил компьютер, не сохранив. Где был текст до выключения?',
+        o_c2_0: 'В оперативной памяти', o_c2_1: 'На диске', o_c2_2: 'В процессоре',
+        x_c2: 'Оперативная память — «стол»: на нём быстро работать, но при выключении всё со стола пропадает. Сохранённый файл лежит на диске — в «холодильнике».',
+        q_p1: 'Что выведет программа?',
+        x_p1: 'Сначала в коробке x лежит 5. Строка <code>x = x + 2</code> берёт старое значение, прибавляет 2 и кладёт 7 обратно в ту же коробку.',
+        q_p2: 'Что выведет программа?',
+        x_p2: '13 &gt;= 14 — неправда, поэтому Python пропускает ветку <code>if</code> и выполняет <code>else</code>.',
+        q_p3: 'Что выведет программа?',
+        x_p3: 'Номера элементов списка начинаются с нуля: <code>a[0]</code> = 10, <code>a[1]</code> = 20.',
+        q_p4: 'Что выведет программа?',
+        x_p4: 'Цикл по очереди прибавляет к s каждое число: 0 + 1 = 1, 1 + 2 = 3, 3 + 3 = 6. <code>print</code> стоит после цикла и срабатывает один раз.',
+        q_m1: 'В классе 20 учеников, 5 из них в очках. Какая это доля в процентах?',
+        x_m1: '5 из 20 = 5 ÷ 20 = 0,25, то есть 25 из каждых ста — 25%.',
+        q_m2: 'Точка A(1, 1), точка B(4, 5). Какое расстояние между ними по прямой?',
+        x_m2: 'По x разница 3, по y — 4. Прямой путь — гипотенуза: √(3² + 4²) = √25 = 5.',
+        q_m3: 'Чему равно среднее чисел 2, 4 и 9?',
+        x_m3: 'Сумма 2 + 4 + 9 = 15, чисел три: 15 ÷ 3 = 5.',
+        q_m4: 'Прямая y = 2·x + 1. Чему равен y при x = 3?',
+        x_m4: '2 · 3 + 1 = 7: сначала умножаем, потом прибавляем.',
+        scoreLabel: 'Верных ответов', scoreOf: 'из {n}', areaScore: '{c} из {n}',
+        notGrade: 'Это не оценка. Тест только подсказывает, какие короткие страницы пройти, чтобы на уроках было легко.',
+        routeNow: 'Сначала', routeMath: 'Математика — по пути, не заранее',
+        readyNow: 'Основы на месте — можно сразу начинать с урока 1.',
+        why_computer: 'Что внутри компьютера, что такое файл и программа. Разминка перед курсом.',
+        why_py: 'Пройди примеры по шагам и сыграй в игру — около 15 минут.',
+        why_lesson1: 'Сначала разминка Python к уроку 1 (5–7 минут), потом сама страница урока.',
+        why_math: 'Открой перед уроком {n} — там это пригодится.',
+        mathOk: 'С математикой для начала всё в порядке. Если что-то забудется, на уроках есть кнопка «Математика к уроку».',
+        pyLater: 'Функции и таблицы pandas встретятся на уроках 2–5 — там будет кнопка «Python к уроку».',
+        warm1: 'Разминка к уроку 1',
         routeTitle: 'Маршрут',
         routeLead: 'Иди по шагам сверху вниз. Отметки «пройдено» на главной появятся сами, когда доиграешь игру на странице урока.',
         stepTag: 'Шаг {n}',
@@ -120,6 +176,7 @@
         teacherTitle: 'Для учителя',
         teacherBody:
           '<p><b>Когда показать.</b> Ученику, который пришёл без программирования и боится математики, — до первого урока. Страница отвечает на вопрос «как мне это поможет, если я начинаю с нуля?».</p>' +
+          '<p><b>Тест «С чего начать».</b> 10 вопросов: 2 про компьютер, 4 про Python, 4 про математику. Каждая ошибка или «Не знаю» добавляет в маршрут одну короткую страницу: Урок 0, страницу «Python с нуля» (до урока 1) или «Математики для ML» (к уроку, где она понадобится). Можно дать всему классу в начале первого занятия и попросить показать итог.</p>' +
           '<p><b>Как использовать.</b> Пройти вместе Урок 0 и разминку к уроку 1, потом дать ритм: два урока в неделю по кругу «разминка → урок → ноутбук». Через 2–3 недели спросить, что стало понятнее.</p>' +
           '<p><b>Аккаунты.</b> Для ноутбуков Colab нужен аккаунт Google; до 13 лет — вместе с родителями. Сам сайт работает без аккаунта и без интернета.</p>',
         footer: 'Сайт работает офлайн: уроки, разминки и учебники открываются без интернета. Ноутбукам Colab нужен интернет.'
@@ -153,6 +210,103 @@
         '<div class="res">' + res.map(function (r) { return '<a class="btn" href="' + r[1] + '">' + MLViz.icon(r[2]) + T(r[0]) + '</a>'; }).join('') + '</div>' +
         '</div></li>';
     }).join('');
+
+    // ======================= Тест «С чего начать» =======================
+    // Строгий JSON: его читает tools/check_start.py и проверяет ответы настоящим Python.
+    // area: c — компьютер, p — Python, m — математика; page — страница, которую советуем при ошибке.
+    // Вариант с «@» — ключ из STR, без «@» — как есть (вывод программы, число).
+    var QUESTIONS = /* data:start */[
+      { "id": "c1", "area": "c", "page": "computer", "opts": ["@o_c1_0", "@o_c1_1", "@o_c1_2"], "right": 1 },
+      { "id": "c2", "area": "c", "page": "computer", "opts": ["@o_c2_0", "@o_c2_1", "@o_c2_2"], "right": 0 },
+      { "id": "p1", "area": "p", "page": "py-print", "code": "x = 5\nx = x + 2\nprint(x)", "opts": ["5", "7", "x + 2"], "right": 1 },
+      { "id": "p2", "area": "p", "page": "py-if", "code": "age = 13\nif age >= 14:\n    print(\"можно\")\nelse:\n    print(\"рано\")", "opts": ["можно", "рано", "ничего"], "right": 1 },
+      { "id": "p3", "area": "p", "page": "py-list", "code": "a = [10, 20, 30]\nprint(a[1])", "opts": ["20", "10", "30"], "right": 0 },
+      { "id": "p4", "area": "p", "page": "py-for", "code": "s = 0\nfor x in [1, 2, 3]:\n    s = s + x\nprint(s)", "opts": ["3", "123", "6"], "right": 2 },
+      { "id": "m1", "area": "m", "page": "math-percent", "check": "5 / 20 * 100", "unit": "%", "opts": ["5%", "20%", "25%"], "right": 2 },
+      { "id": "m2", "area": "m", "page": "math-distance", "check": "math.dist((1, 1), (4, 5))", "opts": ["5", "7", "25"], "right": 0 },
+      { "id": "m3", "area": "m", "page": "math-mean", "check": "statistics.mean([2, 4, 9])", "opts": ["4", "5", "15"], "right": 1 },
+      { "id": "m4", "area": "m", "page": "math-line", "check": "2 * 3 + 1", "opts": ["6", "7", "9"], "right": 1 }
+    ]/* data:end */;
+    var AREAS = ['c', 'p', 'm'];
+    var esc = MLPyTasks.esc;
+
+    // Страница из каталога: название и номер урока, к которому она нужна
+    function item(id) {
+      var found = null;
+      (window.CATALOG || []).forEach(function (ph) { ph.items.forEach(function (it) { if (it.id === id) found = it; }); });
+      return found;
+    }
+    function title(it) { return it.title[MLViz.lang] || it.title.ru; }
+    function href(id) { return '../viz/' + id + '/index.html'; }
+    function opt(s) { return s.charAt(0) === '@' ? T(s.slice(1)) : esc(s); }
+
+    var askEl = el('ask'), codeEl = el('code'), grid = el('taskGrid'), answerEl = el('answer');
+    var game = MLViz.quiz({
+      box: el('game'),
+      rounds: QUESTIONS.length,
+      text: {
+        step: function (q) { return T('step', { i: q.i + 1, n: q.n }); },
+        next: T('next'), finish: T('finish'), finishTitle: T('finishTitle'), again: T('again'),
+        final: finalHtml
+      },
+      start: function (q) { q.data.ok = {}; grid.hidden = false; askEl.hidden = false; },
+      round: function (q) {
+        var it = QUESTIONS[q.i], dunno = it.opts.length;
+        askEl.textContent = T('q_' + it.id);
+        // Код показываем слева, как в разминках; вопрос без кода — варианты на всю ширину
+        codeEl.hidden = !it.code;
+        grid.classList.toggle('wide', !it.code);
+        codeEl.innerHTML = it.code ? MLPyTasks.codeHtml(it.code) : '';
+        answerEl.className = 'choices' + (it.code ? ' mono' : '');
+        q.choices(answerEl, it.opts.map(opt).concat(['<span style="font-family: var(--font)">' + T('dunno') + '</span>']),   // «Не знаю» — не вывод программы, поэтому обычным шрифтом
+          function (k) { return k === it.right; },
+          function (k, ok) {
+            q.data.ok[it.id] = ok;
+            var head = ok ? T('vRight') : k === dunno ? T('vDunno') : T('vWrong');
+            q.answer(ok ? 1 : 0, '<div class="verdict ' + (ok ? 'ok' : 'no') + '"><span class="mark" aria-hidden="true">' + (ok ? '✓' : '✕') + '</span>' +
+              '<div><b class="v">' + head + '</b>' + T('x_' + it.id) + '</div></div>');
+          });
+      },
+      onEnd: function () { grid.hidden = true; askEl.hidden = true; }
+    });
+
+    // Итог: счёт по темам и маршрут. Python и компьютер — до урока 1, математика — «по пути», к своему уроку.
+    function finalHtml(q) {
+      var ok = q.data.ok, now = [], math = [], seen = {};
+      function wrong(area) { return QUESTIONS.filter(function (it) { return it.area === area && !ok[it.id]; }); }
+      function add(list, id, why) {
+        if (seen[id]) return;
+        seen[id] = 1;
+        var it = item(id);
+        if (it) list.push({ id: id, it: it, why: why });
+      }
+      wrong('c').forEach(function (x) { add(now, x.page, T('why_computer')); });
+      wrong('p').forEach(function (x) { add(now, x.page, T('why_py')); });
+      var ready = !now.length;
+      add(now, 'what-is-ml', T('why_lesson1'));
+      wrong('m').forEach(function (x) { var it = item(x.page); add(math, x.page, T('why_math', { n: it ? it.forLessons[0] : 1 })); });
+
+      function li(r, n) {
+        return '<li><span class="n">' + n + '</span><div><b><a href="' + href(r.id) + '">' + MLViz.lessonLabel(r.it) + ' · ' + title(r.it) + '</a></b><br>' + r.why + '</div></li>';
+      }
+      var areas = AREAS.map(function (a) {
+        var all = QUESTIONS.filter(function (it) { return it.area === a; });
+        var c = all.filter(function (it) { return ok[it.id]; }).length;
+        return '<li><span class="n">' + T('areaScore', { c: c, n: all.length }) + '</span><b>' + T('area_' + a) + '</b></li>';
+      }).join('');
+
+      return '<div class="final"><div>' +
+        '<p class="sub">' + T('scoreLabel') + '</p><p class="score"><b>' + q.score + '</b> ' + T('scoreOf', { n: q.n }) + '</p>' +
+        '<ul class="repeat-list">' + areas + '</ul><p class="note">' + T('notGrade') + '</p></div><div>' +
+        (ready ? '<p><b>' + T('readyNow') + '</b></p>' : '') +
+        '<p class="sub">' + T('routeNow') + '</p><ul class="repeat-list">' + now.map(function (r, i) { return li(r, i + 1); }).join('') + '</ul>' +
+        '<div class="row"><a class="btn" href="../warmup/index.html?lesson=1">' + MLViz.icon('code') + T('warm1') + '</a></div>' +
+        (wrong('p').length ? '' : '<p class="note">' + T('pyLater') + '</p>') +
+        '<p class="sub">' + T('routeMath') + '</p>' +
+        (math.length ? '<ul class="repeat-list">' + math.map(function (r, i) { return li(r, now.length + i + 1); }).join('') + '</ul>' : '<p class="note">' + T('mathOk') + '</p>') +
+        '</div></div>';
+    }
+    game.start();
   })();
   </script>
 </body>
