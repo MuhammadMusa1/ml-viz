@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Функции · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <!-- Код примера: стрелка ▶ — строка, которую Python выполнит следующей -->
+        <div class="stage pytask pystep">
+          <pre class="code" id="demoCode"></pre>
+          <p class="step-info" id="stepInfo" role="status"></p>
+        </div>
+        <!-- Память программы: переменные и напечатанное (на телефоне — под кнопками) -->
+        <div class="stage viz-extra">
+          <div class="py-mem">
+            <div><p class="sub" id="varsTitle"></p><div id="vars"></div></div>
+            <div><p class="sub" id="outTitle"></p><pre class="py-out" id="out"></pre></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <h3 id="demoTitle"></h3>
+        <div class="seg" id="demoSeg"></div>
+        <p id="demoCap"></p>
+        <div class="row">
+          <button type="button" id="backBtn"></button>
+          <button type="button" class="primary" id="stepBtn"></button>
+          <button type="button" id="resetBtn"></button>
+          <button type="button" id="endBtn"></button>
+        </div>
+        <p class="note" id="panelNote"></p>
+      </aside>
+    </div>
+
+    <div class="py-game pytask" id="game">
+      <h2 id="gameTitle"></h2>
+      <p class="note" id="gameRules"></p>
+      <div class="task-head"><h3 id="gameStep"></h3><h2 id="ask"></h2></div>
+      <p class="task-hint" id="hint"></p>
+      <div class="task-grid" id="taskGrid">
+        <pre class="code" id="code"></pre>
+        <div><p class="sub" id="answerLabel"></p><div id="answer"></div></div>
+      </div>
+      <div id="gameResult"></div>
+      <button type="button" id="nextBtn" hidden></button>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pytasks.js"></script>
+  <script src="../../data/pystart.js"></script>
+  <script>
+    // Тексты страницы. Сами программы, шаги и ответы — в data/pystart.js (их записал настоящий Python: tools/build_pystart.py).
+    // ex_<id> — подпись примера, exb_<id> — кнопка примера, x_<id> — объяснение после ответа, g_<id> — условие «Собери программу».
+    // Подписи кнопок, игры и итога — общие для раздела, в assets/pytasks.js.
+    var STR = {
+      ru: {
+        title: "Функции",
+        analogy: "<b>Функция — как рецепт с названием.</b> Один раз записал рецепт «удвоить», дальше просто говоришь «удвой 5» — и получаешь 10. <code>def</code> записывает рецепт, вызов <code>double(5)</code> готовит по нему, а <code>return</code> отдаёт готовое блюдо.",
+        exb_u5x: "def",
+        ex_u5x: "<code>def</code> только записывает рецепт — строка 2 пока не выполняется. Она сработает при каждом вызове: <code>hello(\"Аня\")</code>, потом <code>hello(\"Тимур\")</code>. Внутри функции <code>name</code> — своя коробка, снаружи её не видно.",
+        exb_u5y: "return",
+        ex_u5y: "<code>return</code> отдаёт результат туда, откуда функцию вызвали: <code>double(5)</code> превращается в 10, и это число попадает в <code>a</code>. Найди шаг «функция возвращает».",
+        exb_u5z: "if внутри",
+        ex_u5z: "Внутри функции может быть что угодно, например if. <code>return</code> сразу заканчивает функцию: для 5000 до строки 4 дело не доходит. Это уже маленькая модель: дал массу — получил вид.",
+        topic_func: "def и вызов функции",
+        topic_return: "return: что функция отдаёт",
+        x_u5a: "add(2, 3) = 2 + 3 = 5. Функция возвращает число, а print его печатает.",
+        x_u5b: "Сначала выполняется внутренний вызов: f(1) = 2, потом f(2) = 3.",
+        x_u5c: "Функция сама печатает: show(2) → 20, show(3) → 30. Два вызова — две строки.",
+        x_u5d: "g печатает 5, но ничего не возвращает (в ней нет return) — в <code>r</code> попадает <code>None</code>, «пусто». print и return — разные вещи: print показывает на экране, а return отдаёт значение программе.",
+        x_u5e: "area(3, 4) = 12, плюс 1 — 13. Вызов функции можно использовать в формуле как обычное число.",
+        x_u5f: "Python читает сверху вниз: на строке 1 рецепта <code>square</code> ещё нет (NameError). Сначала <code>def</code>, потом вызов.",
+        x_u5g: "Функции нужен один аргумент x, а её вызвали без него — Python останавливается на строке 3 (TypeError: не хватает аргумента).",
+        g_u5h: "Функция утраивает число. Для 4 должно напечататься 12.",
+        x_u5h: "Сначала <code>def</code> и тело функции с отступом, потом вызов без отступа. Иначе Python не знает, что такое triple.",
+        howBody: "<ol><li><b>def имя(параметры):</b> записывает функцию. Тело — строки с отступом; при записи они не выполняются.</li><li><b>Вызов</b> — имя и скобки: <code>double(5)</code>. Значение 5 попадает в параметр x.</li><li><b>return</b> отдаёт результат и сразу заканчивает функцию. Без return функция возвращает None.</li><li><b>Переменные внутри функции — свои</b>, снаружи их не видно.</li><li><b>Зачем это нужно:</b> написал один раз — используешь сколько угодно раз и с разными значениями.</li></ol>",
+        mlBody: "<ul><li>Урок 5: функция расстояния <code>dist(a, b)</code> — сердце KNN.</li><li>sklearn — огромный набор готовых функций: <code>fit</code> учит модель, <code>predict</code> отвечает.</li><li>Урок 20: приложение Gradio вызывает твою функцию <code>predict</code> каждый раз, когда нажимают кнопку.</li></ul>",
+        tryBody: "<ol><li>Что напечатает <code>print(double(double(1)))</code> с функцией из примера «return»?</li><li>Чем отличаются функции из примеров «def» и «return»? Какую из них можно поставить в формулу?</li><li>Добавь в пример «if внутри» третий вариант: меньше 3500 — «Adelie».</li><li>Напиши функцию <code>average(a, b)</code>, которая возвращает среднее двух чисел.</li></ol>",
+        teacherBody: "<p><b>Данные.</b> Три пошаговых примера (def, return, if внутри функции) и 8 заданий. Шаги примеров и ответы заданий записал настоящий Python: <code>tools/build_pystart.py</code> запускает каждую программу и сам находит вывод, строку ошибки и все верные порядки строк.</p><p><b>Как использовать.</b> Перед уроком 5. Главная путаница — print и return: задание 4 игры («5, потом None») стоит разобрать всем классом. Вопрос для обсуждения: «почему строка внутри def не выполнилась сразу, когда Python до неё дошёл?»</p><p><b>Где запускать по-настоящему:</b> Colab (нужны интернет и Google-аккаунт) или Thonny (ставится один раз, работает без интернета). Порядок «предскажи → запусти → измени»: сначала угадать вывод, потом запустить, потом поменять одно число и угадать снова.</p>",
+        howTitle: "Как это работает",
+        mlTitle: "Где это встретится в ML",
+        tryTitle: "Попробуй сам",
+        teacherTitle: "Для учителя",
+        footer: "Раздел «Python с нуля». Шаги примеров и ответы заданий записаны настоящим Python — на странице ничего не придумано."
+      }
+    };
+    MLPyTasks.pystart(STR);
+  </script>
+</body>
+</html>

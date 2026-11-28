@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Списки · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <!-- Код примера: стрелка ▶ — строка, которую Python выполнит следующей -->
+        <div class="stage pytask pystep">
+          <pre class="code" id="demoCode"></pre>
+          <p class="step-info" id="stepInfo" role="status"></p>
+        </div>
+        <!-- Память программы: переменные и напечатанное (на телефоне — под кнопками) -->
+        <div class="stage viz-extra">
+          <div class="py-mem">
+            <div><p class="sub" id="varsTitle"></p><div id="vars"></div></div>
+            <div><p class="sub" id="outTitle"></p><pre class="py-out" id="out"></pre></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <h3 id="demoTitle"></h3>
+        <div class="seg" id="demoSeg"></div>
+        <p id="demoCap"></p>
+        <div class="row">
+          <button type="button" id="backBtn"></button>
+          <button type="button" class="primary" id="stepBtn"></button>
+          <button type="button" id="resetBtn"></button>
+          <button type="button" id="endBtn"></button>
+        </div>
+        <p class="note" id="panelNote"></p>
+      </aside>
+    </div>
+
+    <div class="py-game pytask" id="game">
+      <h2 id="gameTitle"></h2>
+      <p class="note" id="gameRules"></p>
+      <div class="task-head"><h3 id="gameStep"></h3><h2 id="ask"></h2></div>
+      <p class="task-hint" id="hint"></p>
+      <div class="task-grid" id="taskGrid">
+        <pre class="code" id="code"></pre>
+        <div><p class="sub" id="answerLabel"></p><div id="answer"></div></div>
+      </div>
+      <div id="gameResult"></div>
+      <button type="button" id="nextBtn" hidden></button>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pytasks.js"></script>
+  <script src="../../data/pystart.js"></script>
+  <script>
+    // Тексты страницы. Сами программы, шаги и ответы — в data/pystart.js (их записал настоящий Python: tools/build_pystart.py).
+    // ex_<id> — подпись примера, exb_<id> — кнопка примера, x_<id> — объяснение после ответа, g_<id> — условие «Собери программу».
+    // Подписи кнопок, игры и итога — общие для раздела, в assets/pytasks.js.
+    var STR = {
+      ru: {
+        title: "Списки",
+        analogy: "<b>Список — как поезд с вагонами.</b> В каждом вагоне по значению, а вагоны пронумерованы — но <b>с нуля</b>: первый вагон имеет номер 0. В ML данные почти всегда лежат списками: массы пингвинов, ответы модели, ошибки.",
+        exb_s3x: "Номера",
+        ex_s3x: "<code>masses[0]</code> — первый элемент, <code>masses[2]</code> — третий: номера начинаются с нуля. <code>len</code> считает, сколько всего элементов.",
+        exb_s3y: "append",
+        ex_s3y: "<code>append</code> прицепляет новый вагон в конец. <code>[-1]</code> — последний элемент, счёт с конца: удобно, когда не знаешь длину списка.",
+        exb_s3z: "sum, min, max",
+        ex_s3z: "<code>sum</code> складывает весь список, <code>min</code> и <code>max</code> находят самое маленькое и самое большое. В строке 4 значение в вагоне номер 1 заменяется на 4000 — посмотри, как меняется коробка.",
+        topic_index: "номера элементов с нуля",
+        topic_list: "список: len, append, sum, max",
+        x_s3a: "Номера с нуля: a[0] = 10, a[1] = 20. Это самая частая ловушка новичка.",
+        x_s3b: "<code>len</code> — сколько элементов, а не самое большое число и не сумма: их 3.",
+        x_s3c: "Минус — счёт с конца: a[-1] — последний элемент, a[-2] — предпоследний.",
+        x_s3d: "<code>append</code> добавляет в конец: [1, 2] → [1, 2, 5]. Список меняется прямо на месте.",
+        x_s3e: "sum = 4 + 1 + 3 = 8, max = 4. <code>print</code> через запятую печатает оба числа через пробел.",
+        x_s3f: "В списке 2 элемента, их номера 0 и 1. Номера 2 нет — Python вышел за край (IndexError). Строка 2 успела выполниться.",
+        x_s3g: "Скобку <code>[</code> не закрыли. Python сообщает, что скобка не закрыта, и показывает строку 1, где она открылась (SyntaxError).",
+        g_s3h: "В списке один пингвин. Программа добавляет второго и печатает, сколько их. Должно получиться 2.",
+        x_s3h: "Сначала список, потом <code>append</code>, потом подсчёт. Если посчитать до <code>append</code>, получится 1.",
+        howBody: "<ol><li><b>Список</b> пишут в квадратных скобках через запятую: <code>[3750, 3800, 3250]</code>.</li><li><b>Номер элемента</b> — тоже в квадратных скобках после имени: <code>masses[0]</code>. Счёт с нуля, <code>[-1]</code> — последний.</li><li><b>len(список)</b> — сколько элементов. Самый большой номер на единицу меньше.</li><li><b>append</b> добавляет в конец, <code>masses[1] = 4000</code> заменяет элемент.</li><li><b>sum, min, max</b> считают по всему списку сразу.</li></ol>",
+        mlBody: "<ul><li>Урок 2: столбец таблицы похож на список — <code>df[\"mass\"]</code>, и строки тоже нумеруются с нуля.</li><li>Урок 4: среднее = <code>sum(masses) / len(masses)</code>.</li><li>Урок 6: пингвинов делят на две части — 273 в train и 69 в test. По сути, это два списка номеров.</li></ul>",
+        tryBody: "<ol><li>В списке 5 элементов. Какой номер у последнего? Как достать его двумя способами?</li><li>Что напечатает <code>print(masses[1] + masses[2])</code> в примере «Номера»?</li><li>Как посчитать среднюю массу из примера «sum, min, max» одной строкой?</li><li>Создай в Colab список своих оценок за неделю и найди самую низкую и среднюю.</li></ol>",
+        teacherBody: "<p><b>Данные.</b> Три пошаговых примера (номера, append, sum / min / max) и 8 заданий. Шаги примеров и ответы заданий записал настоящий Python: <code>tools/build_pystart.py</code> запускает каждую программу и сам находит вывод, строку ошибки и все верные порядки строк.</p><p><b>Как использовать.</b> Перед уроком 2. Нумерация с нуля — главный камень преткновения: попросите класс вслух назвать номер каждого вагона в примере «Номера», прежде чем шагать. Вопрос для обсуждения: «почему номер последнего элемента — len − 1?»</p><p><b>Где запускать по-настоящему:</b> Colab (нужны интернет и Google-аккаунт) или Thonny (ставится один раз, работает без интернета). Порядок «предскажи → запусти → измени»: сначала угадать вывод, потом запустить, потом поменять одно число и угадать снова.</p>",
+        howTitle: "Как это работает",
+        mlTitle: "Где это встретится в ML",
+        tryTitle: "Попробуй сам",
+        teacherTitle: "Для учителя",
+        footer: "Раздел «Python с нуля». Шаги примеров и ответы заданий записаны настоящим Python — на странице ничего не придумано."
+      }
+    };
+    MLPyTasks.pystart(STR);
+  </script>
+</body>
+</html>

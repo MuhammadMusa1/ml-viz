@@ -660,3 +660,83 @@ select:focus-visible, canvas:focus-visible, pre:focus-visible { outline: 3px sol
 @media (max-width: 600px) {
   .route .step { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
 }
+
+/* ---------- Задания с кодом Python (assets/pytasks.js): разминки и «Python с нуля» ---------- */
+.pytask .task-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+/* «Задание 3 из 8» — бирка журнала, как бирка урока */
+.pytask .task-head #gameStep { display: inline-flex; align-items: center; gap: 8px; margin: 0; background: var(--paper); color: var(--ink);
+  border-radius: var(--r-xs); padding: 5px 12px 5px 10px; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 700; }
+.pytask .task-head #gameStep::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; }
+.pytask .task-head #ask { margin: 0; font-size: var(--fs-h3); line-height: var(--lh-h3); }
+.pytask .task-hint { color: var(--text-2); margin: 8px 0 0; }
+.pytask .task-hint:empty { display: none; }
+.pytask .task-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 20px; }
+.pytask .task-grid.wide { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 900px) { .pytask .task-grid { grid-template-columns: minmax(0, 1fr); } }
+/* Код: тёмное поле, номера строк, подсветка */
+.pytask pre.code { font-family: var(--font-code); font-size: calc(var(--fs-code) + 2px); line-height: 1.55; color: var(--n-100); background: var(--n-950);
+  border: 1px solid var(--line); border-radius: var(--r-m); padding: 12px 0; margin: 0; overflow-x: auto; }
+.pytask pre.code .ln { display: grid; grid-template-columns: 3.2em 1fr; min-height: 1.55em; white-space: pre; width: 100%; padding-right: 14px;
+  font: inherit; color: inherit; text-align: left; background: transparent; border: 0; border-radius: 0; }
+.pytask pre.code .no { color: var(--n-500); text-align: right; padding-right: 1em; user-select: none; }
+.pytask pre.code button.ln { cursor: pointer; min-height: 44px; align-items: center; border-top: 1px solid rgba(255, 255, 255, .04); transition: background-color .15s; }
+.pytask pre.code button.ln:hover:not(:disabled) { background: var(--surface-2); }
+.pytask pre.code button.ln:disabled { cursor: default; opacity: 1; color: inherit; background: transparent; }
+.pytask pre.code .ln.is-right { background: var(--accent-soft) !important; box-shadow: inset 4px 0 0 var(--accent); }
+.pytask pre.code .ln.is-wrong { box-shadow: inset 4px 0 0 var(--n-300); outline: 1px dashed var(--n-300); outline-offset: -1px; }
+.pytask pre.code button.ln { padding: 0 14px 0 0; }   /* без общего отступа кнопок — номера строк в одну колонку */
+.pytask pre.code .ln.slot { color: var(--text-muted); min-height: 44px; align-items: center; border-top: 1px solid rgba(255, 255, 255, .04); }
+.pytask .tok-k { color: #C4B5FD; } .pytask .tok-s { color: #F5D0A9; } .pytask .tok-n { color: #FDBA74; } .pytask .tok-c { color: var(--n-400); } .pytask .tok-f { color: #A5F3FC; }
+/* Ответы */
+.pytask .choices.mono button { font-family: var(--font-code); font-weight: 400; font-size: calc(var(--fs-code) + 1px); text-align: left; display: flex; align-items: center; }
+.pytask .choices.mono button .key { margin-left: auto; }
+.pytask #answer .row { margin-top: 12px; }
+.pytask .parsons .lines { display: flex; flex-direction: column; gap: 8px; }
+.pytask .parsons .lines button { font-family: var(--font-code); font-weight: 400; font-size: calc(var(--fs-code) + 1px); white-space: pre-wrap; text-align: left; width: 100%; }
+/* Вердикт после ответа */
+.pytask #gameResult:empty { display: none; }
+.pytask .verdict { display: flex; gap: 14px; align-items: flex-start; margin-top: 20px; padding: 16px 20px; border-radius: var(--r-m); background: var(--surface-1); border: 1px solid var(--line); }
+.pytask .verdict .mark { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
+.pytask .verdict.ok .mark { background: var(--accent); color: var(--accent-ink); }
+.pytask .verdict.no .mark { border: 2px dashed var(--n-300); color: var(--text-2); }
+.pytask .verdict b.v { display: block; color: var(--text-strong); font-size: var(--fs-h3); line-height: var(--lh-h3); margin-bottom: 4px; }
+.pytask .verdict pre.code { margin-top: 10px; font-size: var(--fs-code); }
+.pytask #nextBtn { margin-top: 16px; }
+/* Итог */
+.pytask .final { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 32px; margin-top: 20px; padding: 24px; border-radius: var(--r-l); background: var(--surface-2); border: 1px solid var(--line); }
+@media (max-width: 900px) { .pytask .final { grid-template-columns: minmax(0, 1fr); } }
+.pytask .final .score { font-size: var(--fs-h2); color: var(--text-2); font-weight: 700; margin: 8px 0; font-variant-numeric: tabular-nums; }
+.pytask .final .score b { font-size: 72px; line-height: 1; color: var(--text-strong); }
+.projector .pytask .final .score b { font-size: 104px; }
+.pytask .final .row { margin-top: 16px; gap: 12px; }
+.pytask .repeat-list { list-style: none; padding: 0; margin: 8px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.pytask .repeat-list li { display: flex; gap: 12px; align-items: baseline; padding: 12px 16px; border-radius: var(--r-m); background: var(--surface-1); border: 1px solid var(--line); }
+.pytask .repeat-list .n { flex: none; font-family: var(--font-code); font-size: var(--fs-label); color: var(--text-2); border: 1.5px solid var(--control-line); border-radius: var(--r-xs); padding: 0 6px; }
+.pytask .repeat-list b { color: var(--text-strong); }
+.pytask .repeat-list small { display: block; color: var(--text-muted); font-size: var(--fs-label); }
+
+/* ---------- Пошаговый показ программы («Python с нуля», viz/py-*) ---------- */
+/* min-width: 0 — иначе длинная строка кода растягивает колонку сетки и всю страницу на телефоне */
+.stage.pystep { min-width: 0; }
+.pystep pre.code .ln { grid-template-columns: 3.8em 1fr; }
+.pystep pre.code .no { white-space: nowrap; }
+.pystep pre.code .ln.cur { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
+.pystep pre.code .ln.cur .no { color: var(--text-strong); }
+.pystep pre.code .ln.was { box-shadow: inset 4px 0 0 var(--n-500); }
+.step-info { margin: 10px 4px 2px; color: var(--text); min-height: 3em; }
+.step-info b { color: var(--text-strong); }
+.py-mem { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 4px; }
+@media (max-width: 600px) { .py-mem { grid-template-columns: minmax(0, 1fr); } }
+.py-vars { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.py-vars li { display: grid; gap: 2px; min-width: 112px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: var(--r-m); background: var(--surface-1); }
+.py-vars li.changed { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
+.py-vars .name { font-family: var(--font-code); color: var(--text-2); font-size: var(--fs-label); }
+.py-vars .val { font-family: var(--font-code); color: var(--text-strong); font-size: var(--fs-h3); line-height: var(--lh-h3); overflow-wrap: anywhere; }
+.py-vars .val:empty { display: none; }
+.py-vars .type { color: var(--text-muted); font-size: var(--fs-label); }
+.py-local { margin-top: 12px; }
+.py-out { font-family: var(--font-code); font-size: calc(var(--fs-code) + 1px); line-height: 1.5; white-space: pre; overflow-x: auto; color: var(--n-100);
+  background: var(--n-950); border: 1px solid var(--line); border-radius: var(--r-m); padding: 10px 14px; margin: 6px 0 0; min-height: 3em; }
+.py-out.empty { color: var(--text-muted); font-family: var(--font); white-space: normal; }
+.py-game { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
+.py-game > h2 { margin: 0 0 4px; }

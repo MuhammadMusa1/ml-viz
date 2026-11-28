@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Цикл for · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <!-- Код примера: стрелка ▶ — строка, которую Python выполнит следующей -->
+        <div class="stage pytask pystep">
+          <pre class="code" id="demoCode"></pre>
+          <p class="step-info" id="stepInfo" role="status"></p>
+        </div>
+        <!-- Память программы: переменные и напечатанное (на телефоне — под кнопками) -->
+        <div class="stage viz-extra">
+          <div class="py-mem">
+            <div><p class="sub" id="varsTitle"></p><div id="vars"></div></div>
+            <div><p class="sub" id="outTitle"></p><pre class="py-out" id="out"></pre></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <h3 id="demoTitle"></h3>
+        <div class="seg" id="demoSeg"></div>
+        <p id="demoCap"></p>
+        <div class="row">
+          <button type="button" id="backBtn"></button>
+          <button type="button" class="primary" id="stepBtn"></button>
+          <button type="button" id="resetBtn"></button>
+          <button type="button" id="endBtn"></button>
+        </div>
+        <p class="note" id="panelNote"></p>
+      </aside>
+    </div>
+
+    <div class="py-game pytask" id="game">
+      <h2 id="gameTitle"></h2>
+      <p class="note" id="gameRules"></p>
+      <div class="task-head"><h3 id="gameStep"></h3><h2 id="ask"></h2></div>
+      <p class="task-hint" id="hint"></p>
+      <div class="task-grid" id="taskGrid">
+        <pre class="code" id="code"></pre>
+        <div><p class="sub" id="answerLabel"></p><div id="answer"></div></div>
+      </div>
+      <div id="gameResult"></div>
+      <button type="button" id="nextBtn" hidden></button>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pytasks.js"></script>
+  <script src="../../data/pystart.js"></script>
+  <script>
+    // Тексты страницы. Сами программы, шаги и ответы — в data/pystart.js (их записал настоящий Python: tools/build_pystart.py).
+    // ex_<id> — подпись примера, exb_<id> — кнопка примера, x_<id> — объяснение после ответа, g_<id> — условие «Собери программу».
+    // Подписи кнопок, игры и итога — общие для раздела, в assets/pytasks.js.
+    var STR = {
+      ru: {
+        title: "Цикл for",
+        analogy: "<b>Цикл — как учитель, который проверяет тетради по очереди:</b> взял первую, проверил, взял следующую — пока стопка не кончится. <code>for</code> делает одно и то же с каждым элементом списка, и не важно, сколько их — 3 или 342.",
+        exb_f4x: "for",
+        ex_f4x: "Переменная <code>name</code> по очереди становится каждым элементом списка. Строка с отступом повторяется для каждого, а «конец» без отступа печатается один раз — после цикла. Посмотри, как стрелка возвращается к строке 1.",
+        exb_f4y: "Сумма",
+        ex_f4y: "Копилка: <code>total</code> начинается с 0, и на каждом шаге к ней прибавляется масса. После цикла делим на 3 — получаем среднее. Следи за коробкой total: 0 → 3000 → 7000 → 12000.",
+        exb_f4z: "Подсчёт",
+        ex_f4z: "Цикл и условие вместе: считаем только тяжёлых пингвинов. <code>count</code> растёт, только когда условие верно. Так же считают, сколько ответов модели совпало с правдой.",
+        topic_loop: "цикл for и отступы",
+        topic_range: "range: числа по порядку",
+        topic_sum: "копилка: сумма в цикле",
+        topic_count: "подсчёт с условием",
+        x_f4a: "Тело цикла выполняется для каждого x: 1·2, 2·2, 3·2. Каждый print печатает с новой строки.",
+        x_f4b: "<code>range(3)</code> — это 0, 1, 2: с нуля и <b>без</b> самого 3. Три числа — три повтора.",
+        x_f4c: "print без отступа стоит после цикла и срабатывает один раз: печатается итог 15.",
+        x_f4d: "Теперь print с отступом — внутри цикла, он срабатывает каждый раз: 5, 10, 15. Отступ решает, что повторяется.",
+        x_f4e: "Больше 4500 только 5000 и 4800 — счётчик дважды увеличился на 1.",
+        x_f4f: "После <code>for … in …</code> нужно двоеточие, как после if. Ошибка записи на строке 1 (SyntaxError).",
+        x_f4g: "Переменной <code>y</code> нигде нет — опечатка вместо <code>x</code>. Python останавливается на строке 3 (NameError — неизвестное имя).",
+        g_f4h: "Она считает среднее трёх чисел 2, 4 и 6. Должно получиться 4.0.",
+        x_f4h: "Копилку обнуляем до цикла, прибавляем в цикле, а делим один раз — после цикла, поэтому последняя строка без отступа.",
+        howBody: "<ol><li><b>for x in список:</b> — переменная x по очереди становится каждым элементом.</li><li><b>Тело цикла — строки с отступом.</b> Они повторяются. Строки без отступа выполняются уже после цикла.</li><li><b>range(n)</b> даёт числа 0, 1, …, n − 1 — когда нужно просто повторить n раз или пройти по номерам.</li><li><b>Копилка:</b> до цикла <code>total = 0</code>, в цикле <code>total = total + x</code>. Так считают сумму и среднее.</li><li><b>Счётчик:</b> цикл, внутри if и <code>count = count + 1</code>.</li></ol>",
+        mlBody: "<ul><li>Урок 5: KNN перебирает всех пингвинов и ищет ближайших — это цикл.</li><li>Урок 6: точность (accuracy) — доля верных ответов: счётчик верных, делённый на количество.</li><li>Урок 13: нейросеть учится в цикле — шаг за шагом немного исправляет свою ошибку.</li></ul>",
+        tryBody: "<ol><li>Сколько раз в примере «Сумма» выполнится строка 3? А строка 4?</li><li>Как изменить пример «Подсчёт», чтобы считать лёгких пингвинов — меньше 4000 г?</li><li>Что напечатает <code>for i in range(2, 5): print(i)</code>? Угадай, потом проверь в Colab.</li><li>Напиши цикл, который печатает таблицу умножения на 7 от 1 до 10.</li></ol>",
+        teacherBody: "<p><b>Данные.</b> Три пошаговых примера (перебор, сумма, подсчёт с условием) и 8 заданий. Шаги примеров и ответы заданий записал настоящий Python: <code>tools/build_pystart.py</code> запускает каждую программу и сам находит вывод, строку ошибки и все верные порядки строк.</p><p><b>Как использовать.</b> Перед уроками 3 и 5 (KNN). На проекторе ведите коробку total на доске вместе с классом: так видно, что цикл — это просто повтор. Вопрос для обсуждения: «что изменится, если <code>total = 0</code> поставить внутрь цикла?»</p><p><b>Где запускать по-настоящему:</b> Colab (нужны интернет и Google-аккаунт) или Thonny (ставится один раз, работает без интернета). Порядок «предскажи → запусти → измени»: сначала угадать вывод, потом запустить, потом поменять одно число и угадать снова.</p>",
+        howTitle: "Как это работает",
+        mlTitle: "Где это встретится в ML",
+        tryTitle: "Попробуй сам",
+        teacherTitle: "Для учителя",
+        footer: "Раздел «Python с нуля». Шаги примеров и ответы заданий записаны настоящим Python — на странице ничего не придумано."
+      }
+    };
+    MLPyTasks.pystart(STR);
+  </script>
+</body>
+</html>

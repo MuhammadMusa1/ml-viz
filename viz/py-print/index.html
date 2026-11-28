@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>print и переменные · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <!-- Код примера: стрелка ▶ — строка, которую Python выполнит следующей -->
+        <div class="stage pytask pystep">
+          <pre class="code" id="demoCode"></pre>
+          <p class="step-info" id="stepInfo" role="status"></p>
+        </div>
+        <!-- Память программы: переменные и напечатанное (на телефоне — под кнопками) -->
+        <div class="stage viz-extra">
+          <div class="py-mem">
+            <div><p class="sub" id="varsTitle"></p><div id="vars"></div></div>
+            <div><p class="sub" id="outTitle"></p><pre class="py-out" id="out"></pre></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <h3 id="demoTitle"></h3>
+        <div class="seg" id="demoSeg"></div>
+        <p id="demoCap"></p>
+        <div class="row">
+          <button type="button" id="backBtn"></button>
+          <button type="button" class="primary" id="stepBtn"></button>
+          <button type="button" id="resetBtn"></button>
+          <button type="button" id="endBtn"></button>
+        </div>
+        <p class="note" id="panelNote"></p>
+      </aside>
+    </div>
+
+    <div class="py-game pytask" id="game">
+      <h2 id="gameTitle"></h2>
+      <p class="note" id="gameRules"></p>
+      <div class="task-head"><h3 id="gameStep"></h3><h2 id="ask"></h2></div>
+      <p class="task-hint" id="hint"></p>
+      <div class="task-grid" id="taskGrid">
+        <pre class="code" id="code"></pre>
+        <div><p class="sub" id="answerLabel"></p><div id="answer"></div></div>
+      </div>
+      <div id="gameResult"></div>
+      <button type="button" id="nextBtn" hidden></button>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pytasks.js"></script>
+  <script src="../../data/pystart.js"></script>
+  <script>
+    // Тексты страницы. Сами программы, шаги и ответы — в data/pystart.js (их записал настоящий Python: tools/build_pystart.py).
+    // ex_<id> — подпись примера, exb_<id> — кнопка примера, x_<id> — объяснение после ответа, g_<id> — условие «Собери программу».
+    // Подписи кнопок, игры и итога — общие для раздела, в assets/pytasks.js.
+    var STR = {
+      ru: {
+        title: "print и переменные",
+        analogy: "<b>Переменная — как коробка с наклейкой.</b> На наклейке имя (<code>mass</code>), внутри значение (3750). <code>print</code> — команда «покажи на экране». Программа — это список команд, и Python выполняет их по очереди, сверху вниз.",
+        exb_p1x: "print",
+        ex_p1x: "Команда <code>print</code> печатает то, что в скобках. Сравни строки 2 и 3: без кавычек Python <b>считает</b> 2 + 3, а в кавычках это просто текст — его печатают как есть.",
+        exb_p1y: "Переменные",
+        ex_p1y: "Знак <code>=</code> значит «положи в коробку», а не «равно». В строке 4 Python сначала считает правую часть (3750 + 250), потом кладёт результат обратно в <code>mass</code>, и старое значение стирается. Следи за коробкой.",
+        exb_p1z: "Арифметика",
+        ex_p1z: "Плюс, минус, умножить <code>*</code>, делить <code>/</code>. Деление всегда даёт дробное число: 7 / 2 = 3.5 — дробную часть пишут через <b>точку</b>. Порядок действий как в школе: сначала умножение, потом сложение.",
+        topic_print: "print: что печатается",
+        topic_str: "текст в кавычках и числа",
+        topic_var: "переменные и знак =",
+        topic_math: "арифметика",
+        x_p1a: "Без кавычек Python считает: 10 + 5 = 15 — и печатает результат, а не сам пример.",
+        x_p1b: "В кавычках — текст, а не числа. Знак <code>+</code> текст склеивает: \"10\" + \"5\" = \"105\".",
+        x_p1c: "Сначала правая часть: 4 · 2 = 8, потом результат кладётся обратно в <code>x</code>. Старое 4 стирается.",
+        x_p1d: "В кавычках — просто текст «name», а не переменная. Чтобы напечатать то, что лежит в коробке, пишут без кавычек: <code>print(name)</code>.",
+        x_p1e: "Деление <code>/</code> всегда даёт дробное число: 3.5. Дробную часть Python пишет через точку, а не через запятую.",
+        x_p1f: "Текст должен закрываться кавычкой: <code>\"Привет\"</code>. Строки 1 и 2 успели выполниться, а на строке 3 Python не нашёл конец текста (SyntaxError — ошибка записи).",
+        x_p1g: "Текст и число через <code>+</code> не складываются (TypeError — «не тот тип»). Правильно: <code>print(\"Мне лет:\", age)</code> — через запятую, и Python сам поставит пробел.",
+        g_p1h: "Она складывает 3 и 4 и печатает 7.",
+        x_p1h: "Коробки <code>a</code> и <code>b</code> должны появиться раньше, чем их используют. А вот строки с <code>a</code> и <code>b</code> можно поменять местами — так тоже верно.",
+        howBody: "<ol><li><b>Python читает сверху вниз</b>, по одной строке. Пока строка не выполнена, следующая не начнётся.</li><li><b>print(…)</b> печатает то, что в скобках: число, текст, переменную. Несколько значений — через запятую, Python поставит между ними пробел.</li><li><b>Текст — в кавычках</b> (\"Adelie\"), числа — без. \"5\" и 5 — разные вещи.</li><li><b>Переменная — коробка с именем.</b> <code>mass = 3750</code> кладёт 3750 в коробку mass. Новое значение стирает старое.</li><li><b>Справа от = сначала считается</b>, потом результат кладётся в коробку: <code>mass = mass + 250</code>.</li></ol>",
+        mlBody: "<ul><li>Урок 1: <code>border = 206</code> — граница, по которой модель отличает Gentoo. Поменяешь число — поменяется ответ модели.</li><li>Почти в каждом ноутбуке: <code>print(\"Точность:\", acc)</code> — так видно результат модели.</li><li>Ошибки из этой игры (SyntaxError, TypeError) — самые частые у новичков в Colab. Теперь ты знаешь, что они значат.</li></ul>",
+        tryBody: "<ol><li>В примере «Переменные» поменяй в уме 250 на −750. Что напечатает строка 5?</li><li>Почему <code>print(2 + 3)</code> и <code>print(\"2 + 3\")</code> печатают разное?</li><li>Что напечатает <code>print(\"Ab\" + \"Ab\")</code>? А <code>print(3 * \"Ab\")</code>? Сначала угадай, потом проверь в Colab.</li><li>Напиши программу из трёх строк про своего пингвина: имя, масса и печать. Заработала с первого раза?</li></ol>",
+        teacherBody: "<p><b>Данные.</b> Три пошаговых примера (print, переменные, арифметика) и 8 заданий. Шаги примеров и ответы заданий записал настоящий Python: <code>tools/build_pystart.py</code> запускает каждую программу и сам находит вывод, строку ошибки и все верные порядки строк.</p><p><b>Как использовать.</b> Для ученика, который ни разу не программировал, — до урока 1. На проекторе перед каждым «Шагом» класс угадывает, что изменится в коробках. Вопрос для обсуждения: «почему <code>mass = mass + 250</code> — не ошибка, хотя в математике так не бывает?»</p><p><b>Где запускать по-настоящему:</b> Colab (нужны интернет и Google-аккаунт) или Thonny (ставится один раз, работает без интернета). Порядок «предскажи → запусти → измени»: сначала угадать вывод, потом запустить, потом поменять одно число и угадать снова.</p>",
+        howTitle: "Как это работает",
+        mlTitle: "Где это встретится в ML",
+        tryTitle: "Попробуй сам",
+        teacherTitle: "Для учителя",
+        footer: "Раздел «Python с нуля». Шаги примеров и ответы заданий записаны настоящим Python — на странице ничего не придумано."
+      }
+    };
+    MLPyTasks.pystart(STR);
+  </script>
+</body>
+</html>

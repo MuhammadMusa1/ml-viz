@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Таблица pandas · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <!-- Код примера: стрелка ▶ — строка, которую Python выполнит следующей -->
+        <div class="stage pytask pystep">
+          <pre class="code" id="demoCode"></pre>
+          <p class="step-info" id="stepInfo" role="status"></p>
+        </div>
+        <!-- Память программы: переменные и напечатанное (на телефоне — под кнопками) -->
+        <div class="stage viz-extra">
+          <div class="py-mem">
+            <div><p class="sub" id="varsTitle"></p><div id="vars"></div></div>
+            <div><p class="sub" id="outTitle"></p><pre class="py-out" id="out"></pre></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <h3 id="demoTitle"></h3>
+        <div class="seg" id="demoSeg"></div>
+        <p id="demoCap"></p>
+        <div class="row">
+          <button type="button" id="backBtn"></button>
+          <button type="button" class="primary" id="stepBtn"></button>
+          <button type="button" id="resetBtn"></button>
+          <button type="button" id="endBtn"></button>
+        </div>
+        <p class="note" id="panelNote"></p>
+      </aside>
+    </div>
+
+    <div class="py-game pytask" id="game">
+      <h2 id="gameTitle"></h2>
+      <p class="note" id="gameRules"></p>
+      <div class="task-head"><h3 id="gameStep"></h3><h2 id="ask"></h2></div>
+      <p class="task-hint" id="hint"></p>
+      <div class="task-grid" id="taskGrid">
+        <pre class="code" id="code"></pre>
+        <div><p class="sub" id="answerLabel"></p><div id="answer"></div></div>
+      </div>
+      <div id="gameResult"></div>
+      <button type="button" id="nextBtn" hidden></button>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pytasks.js"></script>
+  <script src="../../data/pystart.js"></script>
+  <script>
+    // Тексты страницы. Сами программы, шаги и ответы — в data/pystart.js (их записал настоящий Python: tools/build_pystart.py).
+    // ex_<id> — подпись примера, exb_<id> — кнопка примера, x_<id> — объяснение после ответа, g_<id> — условие «Собери программу».
+    // Подписи кнопок, игры и итога — общие для раздела, в assets/pytasks.js.
+    var STR = {
+      ru: {
+        title: "Таблица pandas",
+        analogy: "<b>pandas — это Excel внутри Python.</b> Таблица (DataFrame) состоит из строк и столбцов: строка — один пингвин, столбец — признак (вид, масса). Столбец достают по названию, а среднее, максимум и отбор строк делаются одной командой, без цикла.",
+        exb_d6x: "Таблица",
+        ex_d6x: "<code>import pandas as pd</code> подключает библиотеку. <code>pd.DataFrame({…})</code> собирает таблицу из столбцов: название и список значений. Строки нумеруются с нуля, как в списке. <code>len(df)</code> — сколько строк.",
+        exb_d6y: "Столбец",
+        ex_d6y: "<code>df[\"mass\"]</code> — столбец по названию. У столбца есть готовые команды: <code>.mean()</code> — среднее, <code>.max()</code> — максимум. Под столбцом pandas печатает его название и тип чисел (int64 — целые).",
+        exb_d6z: "Отбор строк",
+        ex_d6z: "<code>df[df[\"mass\"] &gt; 3500]</code> оставляет только строки, где условие верно: получается таблица поменьше. <code>value_counts()</code> считает, сколько раз встречается каждый вид.",
+        topic_df: "таблица DataFrame и import",
+        topic_col: "столбец: df[\"…\"], mean, max",
+        topic_filter: "отбор строк по условию",
+        x_d6a: "В таблице 3 пингвина — 3 строки. <code>len</code> считает строки, а не клетки (клеток было бы 6).",
+        x_d6b: "(3000 + 5000 + 4000) / 3 = 4000.0. Среднее pandas всегда даёт дробным числом — с точкой.",
+        x_d6c: "Сначала столбец species, потом строка номер 1 — вторая по счёту, ведь счёт с нуля: Gentoo.",
+        x_d6d: "Больше 3500 только 5000 и 4000 — в новой таблице 2 строки.",
+        x_d6e: "Максимум 5000 минус минимум 3000 — 2000. Это размах: насколько самый тяжёлый пингвин тяжелее самого лёгкого.",
+        x_d6f: "Названия столбцов различают большие и маленькие буквы: есть \"mass\", а \"Mass\" нет — Python останавливается на строке 6 (KeyError — нет такого ключа).",
+        x_d6g: "Забыли строку <code>import pandas as pd</code> — Python не знает, что такое <code>pd</code> (NameError). Строки 1–3 — одна команда, поэтому ошибка показана на строке 1.",
+        g_d6h: "Таблица с одним столбцом mass. Программа считает среднюю массу и печатает 4000.0.",
+        x_d6h: "Порядок всегда такой: подключить pandas, сделать таблицу, посчитать, напечатать.",
+        howBody: "<ol><li><b>import pandas as pd</b> — подключаем библиотеку и называем её коротко: pd. Пишут один раз, в начале программы.</li><li><b>Таблица</b> — <code>pd.DataFrame</code>. На уроках её не набирают руками, а загружают из файла: <code>pd.read_csv(…)</code>.</li><li><b>Столбец</b> — <code>df[\"mass\"]</code>. Название пишут в кавычках и точно так же, как в таблице.</li><li><b>Команды столбца</b> — <code>.mean()</code>, <code>.max()</code>, <code>.min()</code>, <code>.value_counts()</code> — работают сразу по всем строкам, без цикла.</li><li><b>Отбор строк</b> — условие в квадратных скобках: <code>df[df[\"mass\"] &gt; 3500]</code>.</li></ol>",
+        mlBody: "<ul><li>Урок 2: настоящая таблица пингвинов — 344 строки, её загружают из файла через <code>pd.read_csv</code>.</li><li>Урок 4: пропуски — пустые клетки. <code>df.dropna()</code> убирает строки, где они есть.</li><li>Урок 5 и дальше: <code>X = df[[…]]</code> — признаки, <code>y = df[\"species\"]</code> — правильные ответы. Их и получает модель.</li></ul>",
+        tryBody: "<ol><li>Что напечатает <code>print(df[\"mass\"].min())</code> для этой таблицы?</li><li>Как оставить только пингвинов вида Adelie? Подсказка: <code>==</code>.</li><li>Почему <code>len(df)</code> равно 3, хотя клеток в таблице 6?</li><li>Открой ноутбук урока 2 в Colab и найди там строчки, похожие на эти примеры.</li></ol>",
+        teacherBody: "<p><b>Данные.</b> Три пошаговых примера на таблице из трёх пингвинов (таблица, столбец, отбор строк) и 8 заданий. pandas в Colab уже установлен; в Thonny его ставят один раз через «Управление пакетами». Шаги примеров и ответы заданий записал настоящий Python: <code>tools/build_pystart.py</code> запускает каждую программу и сам находит вывод, строку ошибки и все верные порядки строк.</p><p><b>Как использовать.</b> Перед уроком 2. Покажите, что <code>df[\"mass\"].mean()</code> делает то же, что копилка из страницы «Цикл for», только одной строкой. Вопрос для обсуждения: «зачем учить циклы, если в pandas можно без них?»</p><p><b>Где запускать по-настоящему:</b> Colab (нужны интернет и Google-аккаунт) или Thonny (ставится один раз, работает без интернета). Порядок «предскажи → запусти → измени»: сначала угадать вывод, потом запустить, потом поменять одно число и угадать снова.</p>",
+        howTitle: "Как это работает",
+        mlTitle: "Где это встретится в ML",
+        tryTitle: "Попробуй сам",
+        teacherTitle: "Для учителя",
+        footer: "Раздел «Python с нуля». Шаги примеров и ответы заданий записаны настоящим Python — на странице ничего не придумано."
+      }
+    };
+    MLPyTasks.pystart(STR);
+  </script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Условия if / else · Лаборатория ML</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="wrap">
+    <p class="eyebrow"></p>
+    <h1 data-i18n="title"></h1>
+    <div class="analogy-box" data-i18n-html="analogy"></div>
+
+    <div class="viz-layout">
+      <div class="viz-main">
+        <!-- Код примера: стрелка ▶ — строка, которую Python выполнит следующей -->
+        <div class="stage pytask pystep">
+          <pre class="code" id="demoCode"></pre>
+          <p class="step-info" id="stepInfo" role="status"></p>
+        </div>
+        <!-- Память программы: переменные и напечатанное (на телефоне — под кнопками) -->
+        <div class="stage viz-extra">
+          <div class="py-mem">
+            <div><p class="sub" id="varsTitle"></p><div id="vars"></div></div>
+            <div><p class="sub" id="outTitle"></p><pre class="py-out" id="out"></pre></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <h3 id="demoTitle"></h3>
+        <div class="seg" id="demoSeg"></div>
+        <p id="demoCap"></p>
+        <div class="row">
+          <button type="button" id="backBtn"></button>
+          <button type="button" class="primary" id="stepBtn"></button>
+          <button type="button" id="resetBtn"></button>
+          <button type="button" id="endBtn"></button>
+        </div>
+        <p class="note" id="panelNote"></p>
+      </aside>
+    </div>
+
+    <div class="py-game pytask" id="game">
+      <h2 id="gameTitle"></h2>
+      <p class="note" id="gameRules"></p>
+      <div class="task-head"><h3 id="gameStep"></h3><h2 id="ask"></h2></div>
+      <p class="task-hint" id="hint"></p>
+      <div class="task-grid" id="taskGrid">
+        <pre class="code" id="code"></pre>
+        <div><p class="sub" id="answerLabel"></p><div id="answer"></div></div>
+      </div>
+      <div id="gameResult"></div>
+      <button type="button" id="nextBtn" hidden></button>
+    </div>
+
+    <section class="section">
+      <h2 data-i18n="howTitle"></h2>
+      <div data-i18n-html="howBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="mlTitle"></h2>
+      <div data-i18n-html="mlBody"></div>
+    </section>
+
+    <section class="section">
+      <h2 data-i18n="tryTitle"></h2>
+      <div data-i18n-html="tryBody"></div>
+    </section>
+
+    <details class="box">
+      <summary data-i18n="teacherTitle"></summary>
+      <div data-i18n-html="teacherBody"></div>
+    </details>
+  </main>
+
+  <footer class="site-footer"><div class="wrap" data-i18n-html="footer"></div></footer>
+
+  <script src="../../assets/core.js"></script>
+  <script src="../../assets/catalog.js"></script>
+  <script src="../../assets/pytasks.js"></script>
+  <script src="../../data/pystart.js"></script>
+  <script>
+    // Тексты страницы. Сами программы, шаги и ответы — в data/pystart.js (их записал настоящий Python: tools/build_pystart.py).
+    // ex_<id> — подпись примера, exb_<id> — кнопка примера, x_<id> — объяснение после ответа, g_<id> — условие «Собери программу».
+    // Подписи кнопок, игры и итога — общие для раздела, в assets/pytasks.js.
+    var STR = {
+      ru: {
+        title: "Условия if / else",
+        analogy: "<b>if — как развилка на дороге:</b> «если масса больше 4500 — иди налево, иначе — направо». Python проверяет условие и выполняет только одну ветку. Некоторые модели машинного обучения — например, дерево решений — целиком состоят из таких развилок.",
+        exb_i2x: "if",
+        ex_i2x: "Условие <code>mass &gt; 4500</code> верно — выполняется строка с отступом под <code>if</code>. Строка 4 стоит без отступа: она не внутри <code>if</code> и выполнится в любом случае. Поменяй в уме 5000 на 3000 — какая строка пропустится?",
+        exb_i2y: "if / else",
+        ex_i2y: "190 не больше 206 — условие неверно, и Python перепрыгивает к <code>else</code>. Из двух веток всегда выполняется ровно одна. Посмотри, через какие строки прошла стрелка.",
+        exb_i2z: "elif",
+        ex_i2z: "<code>elif</code> — «иначе если». Python проверяет условия по порядку и останавливается на первом верном: 45 не меньше 40, но меньше 48 — значит, Chinstrap. До <code>else</code> дело не доходит.",
+        topic_if: "if / else: какая ветка выполнится",
+        topic_cmp: "сравнения &gt; &lt; == &gt;=",
+        topic_indent: "отступы",
+        topic_elif: "if / elif / else",
+        x_i2a: "7 больше 5 — условие верно, работает только ветка <code>if</code>. <code>else</code> пропускается.",
+        x_i2b: "5 &gt; 5 — неверно: 5 не больше самого себя. Работает <code>else</code>. Чтобы 5 подходило, пишут <code>&gt;=</code> — «больше или равно».",
+        x_i2c: "<code>==</code> — вопрос «равно ли?» (два знака). Условие верно, печатается «три». «готово» стоит без отступа — вне if, печатается всегда.",
+        x_i2d: "2 &gt; 5 неверно — строка с отступом пропускается. <code>print(\"B\")</code> без отступа и от условия не зависит.",
+        x_i2e: "4000 не больше 4500 — первое условие не подошло. 4000 больше 3500 — второе подошло: Chinstrap. Дальше Python не проверяет.",
+        x_i2f: "Один знак <code>=</code> кладёт значение в коробку, а сравнивают двумя: <code>if x == 10:</code>. Python видит ошибку записи на строке 2 (SyntaxError).",
+        x_i2g: "Строки внутри <code>if</code> пишут с отступом — 4 пробела. Без отступа Python не понимает, что относится к условию (IndentationError — ошибка отступа).",
+        g_i2h: "Если возраст 13 или больше — она печатает «можно», иначе «рано». Для 15 должно получиться «можно».",
+        x_i2h: "Сначала коробка с возрастом, потом условие. Строка с отступом принадлежит тому <code>if</code> или <code>else</code>, который стоит над ней.",
+        howBody: "<ol><li><b>Условие</b> — вопрос с ответом «да» или «нет»: <code>mass &gt; 4500</code>, <code>x == 3</code>. Сравнения: <code>&gt;</code> <code>&lt;</code> <code>&gt;=</code> <code>&lt;=</code>, «равно» — <code>==</code>, «не равно» — <code>!=</code>.</li><li><b>После условия — двоеточие</b>, а строки ветки пишут с отступом в 4 пробела.</li><li><b>Выполняется одна ветка:</b> «да» — ветка <code>if</code>, «нет» — ветка <code>else</code>.</li><li><b>elif</b> — ещё одна проверка. Python идёт сверху вниз и берёт первую подходящую ветку.</li><li><b>Строки без отступа</b> после if уже не часть условия — они выполняются всегда.</li></ol>",
+        mlBody: "<ul><li>Урок 1: правило «если крыло длиннее 206 мм — Gentoo» — это один <code>if</code>.</li><li>Урок 7: дерево решений — это if / elif / else, только вопросы и границы модель подбирает сама.</li><li>Урок 11: «если вероятность больше порога — тревога» — тоже условие. Поменяешь порог — поменяются ошибки модели.</li></ul>",
+        tryBody: "<ol><li>В примере «elif» при каком значении <code>bill</code> получится Gentoo? А Adelie?</li><li>В примере «if / else» найди самое маленькое целое <code>flipper</code>, при котором будет Gentoo.</li><li>Чем отличаются <code>x &gt; 5</code> и <code>x &gt;= 5</code>? При каком x они отвечают по-разному?</li><li>Напиши в Colab программу: если оценка 5 — «отлично», если 4 — «хорошо», иначе — «надо повторить».</li></ol>",
+        teacherBody: "<p><b>Данные.</b> Три пошаговых примера (if, if / else, elif) и 8 заданий. Шаги примеров и ответы заданий записал настоящий Python: <code>tools/build_pystart.py</code> запускает каждую программу и сам находит вывод, строку ошибки и все верные порядки строк.</p><p><b>Как использовать.</b> Перед уроком 1 (правило с границей) и уроком 7 (дерево решений). На проекторе: перед шагом на строке с <code>if</code> класс голосует, куда прыгнет стрелка. Вопрос для обсуждения: «зачем Python отступы, если человек и так видит, что к чему относится?»</p><p><b>Где запускать по-настоящему:</b> Colab (нужны интернет и Google-аккаунт) или Thonny (ставится один раз, работает без интернета). Порядок «предскажи → запусти → измени»: сначала угадать вывод, потом запустить, потом поменять одно число и угадать снова.</p>",
+        howTitle: "Как это работает",
+        mlTitle: "Где это встретится в ML",
+        tryTitle: "Попробуй сам",
+        teacherTitle: "Для учителя",
+        footer: "Раздел «Python с нуля». Шаги примеров и ответы заданий записаны настоящим Python — на странице ничего не придумано."
+      }
+    };
+    MLPyTasks.pystart(STR);
+  </script>
+</body>
+</html>
